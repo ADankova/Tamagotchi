@@ -1,6 +1,8 @@
 # Тамагочи
 
-Браузерная игра «Тамагочи» на TypeScript: виртуальный питомец, который растёт в реальном времени, даже когда вкладка закрыта.
+Игра «Тамагочи» для Android на TypeScript: виртуальный питомец, который растёт в реальном времени, даже когда приложение закрыто.
+
+**Скачать APK:** [tamagotchi-debug.apk](https://github.com/ADankova/Tamagotchi/releases/download/android-latest/tamagotchi-debug.apk)
 
 Техническое задание: [docs/TZ.md](docs/TZ.md)
 
@@ -10,7 +12,7 @@
 
 ```bash
 npm install
-npm run dev        # игра на http://localhost:5173
+npm run dev        # быстрый просмотр интерфейса в браузере при разработке
 npm test           # юнит-тесты
 npm run build      # проверка типов + сборка в dist/
 ```
@@ -35,10 +37,6 @@ cd android && ./gradlew assembleDebug
 
 В приложении работают системная кнопка «Назад» и настоящие напоминания: когда приложение свёрнуто, ставится уведомление на момент, когда питомцу понадобится забота.
 
-## Веб-версия
-
-Публикуется на GitHub Pages из `main` (`.github/workflows/pages.yml`). Один раз включите: Settings → Pages → Source: **GitHub Actions**.
-
 Панель отладки (ускорение времени ×10…×1000, ручная установка характеристик) открывается по адресу `http://localhost:5173/?debug=1`.
 
 ## Структура
@@ -49,8 +47,8 @@ src/
   storage/       сохранение в localStorage, версия сейва, проверка и миграции
   render/        интерфейс (ui.ts) и панель отладки (debug.ts)
   audio/         8-битные звуки (Web Audio)
-  notify/        напоминания: браузер и Android
-  platform.ts    отличия браузера и Android-приложения
+  notify/        напоминания (Android)
+  platform.ts    связь с Android: кнопка «Назад», сворачивание, уведомления
   game.ts        игровой цикл: время, офлайн-прогресс, шина событий
   strings.ts     все тексты интерфейса
   main.ts        точка входа
