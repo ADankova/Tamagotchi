@@ -1,6 +1,6 @@
 {
   "name": "tamagotchi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "description": "Браузерная игра «Тамагочи» на TypeScript",
@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "android:icons": "node scripts/android-icons.mjs android/app/src/main/res",
     "android:sync": "npm run build && cap sync android",
-    "android:theme": "node scripts/android-theme.mjs android/app/src/main/res"
+    "android:theme": "node scripts/android-theme.mjs android/app/src/main/res",
+    "android:gradle": "node scripts/android-gradle.mjs android/app/build.gradle"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

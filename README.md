@@ -17,7 +17,7 @@ npm run build      # проверка типов + сборка в dist/
 
 ## Android
 
-APK собирается в GitHub Actions (`.github/workflows/android.yml`) при каждом пуше в `main` и выкладывается в релиз [android-latest](https://github.com/ADankova/Tamagotchi/releases/tag/android-latest). Скачайте `tamagotchi-debug.apk` на телефон, откройте и разрешите установку из этого источника.
+APK собирается в GitHub Actions (`.github/workflows/android.yml`) при каждом пуше в `main` и выкладывается в релиз [android-latest](https://github.com/ADankova/Tamagotchi/releases/tag/android-latest). Скачайте `tamagotchi-debug.apk` на телефон, откройте и разрешите установку из этого источника. Сборки подписаны постоянным ключом (`android-signing/`), поэтому новые версии ставятся поверх старых с сохранением питомца.
 
 Собрать локально (нужны Android Studio / Android SDK и JDK 21):
 
@@ -27,6 +27,7 @@ npm run build
 npx cap add android        # один раз
 npm run android:icons
 npm run android:theme
+npm run android:gradle
 npx cap sync android
 cd android && ./gradlew assembleDebug
 ```

@@ -54,14 +54,24 @@ jobs:
           echo "Отступы от системных панелей и тема на месте."
 
 
+      - name: Постоянный ключ подписи и номер версии
+        # Один и тот же ключ — чтобы новые версии ставились поверх старых.
+        run: |
+          node scripts/android-gradle.mjs android/app/build.gradle "$GITHUB_RUN_NUMBER"
+          grep -nE "versionCode|versionName|debug.keystore" android/app/build.gradle
+
       - name: Сборка APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Переименовать APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk tamagotchi-debug.apk
+      - name: Переименовать APK и проверить подпись
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk tamagotchi-debug.apk
+          EXPECTED="86:63:04:51:B4:6C:7F:77:BA:65:E5:5A:CC:3F:61:63:79:F3:53:41:3E:58:C8:21:04:F1:CE:4C:DC:CD:BD:8A"
+          keytool -printcert -jarfile tamagotchi-debug.apk | tee cert.txt
+          grep -q "$EXPECTED" cert.txt && echo "Подпись постоянным ключом — OK"
 
       - uses: actions/upload-artifact@v4
         with:
