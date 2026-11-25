@@ -1,9 +1,11 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { nextAttention, type Attention } from '../core/forecast';
 import type { Pet } from '../core/types';
-import { attentionMessage, type Notifier, type PermissionResult } from './notifier';
+import { T } from '../strings';
+import { attentionMessage, TEST_DELAY_MS, type Notifier, type PermissionResult } from './notifier';
 
 const NOTIFICATION_ID = 1;
+const TEST_NOTIFICATION_ID = 2;
 
 /**
  * Телефон (Android через Capacitor): настоящее запланированное уведомление,
@@ -47,6 +49,21 @@ export class NativeNotifier implements Notifier {
       ],
     });
     return attention;
+  }
+
+  async test(): Promise<boolean> {
+    if (!(await this.request())) return false;
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: TEST_NOTIFICATION_ID,
+          title: T.title,
+          body: T.testNotification,
+          schedule: { at: new Date(Date.now() + TEST_DELAY_MS), allowWhileIdle: true },
+        },
+      ],
+    });
+    return true;
   }
 
   async cancel(): Promise<void> {

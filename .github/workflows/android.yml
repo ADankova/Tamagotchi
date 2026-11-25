@@ -44,6 +44,7 @@ jobs:
           npx cap add android
           node scripts/android-icons.mjs android/app/src/main/res
           node scripts/android-theme.mjs android/app/src/main/res
+          node scripts/android-manifest.mjs android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
       - name: Проверка настроек Android
@@ -51,6 +52,7 @@ jobs:
           echo "Capacitor CLI: $(npx cap --version)"
           grep -q '"adjustMarginsForEdgeToEdge": "force"' android/app/src/main/assets/capacitor.config.json
           grep -q tamagotchi_background android/app/src/main/res/values/styles.xml
+          grep -q USE_EXACT_ALARM android/app/src/main/AndroidManifest.xml
           echo "Отступы от системных панелей и тема на месте."
 
 

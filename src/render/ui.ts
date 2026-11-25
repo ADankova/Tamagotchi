@@ -1,6 +1,7 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
+import type { AttentionReason } from '../core/forecast';
 import type { ActionType, Pet, StatKey } from '../core/types';
 import type { Absence, Game } from '../game';
 import type { Notifier } from '../notify/notifier';
@@ -9,6 +10,7 @@ import type { GraveRecord } from '../storage/save';
 import {
   absenceNoteText,
   ACTION_LABELS,
+  ATTENTION_SHORT,
   BLOCK_REASONS,
   CARE_LABELS,
   CAUSE_LABELS,
@@ -36,8 +38,15 @@ type Attrs = Record<string, string>;
 type Screen = 'start' | 'game' | 'results' | 'memory' | 'settings';
 type View = 'main' | 'memory' | 'settings';
 
+export interface LastReminder {
+  at: number;
+  reason: AttentionReason;
+}
+
 export interface UiServices {
   notifier: Notifier;
+  /** Когда и о чём было запланировано последнее напоминание. */
+  lastReminder?: () => LastReminder | null;
   /** Короткий звук-подтверждение (после включения звука). */
   onSoundEnabled?: () => void;
 }
@@ -89,6 +98,9 @@ export class UI {
   private readonly soundSwitch: HTMLInputElement;
   private readonly notifySwitch: HTMLInputElement;
   private readonly notifyStatus = el('p', { class: 'setting-status', role: 'status' });
+  private readonly reminderInfo = el('p', { class: 'setting-status' });
+  private readonly testStatus = el('p', { class: 'setting-status', role: 'status' });
+  private readonly testButton = el('button', { type: 'button', class: 'test-button', 'data-test-notify': '' });
   private readonly startNotice = el('p', { class: 'notice', hidden: '' });
 
   private readonly petName = el('h2', { class: 'pet-name' });
@@ -167,7 +179,12 @@ export class UI {
         el('h1', { id: 'settings-title', text: SETTINGS_TEXT.title }),
       ]),
       this.settingRow(this.soundSwitch, SETTINGS_TEXT.sound, SETTINGS_TEXT.soundHint),
-      this.settingRow(this.notifySwitch, SETTINGS_TEXT.notifications, SETTINGS_TEXT.notificationsHint, this.notifyStatus),
+      this.settingRow(this.notifySwitch, SETTINGS_TEXT.notifications, SETTINGS_TEXT.notificationsHint, [
+        this.notifyStatus,
+        this.reminderInfo,
+        this.testButton,
+        this.testStatus,
+      ]),
       el('h2', { class: 'section-title', text: SETTINGS_TEXT.data }),
       el('div', { class: 'settings-buttons' }, [
         this.memoryButton(false, 'plain'),
@@ -361,6 +378,7 @@ export class UI {
         this.setView('memory');
       }
       if (target.closest('[data-open-settings]')) this.setView('settings');
+      if (target.closest('[data-test-notify]')) void this.testNotification();
       if (target.closest('[data-close-memory]')) this.setView(this.memoryReturn);
       if (target.closest('[data-close-view]')) this.setView('main');
       if (target.closest('[data-reset]') && window.confirm(T.resetConfirm)) {
@@ -419,14 +437,14 @@ export class UI {
     window.scrollTo({ top: 0 });
   }
 
-  private settingRow(input: HTMLInputElement, title: string, hint: string, extra?: HTMLElement): HTMLElement {
+  private settingRow(input: HTMLInputElement, title: string, hint: string, extra: HTMLElement[] = []): HTMLElement {
     return el('div', { class: 'setting' }, [
       el('label', { class: 'setting-label', for: input.id }, [
         el('span', { class: 'setting-title', text: title }),
         el('span', { class: 'setting-hint', text: hint }),
       ]),
       el('span', { class: 'switch' }, [input, el('span', { class: 'switch-track', 'aria-hidden': 'true' })]),
-      ...(extra ? [extra] : []),
+      ...extra,
     ]);
   }
 
@@ -442,13 +460,34 @@ export class UI {
     await this.renderSettings(true);
   }
 
+  private async testNotification(): Promise<void> {
+    this.testButton.disabled = true;
+    const ok = await this.services.notifier.test();
+    this.testStatus.textContent = ok ? SETTINGS_TEXT.testSent : SETTINGS_TEXT.testFailed;
+    window.setTimeout(() => {
+      this.testStatus.textContent = '';
+    }, 15000);
+    window.setTimeout(() => {
+      this.testButton.disabled = false;
+    }, 5000);
+  }
+
   private async renderSettings(afterRequest = false): Promise<void> {
     const { settings } = this.game.state;
+    this.testButton.textContent = SETTINGS_TEXT.testButton;
+    const last = this.services.lastReminder?.() ?? null;
+    this.reminderInfo.textContent = last
+      ? SETTINGS_TEXT.lastReminder(
+          new Date(last.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          ATTENTION_SHORT[last.reason],
+        )
+      : '';
     this.soundSwitch.checked = settings.sound;
     this.notifySwitch.checked = settings.notifications;
     const { notifier } = this.services;
     const permission = await notifier.permission();
     this.notifySwitch.disabled = permission === 'unsupported';
+    this.testButton.hidden = permission === 'unsupported';
     this.notifyStatus.textContent =
       permission === 'unsupported'
         ? SETTINGS_TEXT.notificationsUnsupported

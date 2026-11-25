@@ -40,6 +40,7 @@ export const T = {
   lived: 'прожил',
   diedOn: (date: string) => `умер ${date}`,
   diedWhileAway: (name: string) => `${name} не дождался тебя.`,
+  testNotification: 'Проверка: напоминания работают. Можно возвращаться к питомцу!',
   openMemory: (n: number) => (n > 0 ? `Зал памяти (${n})` : 'Зал памяти'),
 } as const;
 
@@ -52,6 +53,15 @@ export const ATTENTION_TEXT: Record<AttentionReason, (name: string) => string> =
   dying: (name) => `${name} очень плохо себя чувствует!`,
 };
 
+export const ATTENTION_SHORT: Record<AttentionReason, string> = {
+  hatch: 'вылупление',
+  hungry: 'голод',
+  dirty: 'грязь',
+  bored: 'скука',
+  sick: 'болезнь',
+  dying: 'плохое самочувствие',
+};
+
 export const SETTINGS_TEXT = {
   title: 'Настройки',
   sound: 'Звук',
@@ -61,6 +71,10 @@ export const SETTINGS_TEXT = {
   notificationsDenied: 'Уведомления запрещены. Разрешите их в настройках браузера или телефона.',
   notificationsUnsupported: 'Этот браузер не умеет показывать уведомления.',
   notificationsWeb: 'В браузере напоминание придёт, только пока вкладка открыта.',
+  testButton: 'Проверить уведомление',
+  testSent: 'Через 5 секунд придёт пробное уведомление. Можно свернуть приложение.',
+  testFailed: 'Не удалось: уведомления не разрешены.',
+  lastReminder: (time: string, what: string) => `Последнее напоминание было запланировано на ${time} (${what}).`,
   data: 'Данные',
   version: (v: string) => `Версия ${v}`,
 } as const;

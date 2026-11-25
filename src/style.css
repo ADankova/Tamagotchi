@@ -447,6 +447,12 @@ button:disabled {
   display: none;
 }
 
+.test-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 6px;
+}
+
 .switch {
   position: relative;
   width: 52px;

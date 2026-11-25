@@ -50,18 +50,23 @@ describe('прогноз заботы для напоминаний', () => {
   it('яйцо — напомнит о вылуплении', () => {
     const attention = nextAttention(createPet('Пушок', T0, 1));
     expect(attention?.reason).toBe('hatch');
-    expect(attention?.inMs).toBe(10 * MINUTE);
+    expect(attention?.inMs).toBe(5 * MINUTE);
   });
 
   it('сытый питомец проголодается, и прогноз совпадает с симуляцией', () => {
     const pet = makePet();
     const attention = nextAttention(pet);
     expect(attention?.reason).toBe('hungry');
-    const before = tick(pet, (attention?.inMs ?? 0) - 10 * MINUTE).pet;
+    const before = tick(pet, (attention?.inMs ?? 0) - MINUTE).pet;
     const after = tick(pet, attention?.inMs ?? 0).pet;
     expect(before.stats.hunger).toBeGreaterThanOrEqual(20);
     expect(after.stats.hunger).toBeLessThan(20);
     expect(attention?.inMs).toBeGreaterThan(5 * HOUR);
+  });
+
+  it('яйцо, которому осталось 2 минуты, — напоминание через 2 минуты', () => {
+    const egg = { ...createPet('Пушок', T0, 1), ageMs: 3 * MINUTE };
+    expect(nextAttention(egg)).toEqual({ inMs: 2 * MINUTE, reason: 'hatch' });
   });
 
   it('если забота нужна уже сейчас — не напоминаем повторно', () => {

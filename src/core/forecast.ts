@@ -10,7 +10,9 @@ export interface Attention {
   reason: AttentionReason;
 }
 
+/** Грубый шаг поиска; найденный интервал уточняется поминутно. */
 const STEP_MS = 10 * MINUTE;
+const FINE_STEP_MS = MINUTE;
 const DEFAULT_HORIZON_MS = 2 * DAY;
 /** Здоровье, при котором надо звать игрока, даже если остальное в порядке. */
 const DYING_HEALTH = 25;
@@ -35,9 +37,17 @@ export function nextAttention(pet: Pet, horizonMs = DEFAULT_HORIZON_MS): Attenti
   const wasEgg = pet.stage === 'egg';
   let p = pet;
   for (let t = STEP_MS; t <= horizonMs; t += STEP_MS) {
+    const before = p;
     p = tick(p, STEP_MS).pet;
-    const reason = reasonNow(p, wasEgg);
-    if (reason) return { inMs: t, reason };
+    if (!reasonNow(p, wasEgg)) continue;
+    // Уточняем момент внутри найденного интервала с точностью до минуты.
+    let q = before;
+    for (let f = t - STEP_MS + FINE_STEP_MS; f <= t; f += FINE_STEP_MS) {
+      q = tick(q, FINE_STEP_MS).pet;
+      const reason = reasonNow(q, wasEgg);
+      if (reason) return { inMs: f, reason };
+    }
+    return { inMs: t, reason: reasonNow(p, wasEgg) ?? 'dying' };
   }
   return null;
 }
