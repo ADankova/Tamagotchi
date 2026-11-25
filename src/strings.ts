@@ -2,13 +2,14 @@ import type { AbsenceNote } from './core/absence';
 import type { ActionBlockReason } from './core/actions';
 import { DAY, HOUR, MINUTE } from './core/config';
 import type { AttentionReason } from './core/forecast';
-import type { ActionType, AdultForm, CauseOfDeath, LifeStage, Mood, StatKey } from './core/types';
+import type { ActionType, AdultForm, CauseOfDeath, LifeStage, Mood, Species, StatKey } from './core/types';
 
 // Все тексты интерфейса — здесь, чтобы игру можно было перевести.
 
 export const T = {
   title: 'Тамагочи',
   intro: 'Заведи питомца и заботься о нём. Он растёт, даже когда приложение закрыто.',
+  chooseSpecies: 'Кто вылупится?',
   nameLabel: 'Имя питомца',
   namePlaceholder: 'Например, Пушок',
   nameRequired: 'Придумай питомцу имя.',
@@ -90,6 +91,12 @@ export const DEV_TEXT = {
   badge: (scale: number) => `×${scale}`,
   badgeLabel: (scale: number) => `Время ускорено в ${scale} раз. Нажмите, чтобы вернуть обычную скорость.`,
 } as const;
+
+export const SPECIES_LABELS: Record<Species, string> = {
+  cat: 'Кошечка',
+  dog: 'Собачка',
+  blob: 'Пушистик',
+};
 
 export const CARE_LABELS: Record<AdultForm, string> = {
   good: 'отличный',

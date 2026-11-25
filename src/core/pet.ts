@@ -11,7 +11,7 @@ import {
   STAT_MIN,
 } from './config';
 import { nextRandom } from './rng';
-import type { Mood, Pet, StatKey } from './types';
+import type { Mood, Pet, Species, StatKey } from './types';
 
 export const MAX_NAME_LENGTH = 16;
 
@@ -19,10 +19,11 @@ export function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').slice(0, MAX_NAME_LENGTH);
 }
 
-export function createPet(name: string, now: number, seed: number): Pet {
+export function createPet(name: string, now: number, seed: number, species: Species = 'blob'): Pet {
   const [r, rngState] = nextRandom(seed);
   return {
     name: normalizeName(name),
+    species,
     stage: 'egg',
     stats: { ...START_STATS },
     bornAt: now,

@@ -4,10 +4,12 @@ import type {
   Cooldowns,
   LifeStage,
   Pet,
+  Species,
 } from '../core/types';
+import { SPECIES } from '../core/types';
 
 export const SAVE_KEY = 'tamagotchi.save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface Settings {
   sound: boolean;
@@ -16,6 +18,8 @@ export interface Settings {
 
 export interface GraveRecord {
   name: string;
+  /** Нет в записях до версии сейва 2 — это «Пушистик». */
+  species?: Species;
   stage: LifeStage;
   form?: AdultForm;
   bornAt: number;
@@ -73,7 +77,16 @@ export function serialize(state: GameState): string {
  * Пример на будущее: 1: (d) => ({ ...d, version: 2, newField: 0 }).
  */
 type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
-const MIGRATIONS: Record<number, Migration> = {};
+const MIGRATIONS: Record<number, Migration> = {
+  // v1 → v2: появился выбор животного; все прежние питомцы — «Пушистики».
+  1: (data) => {
+    const pet = isRecord(data.pet) ? { ...data.pet, species: 'blob' } : data.pet;
+    const graveyard = Array.isArray(data.graveyard)
+      ? data.graveyard.map((g) => (isRecord(g) ? { ...g, species: 'blob' } : g))
+      : data.graveyard;
+    return { ...data, version: 2, pet, graveyard };
+  },
+};
 
 export function migrate(data: Record<string, unknown>): Record<string, unknown> | null {
   let current = data;
@@ -155,6 +168,8 @@ export function isPet(v: unknown): v is Pet {
   const care = v.care;
   return (
     typeof v.name === 'string' &&
+    typeof v.species === 'string' &&
+    (SPECIES as readonly string[]).includes(v.species) &&
     typeof v.stage === 'string' &&
     STAGES.includes(v.stage) &&
     isRecord(stats) &&
@@ -182,6 +197,7 @@ function isGraveRecord(v: unknown): v is GraveRecord {
   return (
     isRecord(v) &&
     typeof v.name === 'string' &&
+    (v.species === undefined || (SPECIES as readonly string[]).includes(String(v.species))) &&
     typeof v.stage === 'string' &&
     STAGES.includes(v.stage) &&
     isOptional(v.form, FORMS) &&

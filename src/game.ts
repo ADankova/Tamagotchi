@@ -9,7 +9,7 @@ import {
 import { clampStat, createPet, normalizeName } from './core/pet';
 import { randomSeed } from './core/rng';
 import { tick } from './core/simulation';
-import type { ActionType, GameEvent, Pet, StatKey } from './core/types';
+import type { ActionType, GameEvent, Pet, Species, StatKey } from './core/types';
 import { EventBus } from './events';
 import {
   clearState,
@@ -122,11 +122,11 @@ export class Game {
   }
 
   /** Новое яйцо. Имя обязательно. */
-  newPet(name: string): boolean {
+  newPet(name: string, species: Species = 'cat'): boolean {
     const clean = normalizeName(name);
     if (!clean) return false;
     const now = this.now();
-    this.current.pet = createPet(clean, now, this.seed());
+    this.current.pet = createPet(clean, now, this.seed(), species);
     this.current.cooldowns = {};
     this.current.lastUpdated = now;
     this.save();
@@ -208,6 +208,7 @@ export class Game {
     this.current.graveyard = [
       {
         name: pet.name,
+        species: pet.species,
         stage: pet.stageAtDeath ?? 'egg',
         form: pet.form,
         bornAt: pet.bornAt,

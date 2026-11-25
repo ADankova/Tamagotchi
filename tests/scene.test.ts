@@ -7,10 +7,12 @@ import {
   composeScene,
   GROUND_Y,
   petSprite,
+  petTail,
   SCREEN_H,
   SCREEN_W,
   type Scene,
 } from '../src/render/scene';
+import { SPECIES } from '../src/core/types';
 import { SPRITES } from '../src/render/sprites';
 import { makePet, T0 } from './helpers';
 
@@ -112,8 +114,8 @@ describe('сцена', () => {
     expect(scene.items[0]?.eyesClosed).toBe(false);
   });
 
-  it('все предметы всегда в пределах экрана', () => {
-    const pets = [
+  it('все предметы всегда в пределах экрана — у всех животных', () => {
+    const base = [
       createPet('Я', T0, 1),
       makePet({ stage: 'baby' }),
       makePet(),
@@ -125,6 +127,7 @@ describe('сцена', () => {
       makePet({ stage: 'teen', stats: { ...START_STATS, happiness: 5 } }),
       makePet({ stage: 'dead' }),
     ];
+    const pets = SPECIES.flatMap((species) => base.map((p) => ({ ...p, species })));
     const actions = [null, ...(['feed', 'snack', 'play', 'clean', 'medicine'] as const).map((a) => ({ action: a, startedAt: 0 }))];
     for (const pet of pets) {
       for (const active of actions) {
@@ -134,5 +137,59 @@ describe('сцена', () => {
         }
       }
     }
+  });
+});
+
+describe('кошка и собака', () => {
+  const cat = makePet({ species: 'cat' });
+  const dog = makePet({ species: 'dog', stage: 'adult', form: 'naughty' });
+
+  it('свой облик по стадии и форме', () => {
+    expect(petSprite(cat)).toBe('catChild');
+    expect(petSprite(dog)).toBe('dogAdultNaughty');
+    expect(petSprite({ ...cat, stage: 'egg' })).toBe('egg');
+    expect(petSprite({ ...dog, stage: 'dead' })).toBe('grave');
+  });
+
+  it('хвост есть у подросших кошки и собаки; у малыша и Пушистика — нет', () => {
+    expect(petTail(cat)).toEqual(['catTailA', 'catTailB']);
+    expect(petTail(dog)).toEqual(['dogTailA', 'dogTailB']);
+    expect(petTail({ ...cat, stage: 'baby' })).toBeNull();
+    expect(petTail(makePet())).toBeNull();
+  });
+
+  it('хвост рисуется за телом и справа от него', () => {
+    const items = composeScene(cat, null, 0, true).items;
+    const tailIndex = items.findIndex((i) => i.sprite.startsWith('catTail'));
+    const bodyIndex = items.findIndex((i) => i.sprite === 'catChild');
+    expect(tailIndex).toBe(bodyIndex - 1);
+    const tail = items[tailIndex];
+    const body = items[bodyIndex];
+    expect((tail?.x ?? 0) > (body?.x ?? 0)).toBe(true);
+  });
+
+  it('хвост виляет, когда питомец гуляет, и быстрее — когда играет', () => {
+    const frames = (active: Parameters<typeof composeScene>[1], from: number, to: number, stepMs: number) => {
+      const seen: string[] = [];
+      for (let t = from; t < to; t += stepMs) {
+        const tail = composeScene(dog, active, t).items.find((i) => i.sprite.startsWith('dogTail'));
+        seen.push(tail?.sprite ?? '');
+      }
+      return seen;
+    };
+    expect(new Set(frames(null, 0, 1600, 400)).size).toBe(2);
+    const play = frames({ action: 'play', startedAt: 0 }, 0, 320, 160);
+    expect(play[0]).not.toBe(play[1]);
+  });
+
+  it('во сне и в грусти хвост не двигается', () => {
+    const still = (pet: typeof cat) =>
+      new Set(
+        Array.from({ length: 10 }, (_, k) =>
+          composeScene(pet, null, k * 137).items.find((i) => i.sprite.startsWith('catTail'))?.sprite,
+        ),
+      ).size;
+    expect(still({ ...cat, isSleeping: true })).toBe(1);
+    expect(still({ ...cat, stats: { ...START_STATS, happiness: 5 } })).toBe(1);
   });
 });

@@ -1,3 +1,7 @@
+/** Вид животного. Чтобы добавить новый — см. README, раздел «Как добавить животное». */
+export type Species = 'cat' | 'dog' | 'blob';
+export const SPECIES: readonly Species[] = ['cat', 'dog', 'blob'];
+
 export type LifeStage = 'egg' | 'baby' | 'child' | 'teen' | 'adult' | 'elder' | 'dead';
 export type Mood = 'happy' | 'normal' | 'sad' | 'sick' | 'sleeping' | 'dead';
 export type StatKey = 'hunger' | 'happiness' | 'energy' | 'hygiene' | 'health';
@@ -18,6 +22,7 @@ export interface CareRecord {
 
 export interface Pet {
   name: string;
+  species: Species;
   stage: LifeStage;
   stats: Stats;
   /** Реальное время рождения, мс. */

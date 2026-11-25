@@ -214,6 +214,287 @@ const grave = sprite([
   '#############',
 ]);
 
+// ================= Кошка и собака =================
+// Тела симметричны; хвост — отдельный спрайт в двух кадрах (виляет).
+
+const catBaby = sprite([
+  '.#.......#.',
+  '.##.....##.',
+  '.#+#####+#.',
+  '#ooooooooo#',
+  '#ooeoooeoo#',
+  '#oooo+oooo#',
+  '#ooo#o#ooo#',
+  '.#ooooooo#.',
+  '..#######..',
+]);
+
+const catChild = sprite([
+  '..#.......#..',
+  '..##.....##..',
+  '..#+#####+#..',
+  '.#ooooooooo#.',
+  '#ooooooooooo#',
+  '#ooeoooooeoo#',
+  '#ooooooooooo#',
+  '#ooooo+ooooo#',
+  '#oooo#o#oooo#',
+  '.#ooooooooo#.',
+  '..#ooooooo#..',
+  '..#o#ooo#o#..',
+  '..###...###..',
+]);
+
+const catTeen = sprite([
+  '.#...........#.',
+  '.##.........##.',
+  '.#+#.......#+#.',
+  '.#++#######++#.',
+  '#ooooooooooooo#',
+  '#ooooooooooooo#',
+  '#ooeeoooooeeoo#',
+  '#ooooooooooooo#',
+  '#oooooo+oooooo#',
+  '#ooooo#o#ooooo#',
+  '.#ooooooooooo#.',
+  '..#ooooooooo#..',
+  '..#o#ooooo#o#..',
+  '..###.....###..',
+]);
+
+const catAdultGood = sprite([
+  '.#.............#.',
+  '.##...........##.',
+  '.#+#.........#+#.',
+  '.#++#########++#.',
+  '#ooooooooooooooo#',
+  '#ooooooooooooooo#',
+  '#oooeoooooooeooo#',
+  '#oooeoooooooeooo#',
+  '#oo++ooooooo++oo#',
+  '#ooooooo+ooooooo#',
+  '#ooooo#o#o#ooooo#',
+  '.#ooooooooooooo#.',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const catAdultNormal = sprite([
+  '.#.............#.',
+  '.##...........##.',
+  '.#+#.........#+#.',
+  '.#++#########++#.',
+  '#ooooooooooooooo#',
+  '#ooooooooooooooo#',
+  '#oooeoooooooeooo#',
+  '#oooeoooooooeooo#',
+  '#ooooooooooooooo#',
+  '#ooooooo+ooooooo#',
+  '#oooooo#o#oooooo#',
+  '.#ooooooooooooo#.',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const catAdultNaughty = sprite([
+  '.#.............#.',
+  '.##...........##.',
+  '.#+#.........#+#.',
+  '.#++#########++#.',
+  '#ooo#ooooooo#ooo#',
+  '#oooo#ooooo#oooo#',
+  '#oooeoooooooeooo#',
+  '#oooeoooooooeooo#',
+  '#ooooooooooooooo#',
+  '#ooooooo+ooooooo#',
+  '#ooooooo#ooooooo#',
+  '.#oooo#ooo#oooo#.',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const catElder = sprite([
+  '.#.............#.',
+  '.##...........##.',
+  '.#+#.........#+#.',
+  '.#++#########++#.',
+  '#ooooooooooooooo#',
+  '#ooooooooooooooo#',
+  '#ooo##ooooo##ooo#',
+  '#oooeoooooooeooo#',
+  '#ooooooooooooooo#',
+  '#ooooooo+ooooooo#',
+  '#oooooo#o#oooooo#',
+  '.#oooo+++++oooo#.',
+  '..#oooo+++oooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const catTailA = sprite([
+  '....#.',
+  '...#o#',
+  '...#o#',
+  '..#o#.',
+  '.#o#..',
+  '#o#...',
+  '##....',
+]);
+
+const catTailB = sprite([
+  '..#...',
+  '.#o#..',
+  '.#o#..',
+  '.#o#..',
+  '.#o#..',
+  '#o#...',
+  '##....',
+]);
+
+// --- Собака ---
+
+const dogBaby = sprite([
+  '..#######..',
+  '.#ooooooo#.',
+  '#+ooooooo+#',
+  '#+oeoooeo+#',
+  '#+ooo#ooo+#',
+  '.#oo#o#oo#.',
+  '.#ooooooo#.',
+  '..#######..',
+]);
+
+const dogChild = sprite([
+  '...#######...',
+  '..#ooooooo#..',
+  '.#ooooooooo#.',
+  '#+#ooooooo#+#',
+  '#+#oeoooeo#+#',
+  '#+#ooooooo#+#',
+  '#+#oo###oo#+#',
+  '.##ooo#ooo##.',
+  '..#ooooooo#..',
+  '..#ooooooo#..',
+  '..#o#ooo#o#..',
+  '..###...###..',
+]);
+
+const dogTeen = sprite([
+  '....#######....',
+  '..##ooooooo##..',
+  '.#ooooooooooo#.',
+  '#+#ooooooooo#+#',
+  '#++#ooooooo#++#',
+  '#++#eoooooe#++#',
+  '#++#ooooooo#++#',
+  '#+#ooo###ooo#+#',
+  '.##oooo#oooo##.',
+  '..#ooo#o#ooo#..',
+  '..#ooooooooo#..',
+  '..#oo#ooo#oo#..',
+  '..#oo#...#oo#..',
+  '..####...####..',
+]);
+
+const dogAdultGood = sprite([
+  '.....#######.....',
+  '...##ooooooo##...',
+  '..#ooooooooooo#..',
+  '.#ooooooooooooo#.',
+  '#+#ooooooooooo#+#',
+  '#++#ooooooooo#++#',
+  '#++#oeoooooeo#++#',
+  '#++#ooooooooo#++#',
+  '#++#ooo###ooo#++#',
+  '.##ooooo#ooooo##.',
+  '..#ooo#ooo#ooo#..',
+  '..#oooo#+#oooo#..',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const dogAdultNormal = sprite([
+  '.....#######.....',
+  '...##ooooooo##...',
+  '..#ooooooooooo#..',
+  '.#ooooooooooooo#.',
+  '#+#ooooooooooo#+#',
+  '#++#ooooooooo#++#',
+  '#++#oeoooooeo#++#',
+  '#++#ooooooooo#++#',
+  '#++#ooo###ooo#++#',
+  '.##ooooo#ooooo##.',
+  '..#oooo#o#oooo#..',
+  '..#ooooooooooo#..',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const dogAdultNaughty = sprite([
+  '.....#######.....',
+  '...##ooooooo##...',
+  '..#ooooooooooo#..',
+  '.#ooooooooooooo#.',
+  '#+#o#ooooooo#o#+#',
+  '#++#o#ooooo#o#++#',
+  '#++#oeoooooeo#++#',
+  '#++#ooooooooo#++#',
+  '#++#ooo###ooo#++#',
+  '.##ooooo#ooooo##.',
+  '..#oooo###oooo#..',
+  '..#ooo#ooo#ooo#..',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const dogElder = sprite([
+  '.....#######.....',
+  '...##ooooooo##...',
+  '..#ooooooooooo#..',
+  '.#ooooooooooooo#.',
+  '#+#ooooooooooo#+#',
+  '#++#o##ooo##o#++#',
+  '#++#oeoooooeo#++#',
+  '#++#ooooooooo#++#',
+  '#++#ooo###ooo#++#',
+  '.##oooo+#+oooo##.',
+  '..#ooooo+ooooo#..',
+  '..#ooooooooooo#..',
+  '..#ooooooooooo#..',
+  '..#oo#ooooo#oo#..',
+  '..#oo#.....#oo#..',
+  '..####.....####..',
+]);
+
+const dogTailA = sprite([
+  '...##',
+  '..#o#',
+  '.#o#.',
+  '#o#..',
+  '##...',
+]);
+
+const dogTailB = sprite([
+  '.....',
+  '...##',
+  '.##o#',
+  '#oo#.',
+  '###..',
+]);
+
 // --- Предметы и эффекты ---
 
 const bowl = sprite([
@@ -397,6 +678,24 @@ export const SPRITES = {
   iconCross,
   iconMoon,
   iconGear,
+  catBaby,
+  catChild,
+  catTeen,
+  catAdultGood,
+  catAdultNormal,
+  catAdultNaughty,
+  catElder,
+  catTailA,
+  catTailB,
+  dogBaby,
+  dogChild,
+  dogTeen,
+  dogAdultGood,
+  dogAdultNormal,
+  dogAdultNaughty,
+  dogElder,
+  dogTailA,
+  dogTailB,
 } as const satisfies Record<string, Sprite>;
 
 export type SpriteName = keyof typeof SPRITES;
