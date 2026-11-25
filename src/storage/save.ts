@@ -8,13 +8,17 @@ import type {
 } from '../core/types';
 import { SPECIES } from '../core/types';
 import { POOP_INTERVAL_MS } from '../core/config';
+import { emptyStats, type GameStats } from '../core/stats';
+import { detectLanguage, isLanguage, type Language } from '../i18n';
 
 export const SAVE_KEY = 'tamagotchi.save';
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface Settings {
   sound: boolean;
   notifications: boolean;
+  /** Язык интерфейса. */
+  language: Language;
 }
 
 export interface GraveRecord {
@@ -39,6 +43,8 @@ export interface GameState {
   cooldowns: Cooldowns;
   settings: Settings;
   graveyard: GraveRecord[];
+  /** Сыграно и выиграно в мини-играх. */
+  gameStats: GameStats;
 }
 
 export interface SaveData extends GameState {
@@ -57,14 +63,15 @@ export type LoadResult =
   | { status: 'loaded'; state: GameState }
   | { status: 'corrupted'; state: GameState };
 
-export function createInitialState(now: number): GameState {
+export function createInitialState(now: number, language: Language = detectLanguage()): GameState {
   return {
     pet: null,
     lastUpdated: now,
     cooldowns: {},
     // Звук включён, но зазвучит только после первого касания (так требуют браузеры).
-    settings: { sound: true, notifications: false },
+    settings: { sound: true, notifications: false, language },
     graveyard: [],
+    gameStats: emptyStats(),
   };
 }
 
@@ -107,6 +114,11 @@ const MIGRATIONS: Record<number, Migration> = {
     const pet = isRecord(data.pet) ? { ...data.pet, treats: 0 } : data.pet;
     return { ...data, version: 4, pet };
   },
+  // v4 → v5: язык интерфейса (у прежних игроков — русский) и счётчики мини-игр.
+  4: (data) => {
+    const settings = isRecord(data.settings) ? { ...data.settings, language: 'ru' } : data.settings;
+    return { ...data, version: 5, settings, gameStats: emptyStats() };
+  },
 };
 
 export function migrate(data: Record<string, unknown>): Record<string, unknown> | null {
@@ -129,8 +141,8 @@ export function deserialize(raw: string): GameState | null {
   if (!isRecord(parsed)) return null;
   const data = migrate(parsed);
   if (!data || !isGameState(data)) return null;
-  const { pet, lastUpdated, cooldowns, settings, graveyard } = data;
-  return { pet, lastUpdated, cooldowns, settings, graveyard };
+  const { pet, lastUpdated, cooldowns, settings, graveyard, gameStats } = data;
+  return { pet, lastUpdated, cooldowns, settings, graveyard, gameStats };
 }
 
 export function loadState(storage: KeyValueStorage, now: number): LoadResult {
@@ -237,8 +249,13 @@ function isGraveRecord(v: unknown): v is GraveRecord {
   );
 }
 
+function isGameStats(v: unknown): v is GameStats {
+  if (!isRecord(v) || !isRecord(v.queens)) return false;
+  return Object.values(v.queens).every((l) => isRecord(l) && isNum(l.played) && l.played >= 0 && isNum(l.won) && l.won >= 0);
+}
+
 function isGameState(v: Record<string, unknown>): v is Record<string, unknown> & GameState {
-  const { pet, lastUpdated, cooldowns, settings, graveyard } = v;
+  const { pet, lastUpdated, cooldowns, settings, graveyard, gameStats } = v;
   return (
     (pet === null || isPet(pet)) &&
     isNum(lastUpdated) &&
@@ -247,6 +264,8 @@ function isGameState(v: Record<string, unknown>): v is Record<string, unknown> &
     isRecord(settings) &&
     typeof settings.sound === 'boolean' &&
     typeof settings.notifications === 'boolean' &&
+    isLanguage(settings.language) &&
+    isGameStats(gameStats) &&
     Array.isArray(graveyard) &&
     graveyard.every(isGraveRecord)
   );

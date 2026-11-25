@@ -82,28 +82,28 @@ function growRegions(size: number, solution: number[], rng: Rng): number[][] {
   return regions;
 }
 
-/** Сколько решений у раскладки зон (считает до limit — дальше неинтересно). */
-export function countSolutions(regions: number[][], limit = 2): number {
+/** Решения раскладки зон (не больше limit штук): solution[r] — столбец питомца в строке r. */
+function findSolutions(regions: number[][], limit: number): number[][] {
   const size = regions.length;
   const usedCols = new Set<number>();
   const usedRegions = new Set<number>();
-  let found = 0;
-  let prev = -9;
+  const cols: number[] = [];
+  const found: number[][] = [];
   const solve = (r: number): void => {
-    if (found >= limit) return;
+    if (found.length >= limit) return;
     if (r === size) {
-      found++;
+      found.push([...cols]);
       return;
     }
+    const prev = r > 0 ? (cols[r - 1] ?? -9) : -9;
     for (let c = 0; c < size; c++) {
       const region = regions[r]![c]!;
       if (usedCols.has(c) || usedRegions.has(region) || Math.abs(prev - c) <= 1) continue;
       usedCols.add(c);
       usedRegions.add(region);
-      const keep = prev;
-      prev = c;
+      cols.push(c);
       solve(r + 1);
-      prev = keep;
+      cols.pop();
       usedCols.delete(c);
       usedRegions.delete(region);
     }
@@ -112,17 +112,89 @@ export function countSolutions(regions: number[][], limit = 2): number {
   return found;
 }
 
+/** Сколько решений у раскладки зон (считает до limit — дальше неинтересно). */
+export function countSolutions(regions: number[][], limit = 2): number {
+  return findSolutions(regions, limit).length;
+}
+
+const STEPS: ReadonlyArray<readonly [number, number]> = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+];
+
+/** Остаётся ли зона одной связной областью (после того как из неё убрали клетку). */
+function isConnected(regions: number[][], region: number): boolean {
+  const size = regions.length;
+  let start: [number, number] | null = null;
+  let total = 0;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (regions[r]![c] === region) {
+        total++;
+        start ??= [r, c];
+      }
+    }
+  }
+  if (!start) return false;
+  const seen = new Set<number>([start[0] * size + start[1]]);
+  const stack: Array<[number, number]> = [start];
+  while (stack.length > 0) {
+    const [r, c] = stack.pop()!;
+    for (const [dr, dc] of STEPS) {
+      const y = r + dr;
+      const x = c + dc;
+      if (y < 0 || y >= size || x < 0 || x >= size || regions[y]![x] !== region || seen.has(y * size + x)) continue;
+      seen.add(y * size + x);
+      stack.push([y, x]);
+    }
+  }
+  return seen.size === total;
+}
+
+/**
+ * Чинит раскладку: пока есть второе решение, перекрашивает одну из его клеток
+ * в соседнюю зону (зоны остаются связными, клетки с питомцами не трогаем).
+ */
+function repairToUnique(regions: number[][], solution: number[], rng: Rng, maxSteps: number): boolean {
+  for (let step = 0; step < maxSteps; step++) {
+    const sols = findSolutions(regions, 2);
+    if (sols.length <= 1) return true;
+    const alt = sols.find((s) => s.some((c, r) => c !== solution[r])) ?? sols[1]!;
+    const candidates = rng.shuffle(alt.map((c, r) => [r, c] as [number, number]).filter(([r, c]) => solution[r] !== c));
+    let changed = false;
+    for (const [r, c] of candidates) {
+      const old = regions[r]![c]!;
+      const options = rng.shuffle(
+        STEPS.map(([dr, dc]) => regions[r + dr]?.[c + dc]).filter((v): v is number => v !== undefined && v !== old),
+      );
+      for (const to of options) {
+        regions[r]![c] = to;
+        if (isConnected(regions, old)) {
+          changed = true;
+          break;
+        }
+        regions[r]![c] = old;
+      }
+      if (changed) break;
+    }
+    if (!changed) return false;
+  }
+  return false;
+}
+
 /**
  * Новая головоломка size×size с единственным решением. Детерминирована по seed.
- * Перебирает случайные раскладки, пока не найдёт однозначную (обычно за несколько попыток).
+ * Строит раскладку, а лишние решения «убивает» перекраской клеток.
  */
 export function generatePuzzle(size: number, seed: number): Puzzle {
   const rng = new Rng(seed);
-  for (let attempt = 0; attempt < 5000; attempt++) {
+  for (let attempt = 0; attempt < 400; attempt++) {
     const solution = randomPlacement(size, rng);
     if (!solution) continue;
     const regions = growRegions(size, solution, rng);
-    if (countSolutions(regions) === 1) return { size, regions, solution };
+    if (repairToUnique(regions, solution, rng, 80) && countSolutions(regions) === 1) return { size, regions, solution };
   }
   throw new Error(`Не удалось построить головоломку ${size}×${size}`);
 }
@@ -153,9 +225,9 @@ export interface QueensLevel {
 
 /** Уровни сложности: размер поля и награда в лакомствах. */
 export const QUEENS_LEVELS: readonly QueensLevel[] = [
-  { size: 5, reward: 1 },
-  { size: 6, reward: 2 },
-  { size: 7, reward: 3 },
+  { size: 6, reward: 1 },
+  { size: 8, reward: 2 },
+  { size: 10, reward: 3 },
 ];
 
 export const QUEENS_LIVES = 3;
