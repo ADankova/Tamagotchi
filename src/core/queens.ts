@@ -146,20 +146,6 @@ export function isSolutionCell(puzzle: Puzzle, r: number, c: number): boolean {
   return puzzle.solution[r] === c;
 }
 
-/** Клетки, где после питомца в (r, c) других питомцев быть не может: строка, столбец, зона и соседи. */
-export function blockedBy(puzzle: Puzzle, r: number, c: number): Array<[number, number]> {
-  const out: Array<[number, number]> = [];
-  const region = puzzle.regions[r]![c];
-  for (let y = 0; y < puzzle.size; y++) {
-    for (let x = 0; x < puzzle.size; x++) {
-      if (y === r && x === c) continue;
-      const near = Math.abs(y - r) <= 1 && Math.abs(x - c) <= 1;
-      if (near || y === r || x === c || puzzle.regions[y]![x] === region) out.push([y, x]);
-    }
-  }
-  return out;
-}
-
 export interface QueensLevel {
   size: number;
   reward: number;

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blockedBy,
   brokenRule,
   countSolutions,
   generatePuzzle,
@@ -79,13 +78,4 @@ describe('Судоку с питомцем: ходы', () => {
     expect(brokenRule(p, placed, ...sol(2))).toBeNull();
   });
 
-  it('после питомца зачёркиваются его строка, столбец, зона и соседи — но не клетки решения', () => {
-    const [r, c] = sol(1);
-    const blocked = blockedBy(p, r, c);
-    const has = (y: number, x: number) => blocked.some(([a, b]) => a === y && b === x);
-    expect(has(r, (c + 2) % 5)).toBe(true);
-    expect(has((r + 2) % 5, c)).toBe(true);
-    if (r + 1 < 5 && c + 1 < 5) expect(has(r + 1, c + 1)).toBe(true);
-    for (let k = 0; k < 5; k++) if (k !== r) expect(has(...sol(k))).toBe(false);
-  });
 });

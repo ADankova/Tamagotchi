@@ -1,6 +1,5 @@
 import type { SoundName } from '../audio/tunes';
 import {
-  blockedBy,
   brokenRule,
   generatePuzzle,
   isSolutionCell,
@@ -124,7 +123,7 @@ interface QueensCallbacks {
   done: (won: boolean) => void;
 }
 
-type Mark = 'none' | 'cross' | 'auto' | 'wrong' | 'pet';
+type Mark = 'none' | 'cross' | 'wrong' | 'pet';
 
 /** Экран головоломки: поле, сердечки, правила, победа и поражение. */
 class QueensGame {
@@ -228,9 +227,7 @@ class QueensGame {
     if (isSolutionCell(this.puzzle, r, c)) {
       this.marks[r]![c] = 'pet';
       this.placed.push([r, c]);
-      for (const [y, x] of blockedBy(this.puzzle, r, c)) {
-        if (this.marks[y]![x] === 'none') this.marks[y]![x] = 'auto';
-      }
+      // Крестики вокруг игрок ставит сам — так интереснее.
       this.host.playSound('place');
       this.status.textContent = '';
       this.renderAll();
