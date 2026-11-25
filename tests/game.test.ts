@@ -93,6 +93,8 @@ describe('Game', () => {
     expect(died).toHaveLength(1);
     expect(game.state.graveyard).toHaveLength(1);
     expect(game.state.graveyard[0]?.name).toBe('Пушок');
+    expect(typeof game.state.graveyard[0]?.careScore).toBe('number');
+    expect(game.state.graveyard[0]?.sicknessCount).toBe(game.state.pet?.care.sicknessCount);
 
     game.newPet('Бублик');
     expect(game.state.pet?.stage).toBe('egg');

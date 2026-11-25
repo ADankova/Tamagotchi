@@ -72,6 +72,16 @@ describe('сохранение', () => {
     });
   });
 
+  it('старые записи Зала памяти без оценки ухода загружаются', () => {
+    const state = sampleState();
+    const withCare = { ...state, graveyard: [{ ...state.graveyard[0]!, careScore: 82, sicknessCount: 1 }] };
+    expect(deserialize(serialize(withCare))).toEqual(withCare);
+    expect(deserialize(serialize(state))).toEqual(state);
+    const broken = JSON.parse(serialize(withCare));
+    broken.graveyard[0].careScore = 'высокий';
+    expect(deserialize(JSON.stringify(broken))).toBeNull();
+  });
+
   it('deserialize не тащит лишние поля', () => {
     const raw = JSON.stringify({ ...JSON.parse(serialize(sampleState())), junk: true });
     expect(deserialize(raw)).not.toHaveProperty('junk');

@@ -47,7 +47,8 @@ h1 {
 /* --- Стартовый экран и итоги --- */
 
 .screen-start,
-.screen-results {
+.screen-results,
+.screen-memory {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -66,6 +67,103 @@ h1 {
 .intro {
   color: var(--muted);
   margin: 0 0 8px;
+}
+
+button.memory-link {
+  margin-top: 12px;
+}
+
+/* --- Зал памяти --- */
+
+.screen-memory {
+  text-align: left;
+}
+
+.memory-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.memory-head .link {
+  justify-self: start;
+}
+
+.memory-head h1 {
+  margin: 0;
+  text-align: center;
+}
+
+.memory-head::after {
+  content: '';
+}
+
+.screen-memory .intro {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.memory-summary {
+  margin: 12px 0;
+}
+
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.memory-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.memory-card.record {
+  border-color: #e3c46b;
+  background: #fffaf0;
+}
+
+.memory-sprite {
+  width: 72px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #c9d4b2;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.memory-text p {
+  margin: 0;
+}
+
+.memory-name {
+  font-weight: 600;
+}
+
+.badge {
+  margin-left: 6px;
+  color: #c99a1c;
+}
+
+.memory-details,
+.memory-date {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.section-title {
+  font-size: 1.05rem;
+  margin: 24px 0 8px;
 }
 
 /* --- Игровой экран --- */
@@ -271,6 +369,17 @@ button:disabled {
   min-height: 1.4em;
   margin: 12px 0 0;
   text-align: center;
+}
+
+.controls-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 4px;
+  text-align: center;
+}
+
+.controls-footer .memory-link {
+  margin-top: 4px;
 }
 
 button.primary {

@@ -207,6 +207,8 @@ export class Game {
         diedAt: pet.bornAt + pet.ageMs,
         ageMs: pet.ageMs,
         causeOfDeath: pet.causeOfDeath ?? 'neglect',
+        careScore: Math.round(pet.careScore),
+        sicknessCount: pet.care.sicknessCount,
       },
       ...this.current.graveyard,
     ].slice(0, GRAVEYARD_LIMIT);

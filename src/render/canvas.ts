@@ -1,5 +1,15 @@
 import type { ActionType, Pet } from '../core/types';
-import { composeScene, SCREEN_H, SCREEN_W, type ActiveAction, type Scene } from './scene';
+import {
+  composeScene,
+  cutsceneFor,
+  isCutscenePlaying,
+  SCREEN_H,
+  SCREEN_W,
+  type ActiveAction,
+  type Cutscene,
+  type CutsceneKind,
+  type Scene,
+} from './scene';
 import { SPRITES, type Sprite } from './sprites';
 
 export interface Palette {
@@ -70,6 +80,7 @@ export function drawSprite(
 export class PetCanvas {
   private pet: Pet | null = null;
   private active: ActiveAction | null = null;
+  private cutscene: Cutscene | null = null;
   private raf = 0;
   private lastKey = '';
   private cell = 1;
@@ -89,8 +100,20 @@ export class PetCanvas {
     this.resize();
   }
 
+  /** Замечает смену стадии сам и запускает сценку: вылупление, взросление или смерть. */
   setPet(pet: Pet | null): void {
+    if (this.pet && pet) {
+      const cutscene = cutsceneFor(this.pet, pet, performance.now());
+      if (cutscene) {
+        this.cutscene = cutscene;
+        this.active = null;
+      }
+    }
     this.pet = pet;
+  }
+
+  isPlaying(kind: CutsceneKind, t = performance.now()): boolean {
+    return this.cutscene?.kind === kind && isCutscenePlaying(this.cutscene, t);
   }
 
   play(action: ActionType): void {
@@ -114,7 +137,9 @@ export class PetCanvas {
 
   /** Текущая сцена — для подписи экрана и тестов в браузере. */
   scene(t = performance.now()): Scene | null {
-    return this.pet ? composeScene(this.pet, this.active, t, this.motionQuery?.matches ?? false) : null;
+    return this.pet
+      ? composeScene(this.pet, this.active, t, this.motionQuery?.matches ?? false, this.cutscene)
+      : null;
   }
 
   private resize(): void {

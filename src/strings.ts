@@ -19,7 +19,6 @@ export const T = {
   cause: 'Причина',
   resultsTitle: 'Питомец умер',
   graveyard: 'Зал памяти',
-  graveyardEmpty: 'Пока пусто.',
   settings: 'Настройки',
   reset: 'Сбросить сохранение',
   resetConfirm: 'Удалить питомца, Зал памяти и все настройки? Это нельзя отменить.',
@@ -30,7 +29,24 @@ export const T = {
   dismiss: 'Понятно',
   debug: 'Отладка',
   speed: 'Скорость времени',
+  care: 'Уход',
+  sicknesses: 'Болезней',
+  back: 'Назад',
+  memoryIntro: 'Здесь помнят всех твоих питомцев.',
+  memoryEmpty: 'Пока здесь никого нет.',
+  memoryCount: (n: number) => `Всего питомцев: ${n}`,
+  memoryRecord: (name: string, age: string) => `Дольше всех прожил ${name} — ${age}`,
+  lived: 'прожил',
+  diedOn: (date: string) => `умер ${date}`,
+  diedWhileAway: (name: string) => `${name} не дождался тебя.`,
+  openMemory: (n: number) => (n > 0 ? `Зал памяти (${n})` : 'Зал памяти'),
 } as const;
+
+export const CARE_LABELS: Record<AdultForm, string> = {
+  good: 'отличный',
+  normal: 'нормальный',
+  naughty: 'так себе',
+};
 
 export const STAT_LABELS: Record<StatKey, string> = {
   hunger: 'Сытость',

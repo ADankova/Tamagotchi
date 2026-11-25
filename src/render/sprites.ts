@@ -40,6 +40,38 @@ const egg = sprite([
   '....#####....',
 ]);
 
+const eggCracked = sprite([
+  '.....###.....',
+  '...##ooo##...',
+  '..#ooooooo#..',
+  '.#ooooooooo#.',
+  '.#oo+ooo+oo#.',
+  '#ooooooooooo#',
+  '#o#ooo#ooo#o#',
+  '##o#o#o#o#o##',
+  '#ooo#ooo#ooo#',
+  '#ooooooooooo#',
+  '#oooo+o+oooo#',
+  '.#ooooooooo#.',
+  '.#ooooooooo#.',
+  '..##ooooo##..',
+  '....#####....',
+]);
+
+const ghost = sprite([
+  '...#####...',
+  '.##ooooo##.',
+  '#ooooooooo#',
+  '#ooeoooeoo#',
+  '#ooooooooo#',
+  '#oooo+oooo#',
+  '#ooooooooo#',
+  '#ooooooooo#',
+  '#o#ooooo#o#',
+  '##.#ooo#.##',
+  '#...###...#',
+]);
+
 const baby = sprite([
   '...#####...',
   '..#ooooo#..',
@@ -326,6 +358,8 @@ const iconMoon = sprite([
 
 export const SPRITES = {
   egg,
+  eggCracked,
+  ghost,
   baby,
   child,
   teen,
