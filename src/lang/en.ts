@@ -103,6 +103,7 @@ export const en: Dict = {
     menuTitle: 'Mini-games',
     menuIntro: 'Play with your pet and earn treats.',
     close: 'Close',
+    rulesButton: (game: string) => `Rules of “${game}”`,
     queensTitle: 'Pet Sudoku',
     queensAbout: 'Place the pets: exactly one in every row, column and colour zone. Pets must not touch each other — not even diagonally.',
     level: (size: number, reward: number) => `${size}×${size} · +${reward} ${treatWord(reward)}`,
