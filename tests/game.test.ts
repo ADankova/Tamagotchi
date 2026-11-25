@@ -74,7 +74,7 @@ describe('Game', () => {
     game.bus.onAny((e) => seen.push(e));
     expect(game.act('sleep')).toBeNull();
     expect(game.act('sleep')).toBe('cooldown');
-    expect(seen.map((e) => e.type)).toEqual(['fellAsleep', 'changed', 'actionBlocked']);
+    expect(seen.map((e) => e.type)).toEqual(['actionDone', 'fellAsleep', 'changed', 'actionBlocked']);
     expect(JSON.parse(storage.data.get('tamagotchi.save') ?? '{}').pet.isSleeping).toBe(true);
   });
 

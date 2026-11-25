@@ -23,6 +23,7 @@ import {
 
 export type UiEvent =
   | { type: 'changed' }
+  | { type: 'actionDone'; action: ActionType }
   | { type: 'actionBlocked'; action: ActionType; reason: ActionBlockReason }
   | { type: 'saveFailed' };
 
@@ -112,6 +113,7 @@ export class Game {
     }
     this.current.pet = result.pet;
     this.current.cooldowns = result.cooldowns;
+    this.bus.emit({ type: 'actionDone', action });
     result.events.forEach((e) => this.bus.emit(e));
     this.save();
     this.bus.emit({ type: 'changed' });
