@@ -659,10 +659,10 @@ summary:focus-visible {
 .icon-badge {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  background: rgb(255 255 255 / 0.75);
-  border: 2px solid var(--ink);
+  width: 40px;
+  height: 40px;
+  /* мягкое светлое пятно без обводки: края растворяются в цвете кнопки */
+  background: radial-gradient(circle closest-side, rgb(255 255 255 / 0.85) 55%, rgb(255 255 255 / 0) 100%);
   border-radius: 50%;
 }
 
@@ -1455,8 +1455,13 @@ body.overlay-open {
   }
 
   .icon-badge {
-    width: 26px;
-    height: 26px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .action-icon {
+    width: 24px;
+    height: 24px;
   }
 
   .action .label {
