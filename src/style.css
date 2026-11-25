@@ -743,6 +743,381 @@ summary:focus-visible {
   font-weight: 900;
 }
 
+/* ================= Лакомства на кнопке ================= */
+
+.treat-count {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 900;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.treat-count[data-empty='true'] {
+  color: var(--ink-soft);
+}
+
+/* Нет лакомств: кнопка приглушена, но нажимается и подсказывает, где их взять. */
+.action[data-reason='noTreats'] {
+  --btn: #f1e6da;
+  color: #9c8a7b;
+}
+
+.action[data-reason='noTreats'] .icon-badge {
+  opacity: 0.6;
+}
+
+/* ================= Окно мини-игр ================= */
+
+body.overlay-open {
+  overflow: hidden;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+  padding: calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dots) 2.5px, transparent 3px);
+  background-size: 22px 22px;
+}
+
+.overlay-body {
+  width: 100%;
+  max-width: 480px;
+  padding: 18px 14px 16px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 0 var(--ink);
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+
+.overlay-intro {
+  text-align: center;
+  margin: 2px 0 14px;
+}
+
+.game-card {
+  padding: 14px;
+  margin-bottom: 14px;
+  background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.game-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-card-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.game-card-pet {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  padding: 4px;
+  background: var(--sky);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+}
+
+.game-card-about {
+  margin: 8px 0 12px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.level-buttons {
+  display: grid;
+  gap: 6px;
+}
+
+.level-button {
+  justify-content: space-between;
+  width: 100%;
+  --btn: var(--sky);
+}
+
+.level-button:nth-child(2) {
+  --btn: var(--butter);
+}
+
+.level-button:nth-child(3) {
+  --btn: var(--coral);
+}
+
+.level-info {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.game-card.soon {
+  text-align: center;
+  color: var(--ink-soft);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+/* ================= Судоку с питомцем ================= */
+
+.q-game {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.q-top {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.q-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-weight: 900;
+  font-size: 1.1rem;
+  background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.q-chip-pet {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.q-heart {
+  color: #ff4d6d;
+  font-size: 1.25rem;
+  line-height: 1;
+  text-shadow: 0 1px 0 var(--ink);
+}
+
+.q-heart.lost {
+  color: #e4d6c6;
+  text-shadow: none;
+}
+
+.q-rules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.q-rule {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.15;
+  background: #fff6ec;
+  border: 2px solid #e4d3c0;
+  border-radius: 12px;
+}
+
+.q-rule.broken {
+  animation: rule-flash 1.6s ease-out;
+}
+
+@keyframes rule-flash {
+  0%,
+  60% {
+    background: #ffd3cc;
+    border-color: #c2362d;
+    color: #b3322a;
+  }
+}
+
+.q-board-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.q-board {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  grid-template-rows: repeat(var(--n), 1fr);
+  gap: 4px;
+  width: min(100%, 62dvh);
+  aspect-ratio: 1;
+  padding: 6px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+}
+
+.q-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid rgb(59 42 30 / 0.35);
+  border-radius: 8px;
+  aspect-ratio: 1;
+  background: var(--cell);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.q-cell[data-region='0'] { --cell: #ff9ec4; }
+.q-cell[data-region='1'] { --cell: #ffd166; }
+.q-cell[data-region='2'] { --cell: #8fd3ff; }
+.q-cell[data-region='3'] { --cell: #7fe0c2; }
+.q-cell[data-region='4'] { --cell: #bba8ff; }
+.q-cell[data-region='5'] { --cell: #ff9f8a; }
+.q-cell[data-region='6'] { --cell: #e8c39e; }
+
+/* Крестик: белый у игрока, бледный — поставленный автоматически, красный — ошибка. */
+.q-x {
+  position: relative;
+  width: 58%;
+  height: 58%;
+}
+
+.q-x::before,
+.q-x::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 16%;
+  background: #fff;
+  border-radius: 999px;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.q-x::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.q-cell[data-mark='auto'] .q-x {
+  opacity: 0.55;
+}
+
+.q-cell[data-mark='wrong'] .q-x::before,
+.q-cell[data-mark='wrong'] .q-x::after {
+  background: #c2362d;
+}
+
+.q-pet {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 rgb(59 42 30 / 0.35));
+}
+
+.q-cell.pop {
+  animation: pop 0.25s ease-out;
+}
+
+@keyframes pop {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.q-cell.shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.q-status {
+  min-height: 1.3em;
+  text-align: center;
+  font-weight: 800;
+  color: #b3322a;
+}
+
+.q-hint {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.q-result {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 60;
+  width: min(360px, calc(100% - 40px));
+  transform: translate(-50%, -50%);
+  padding: 16px;
+  text-align: center;
+  background: #fff3b8;
+  border: var(--line) solid var(--ink);
+  border-radius: 18px;
+  /* тёмная подложка вокруг карточки */
+  box-shadow:
+    0 4px 0 var(--ink),
+    0 0 0 100vmax rgb(59 42 30 / 0.4);
+}
+
+.q-result.won {
+  background: #d8f7e9;
+}
+
+.q-result h2 {
+  margin: 6px 0 4px;
+}
+
+.q-result-pet {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  animation: hop 0.8s steps(2, jump-none) infinite;
+}
+
+.q-result-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 /* ================= Зал памяти и настройки ================= */
 
 .screen-memory,
@@ -1107,6 +1482,9 @@ summary:focus-visible {
   .needs .need,
   .hero-sprite,
   .speed-badge,
+  .q-result-pet,
+  .q-cell.pop,
+  .q-cell.shake,
   .bar-fill[data-level='low'] {
     animation: none;
   }

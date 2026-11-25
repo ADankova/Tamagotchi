@@ -1,5 +1,5 @@
 import { describeAbsence, type AbsenceNote } from './core/absence';
-import { performAction, type ActionBlockReason } from './core/actions';
+import { blockReason, finishPlay, performAction, type ActionBlockReason } from './core/actions';
 import {
   ABSENCE_SUMMARY_MIN_MS,
   AUTOSAVE_INTERVAL_MS,
@@ -26,6 +26,7 @@ import {
 export type UiEvent =
   | { type: 'changed' }
   | { type: 'actionDone'; action: ActionType }
+  | { type: 'treatsEarned'; amount: number }
   | { type: 'actionBlocked'; action: ActionType; reason: ActionBlockReason }
   | { type: 'saveFailed' };
 
@@ -120,6 +121,29 @@ export class Game {
     this.save();
     this.bus.emit({ type: 'changed' });
     return null;
+  }
+
+  /** Можно ли сейчас поиграть (открыть мини-игры). null — можно. */
+  playBlockReason(): ActionBlockReason | null {
+    this.advance(this.now());
+    return blockReason(this.current.pet, 'play', this.current.cooldowns, this.now());
+  }
+
+  /** Итог мини-игры: эффект «Поиграть» и, при победе, награда лакомствами. */
+  finishMiniGame(won: boolean, reward: number): boolean {
+    this.advance(this.now());
+    const result = finishPlay(this.current.pet, won, reward, this.current.cooldowns, this.now());
+    if (!result.ok) {
+      this.bus.emit({ type: 'actionBlocked', action: 'play', reason: result.reason });
+      return false;
+    }
+    this.current.pet = result.pet;
+    this.current.cooldowns = result.cooldowns;
+    this.bus.emit({ type: 'actionDone', action: 'play' });
+    if (won && reward > 0) this.bus.emit({ type: 'treatsEarned', amount: reward });
+    this.save();
+    this.bus.emit({ type: 'changed' });
+    return true;
   }
 
   /** Новое яйцо. Имя обязательно. */

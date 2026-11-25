@@ -3,6 +3,7 @@ import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_S
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
 import { SPECIES, type ActionType, type Pet, type Species, type StatKey } from '../core/types';
+import type { SoundName } from '../audio/tunes';
 import type { Absence, Game } from '../game';
 import type { Notifier } from '../notify/notifier';
 import { careGrade, summarizeGraveyard } from '../memorial';
@@ -16,6 +17,7 @@ import {
   CAUSE_LABELS,
   EVENT_MESSAGES,
   FORM_LABELS,
+  GAMES_TEXT,
   formatDuration,
   DEV_TEXT,
   MOOD_LABELS,
@@ -29,7 +31,8 @@ import {
 } from '../strings';
 import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, POOP_SLOTS, stageSprite } from './scene';
+import { CUTSCENE_MS, petSprite, POOP_SLOTS, stageSprite } from './scene';
+import { GamesOverlay } from './minigames';
 import { SPECIES_LOOKS } from './species';
 import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
@@ -55,6 +58,8 @@ export interface UiServices {
   lastReminder?: () => LastReminder | null;
   /** Короткий звук-подтверждение (после включения звука). */
   onSoundEnabled?: () => void;
+  /** Звуки мини-игр. */
+  playSound?: (name: SoundName) => void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -123,6 +128,8 @@ export class UI {
   private readonly poopIcons = el('span', { class: 'poop-icons', role: 'img' });
   private readonly poopValue = el('span', { class: 'stat-value' });
   private lastPoops = -1;
+  private readonly treatCount = el('span', { class: 'treat-count', 'aria-hidden': 'true' });
+  private overlay: GamesOverlay | null = null;
   private readonly statRows = new Map<StatKey, StatRow>();
   private readonly actionButtons = new Map<ActionType, HTMLButtonElement>();
   private readonly message = el('p', { class: 'message', role: 'status', 'aria-live': 'polite' });
@@ -389,6 +396,7 @@ export class UI {
         el('span', { class: 'icon-badge' }, [iconImg(ACTION_ICONS[action], 'icon action-icon')]),
         el('span', { class: 'label' }),
         el('span', { class: 'hotkey', 'aria-hidden': 'true', text: String(i + 1) }),
+        ...(action === 'snack' ? [this.treatCount] : []),
       ]);
       actions.append(btn);
       this.actionButtons.set(action, btn);
@@ -425,7 +433,7 @@ export class UI {
       const target = e.target as HTMLElement;
       const btn = target.closest<HTMLElement>('[data-action]');
       if (btn) {
-        this.game.act(btn.dataset.action as ActionType);
+        this.doAction(btn.dataset.action as ActionType);
         return;
       }
       if (target.closest('[data-dismiss]')) this.absenceBox.hidden = true;
@@ -452,9 +460,9 @@ export class UI {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
       if (this.gameScreen.hidden) return;
       const action = ACTIONS[Number(e.key) - 1];
-      if (action) {
+      if (action && !this.overlay) {
         e.preventDefault();
-        this.game.act(action);
+        this.doAction(action);
       }
     });
 
@@ -474,13 +482,45 @@ export class UI {
     });
     bus.on('gotSick', () => this.say(EVENT_MESSAGES.gotSick(this.name())));
     bus.on('pooped', () => this.say(POOP_TEXT.pooped(this.name())));
+    bus.on('treatsEarned', (e) => this.say(GAMES_TEXT.earned(e.amount)));
     bus.on('recovered', () => this.say(EVENT_MESSAGES.recovered(this.name())));
     bus.on('fellAsleep', (e) => e.auto && this.say(EVENT_MESSAGES.fellAsleepAuto(this.name())));
     bus.on('wokeUp', (e) => e.auto && this.say(EVENT_MESSAGES.wokeUpAuto(this.name())));
   }
 
+  /** «Поиграть» открывает окно мини-игр, остальные действия выполняются сразу. */
+  private doAction(action: ActionType): void {
+    if (action !== 'play') {
+      this.game.act(action);
+      return;
+    }
+    const reason = this.game.playBlockReason();
+    const pet = this.game.state.pet;
+    if (reason || !pet) {
+      if (reason && reason !== 'cooldown') this.say(BLOCK_REASONS[reason]);
+      this.services.playSound?.('blocked');
+      return;
+    }
+    this.overlay = new GamesOverlay(
+      {
+        petName: pet.name,
+        petImage: spriteDataUrl(petSprite(pet), 6, LCD_TRANSPARENT),
+        playSound: (name) => this.services.playSound?.(name),
+        onFinish: (won, reward) => this.game.finishMiniGame(won, reward),
+      },
+      () => {
+        this.overlay = null;
+        this.root.querySelector<HTMLElement>('[data-action=play]')?.focus();
+      },
+    );
+  }
+
   /** Системная «Назад» или Esc: закрыть вложенный экран. false — мы уже на главном. */
   handleBack(): boolean {
+    if (this.overlay) {
+      this.overlay.back();
+      return true;
+    }
     if (this.view === 'main') return false;
     this.setView(this.view === 'memory' ? this.memoryReturn : 'main');
     return true;
@@ -646,6 +686,9 @@ export class UI {
       this.poopIcons.parentElement?.setAttribute('data-level', level);
     }
 
+    this.treatCount.textContent = String(pet.treats);
+    this.treatCount.dataset.empty = String(pet.treats === 0);
+
     const { cooldowns } = this.game.state;
     for (const [action, btn] of this.actionButtons) {
       const reason = blockReason(pet, action, cooldowns, now);
@@ -656,7 +699,8 @@ export class UI {
       btn.dataset.reason = reason ?? '';
       if (left === 0) btn.classList.remove('cooling');
       btn.setAttribute('aria-label', label);
-      btn.disabled = reason !== null;
+      // Без лакомств кнопка остаётся нажимаемой — чтобы подсказать, где их взять.
+      btn.disabled = reason !== null && reason !== 'noTreats';
       btn.title = reason ? BLOCK_REASONS[reason] : '';
     }
   }

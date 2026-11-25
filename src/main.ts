@@ -45,6 +45,7 @@ async function main(): Promise<void> {
   const ui = new UI(root, game, {
     notifier,
     onSoundEnabled: () => sound.play('toggle'),
+    playSound: (name) => sound.play(name),
     lastReminder: readReminder,
   });
   const info = game.start();
@@ -64,6 +65,8 @@ async function main(): Promise<void> {
       const needs = pet && pet.stage !== 'dead' ? getNeeds(pet) : [];
       if (hasNewNeed(lastNeeds, needs)) sound.play('alert');
       lastNeeds = needs;
+    } else if (e.type === 'treatsEarned') {
+      sound.play('win');
     } else if (e.type !== 'saveFailed') {
       const name = soundForEvent(e);
       if (name) sound.play(name);

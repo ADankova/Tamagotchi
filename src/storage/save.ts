@@ -10,7 +10,7 @@ import { SPECIES } from '../core/types';
 import { POOP_INTERVAL_MS } from '../core/config';
 
 export const SAVE_KEY = 'tamagotchi.save';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface Settings {
   sound: boolean;
@@ -101,6 +101,11 @@ const MIGRATIONS: Record<number, Migration> = {
       pet = { ...pet, stats, poops: hygieneToPoops(h), poopTimerMs: POOP_INTERVAL_MS };
     }
     return { ...data, version: 3, pet };
+  },
+  // v3 → v4: лакомства стали валютой мини-игр; запас начинается с нуля.
+  3: (data) => {
+    const pet = isRecord(data.pet) ? { ...data.pet, treats: 0 } : data.pet;
+    return { ...data, version: 4, pet };
   },
 };
 
@@ -193,6 +198,8 @@ export function isPet(v: unknown): v is Pet {
     isNum(v.poops) &&
     v.poops >= 0 &&
     isNum(v.poopTimerMs) &&
+    isNum(v.treats) &&
+    v.treats >= 0 &&
     isNum(v.bornAt) &&
     isNum(v.ageMs) &&
     isNum(v.lifespanMs) &&

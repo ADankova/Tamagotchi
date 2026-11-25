@@ -20,7 +20,12 @@ export type SoundName =
   | 'death'
   | 'blocked'
   | 'toggle'
-  | 'poop';
+  | 'poop'
+  | 'win'
+  | 'lose'
+  | 'place'
+  | 'mark'
+  | 'miss';
 
 export const TUNES: Readonly<Record<SoundName, readonly Note[]>> = {
   feed: [[523, 70], [659, 70]],
@@ -38,6 +43,11 @@ export const TUNES: Readonly<Record<SoundName, readonly Note[]>> = {
   blocked: [[196, 90]],
   toggle: [[880, 50]],
   poop: [[220, 60], [0, 30], [175, 90]],
+  win: [[523, 80], [659, 80], [784, 80], [1047, 120], [0, 40], [784, 80], [1047, 220]],
+  lose: [[392, 150], [330, 150], [262, 300]],
+  place: [[784, 50], [1047, 70]],
+  mark: [[1319, 25]],
+  miss: [[185, 120], [0, 40], [156, 160]],
 };
 
 export function tuneDuration(name: SoundName): number {

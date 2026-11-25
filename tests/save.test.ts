@@ -159,3 +159,12 @@ describe('сейв версии 2 → 3: чистота превращается
     expect(loaded?.pet?.poops).toBe(0);
   });
 });
+
+describe('сейв версии 3 → 4: лакомства', () => {
+  it('у старого питомца запас лакомств начинается с нуля', () => {
+    const v3 = JSON.parse(serialize(sampleState()));
+    v3.version = 3;
+    delete v3.pet.treats;
+    expect(deserialize(JSON.stringify(v3))?.pet?.treats).toBe(0);
+  });
+});
