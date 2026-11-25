@@ -22,6 +22,9 @@ export interface GraveRecord {
   diedAt: number;
   ageMs: number;
   causeOfDeath: CauseOfDeath;
+  /** Качество ухода 0..100. Нет в записях, сделанных до этапа 3. */
+  careScore?: number;
+  sicknessCount?: number;
 }
 
 export interface GameState {
@@ -185,7 +188,9 @@ function isGraveRecord(v: unknown): v is GraveRecord {
     isNum(v.diedAt) &&
     isNum(v.ageMs) &&
     typeof v.causeOfDeath === 'string' &&
-    CAUSES.includes(v.causeOfDeath)
+    CAUSES.includes(v.causeOfDeath) &&
+    (v.careScore === undefined || isNum(v.careScore)) &&
+    (v.sicknessCount === undefined || isNum(v.sicknessCount))
   );
 }
 

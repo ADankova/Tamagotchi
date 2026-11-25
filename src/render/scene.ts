@@ -1,6 +1,6 @@
 import { NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood } from '../core/pet';
-import type { ActionType, Pet } from '../core/types';
+import type { ActionType, AdultForm, LifeStage, Pet } from '../core/types';
 import { SPRITES, type SpriteName } from './sprites';
 
 // Чистая функция «что нарисовать в момент t»: без DOM и без часов,
@@ -39,7 +39,10 @@ export type AnimState =
   | 'snacking'
   | 'playing'
   | 'cleaning'
-  | 'medicine';
+  | 'medicine'
+  | 'hatching'
+  | 'evolving'
+  | 'dying';
 
 export interface ActiveAction {
   action: ActionType;
@@ -61,8 +64,8 @@ export interface Scene {
   items: Placed[];
 }
 
-export function petSprite(pet: Pet): SpriteName {
-  switch (pet.stage) {
+export function stageSprite(stage: LifeStage, form?: AdultForm): SpriteName {
+  switch (stage) {
     case 'egg':
       return 'egg';
     case 'baby':
@@ -72,11 +75,92 @@ export function petSprite(pet: Pet): SpriteName {
     case 'teen':
       return 'teen';
     case 'adult':
-      return pet.form === 'good' ? 'adultGood' : pet.form === 'naughty' ? 'adultNaughty' : 'adultNormal';
+      return form === 'good' ? 'adultGood' : form === 'naughty' ? 'adultNaughty' : 'adultNormal';
     case 'elder':
       return 'elder';
     case 'dead':
       return 'grave';
+  }
+}
+
+export function petSprite(pet: Pet): SpriteName {
+  return stageSprite(pet.stage, pet.form);
+}
+
+// --- Сценки смены стадии ---
+
+export type CutsceneKind = 'hatch' | 'evolve' | 'death';
+
+export interface Cutscene {
+  kind: CutsceneKind;
+  startedAt: number;
+  from: SpriteName;
+  to: SpriteName;
+}
+
+export const CUTSCENE_MS: Readonly<Record<CutsceneKind, number>> = {
+  hatch: 2400,
+  evolve: 2400,
+  death: 2600,
+};
+
+/** Сценка, если между двумя состояниями одного питомца сменилась стадия. */
+export function cutsceneFor(prev: Pet, next: Pet, t: number): Cutscene | null {
+  if (prev.bornAt !== next.bornAt || prev.stage === next.stage || prev.stage === 'dead') return null;
+  const kind: CutsceneKind = next.stage === 'dead' ? 'death' : prev.stage === 'egg' ? 'hatch' : 'evolve';
+  return { kind, startedAt: t, from: petSprite(prev), to: petSprite(next) };
+}
+
+export function isCutscenePlaying(c: Cutscene | null, t: number): c is Cutscene {
+  if (!c) return false;
+  const elapsed = t - c.startedAt;
+  return elapsed >= 0 && elapsed < CUTSCENE_MS[c.kind];
+}
+
+function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
+  const e = t - c.startedAt;
+  const mid = SCREEN_W / 2;
+  const items: Placed[] = [];
+  const sparkles = (name: SpriteName, flicker: boolean) => {
+    const s = SPRITES[name];
+    const x = center(name, mid);
+    const y = onGround(name);
+    if (!flicker || step(t, 200) % 2 === 0) {
+      items.push({ sprite: 'sparkle', x: x - 7, y: y + 2 });
+      items.push({ sprite: 'sparkle', x: x + s.w + 2, y: y - 2 });
+    }
+    if (!flicker || step(t, 200) % 2 === 1) items.push({ sprite: 'sparkle', x: center('sparkle', mid), y: Math.max(0, y - 7) });
+  };
+
+  switch (c.kind) {
+    case 'hatch':
+      if (e < 1200) {
+        const shake = motion * (step(t, 120) % 2 === 0 ? -1 : 1);
+        items.push({ sprite: 'egg', x: center('egg', mid) + shake, y: onGround('egg') });
+      } else if (e < 1800) {
+        items.push({ sprite: 'eggCracked', x: center('eggCracked', mid), y: onGround('eggCracked') });
+      } else {
+        items.push({ sprite: c.to, x: center(c.to, mid), y: onGround(c.to) });
+        sparkles(c.to, motion === 1);
+      }
+      return { state: 'hatching', dim: false, items };
+
+    case 'evolve': {
+      const swapping = e < 1800;
+      const shown = swapping && motion === 1 && step(e, 200) % 2 === 0 ? c.from : c.to;
+      items.push({ sprite: shown, x: center(shown, mid), y: onGround(shown) });
+      sparkles(shown, motion === 1);
+      return { state: 'evolving', dim: false, items };
+    }
+
+    case 'death':
+      if (e < 800) {
+        items.push({ sprite: c.from, x: center(c.from, mid), y: onGround(c.from), eyesClosed: true });
+      } else {
+        const rise = motion ? Math.round(((e - 800) / (CUTSCENE_MS.death - 800)) * 16) : 6;
+        items.push({ sprite: 'ghost', x: center('ghost', mid), y: Math.max(0, onGround('ghost') - rise) });
+      }
+      return { state: 'dying', dim: true, items };
   }
 }
 
@@ -119,9 +203,11 @@ export function composeScene(
   active: ActiveAction | null,
   t: number,
   reducedMotion = false,
+  cutscene: Cutscene | null = null,
 ): Scene {
-  const state = animState(pet, active, t);
   const motion = reducedMotion ? 0 : 1;
+  if (isCutscenePlaying(cutscene, t)) return composeCutscene(cutscene, t, motion);
+  const state = animState(pet, active, t);
   const elapsed = active ? Math.max(0, t - active.startedAt) : 0;
   const name = petSprite(pet);
   const blink = motion === 1 && t % BLINK_EVERY_MS < BLINK_MS;
