@@ -136,6 +136,9 @@ class QueensGame {
   private moves = 0;
   private finished = false;
   private pendingTap: { r: number; c: number; timer: number } | null = null;
+  /** Протягивание пальцем по клеткам: ставит крестики (или стирает, если начали с крестика). */
+  private drag: { start: [number, number]; erase: boolean; active: boolean; last: string } | null = null;
+  private suppressClick = false;
   private readonly progress = el('span', { class: 'q-progress' });
   private readonly hearts = el('span', { class: 'q-hearts', role: 'img' });
   private readonly ruleChips = new Map<QueensRule, HTMLElement>();
@@ -156,8 +159,22 @@ class QueensGame {
       const row: HTMLButtonElement[] = [];
       for (let c = 0; c < n; c++) {
         const region = this.puzzle.regions[r]![c]!;
-        const cell = el('button', { type: 'button', class: 'q-cell', 'data-region': String(region), role: 'gridcell' });
-        cell.addEventListener('click', () => this.tap(r, c));
+        const cell = el('button', {
+          type: 'button',
+          class: 'q-cell',
+          'data-region': String(region),
+          'data-r': String(r),
+          'data-c': String(c),
+          role: 'gridcell',
+        });
+        cell.addEventListener('click', () => {
+          // Клик, завершающий протягивание пальцем, — не касание.
+          if (this.suppressClick) {
+            this.suppressClick = false;
+            return;
+          }
+          this.tap(r, c);
+        });
         this.board.append(cell);
         row.push(cell);
       }
@@ -183,6 +200,7 @@ class QueensGame {
       el('p', { class: 'q-hint', text: GAMES_TEXT.hint }),
     ]);
     this.renderAll();
+    this.bindDrag();
   }
 
   hasProgress(): boolean {
@@ -209,6 +227,64 @@ class QueensGame {
       this.toggleCross(r, c);
     }, DOUBLE_TAP_MS);
     this.pendingTap = { r, c, timer };
+  }
+
+  // --- Протягивание: крестики вслед за пальцем ---
+
+  private bindDrag(): void {
+    this.board.addEventListener('pointerdown', (e) => {
+      if (this.finished || !e.isPrimary) return;
+      this.suppressClick = false; // новый жест
+      const pos = this.cellAt(e.clientX, e.clientY);
+      if (!pos) return;
+      const [r, c] = pos;
+      this.drag = { start: pos, erase: this.marks[r]![c] === 'cross', active: false, last: `${r},${c}` };
+    });
+    this.board.addEventListener('pointermove', (e) => {
+      const drag = this.drag;
+      if (!drag || this.finished) return;
+      const pos = this.cellAt(e.clientX, e.clientY);
+      if (!pos) return;
+      const key = `${pos[0]},${pos[1]}`;
+      if (key === drag.last) return;
+      drag.last = key;
+      if (!drag.active) {
+        // Палец ушёл с первой клетки — это протягивание, а не касание.
+        drag.active = true;
+        if (this.pendingTap) {
+          window.clearTimeout(this.pendingTap.timer);
+          this.pendingTap = null;
+        }
+        this.paint(drag.start[0], drag.start[1], drag.erase);
+      }
+      this.paint(pos[0], pos[1], drag.erase);
+    });
+    const end = () => {
+      if (this.drag?.active) this.suppressClick = true;
+      this.drag = null;
+    };
+    this.board.addEventListener('pointerup', end);
+    this.board.addEventListener('pointercancel', () => {
+      this.drag = null;
+    });
+  }
+
+  private cellAt(x: number, y: number): [number, number] | null {
+    const target = document.elementFromPoint(x, y)?.closest<HTMLElement>('.q-cell');
+    if (!target || !this.board.contains(target)) return null;
+    return [Number(target.dataset.r), Number(target.dataset.c)];
+  }
+
+  /** Поставить (или стереть) крестик протягиванием; питомцев и ошибки не трогает. */
+  private paint(r: number, c: number, erase: boolean): void {
+    const m = this.marks[r]![c]!;
+    if (m === 'pet' || m === 'wrong') return;
+    const next: Mark = erase ? 'none' : 'cross';
+    if (m === next) return;
+    this.marks[r]![c] = next;
+    this.moves++;
+    this.host.playSound('mark');
+    this.renderCell(r, c);
   }
 
   private toggleCross(r: number, c: number): void {

@@ -963,6 +963,8 @@ body.overlay-open {
 }
 
 .q-board {
+  /* Протягивание пальцем по полю не должно прокручивать страницу. */
+  touch-action: none;
   display: grid;
   grid-template-columns: repeat(var(--n), 1fr);
   grid-template-rows: repeat(var(--n), 1fr);
