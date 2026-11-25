@@ -122,14 +122,6 @@ export function absenceNoteText(name: string, note: AbsenceNote): string {
   }
 }
 
-export const NEED_ICONS: Record<StatKey, string> = {
-  hunger: '🍖',
-  hygiene: '💩',
-  happiness: '😢',
-  energy: '🥱',
-  health: '💊',
-};
-
 export function formatDuration(ms: number): string {
   const days = Math.floor(ms / DAY);
   const hours = Math.floor((ms % DAY) / HOUR);

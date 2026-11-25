@@ -12,14 +12,14 @@ import {
   FORM_LABELS,
   formatDuration,
   MOOD_LABELS,
-  NEED_ICONS,
   STAGE_LABELS,
   STAT_LABELS,
   T,
   WAKE_LABEL,
 } from '../strings';
-
-// Простой интерфейс этапа 1: HTML-кнопки и текст. Графика появится на этапе 2.
+import { LCD, PetCanvas } from './canvas';
+import { ACTION_ICONS, iconImg, spriteDataUrl, STAT_ICONS } from './icons';
+import type { SpriteName } from './sprites';
 
 const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'hygiene', 'health'];
 const MESSAGE_TTL_MS = 4000;
@@ -41,23 +41,11 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-export function petGlyph(pet: Pet): string {
-  switch (pet.stage) {
-    case 'egg':
-      return '🥚';
-    case 'baby':
-      return '🐣';
-    case 'child':
-      return '🐥';
-    case 'teen':
-      return '🐤';
-    case 'adult':
-      return pet.form === 'naughty' ? '🦃' : pet.form === 'good' ? '🐓' : '🐔';
-    case 'elder':
-      return '🦉';
-    case 'dead':
-      return '🪦';
-  }
+/** Крупная картинка спрайта в цветах экрана — для стартового экрана и итогов. */
+function bigSprite(name: SpriteName): HTMLImageElement {
+  const img = el('img', { class: 'hero-sprite', alt: '' });
+  img.src = spriteDataUrl(name, 8, { ...LCD, bg: 'transparent', ghost: 'transparent' });
+  return img;
 }
 
 function stageText(pet: Pet): string {
@@ -76,12 +64,12 @@ export class UI {
   private readonly startScreen: HTMLElement;
   private readonly gameScreen: HTMLElement;
   private readonly resultsScreen: HTMLElement;
-
-  private readonly startNotice: HTMLElement;
+  private readonly startNotice = el('p', { class: 'notice', hidden: '' });
 
   private readonly petName = el('h2', { class: 'pet-name' });
   private readonly petStage = el('p', { class: 'pet-meta' });
-  private readonly petGlyphEl = el('div', { class: 'pet-glyph', 'aria-hidden': 'true' });
+  private readonly canvas = el('canvas', { class: 'lcd-canvas', role: 'img' });
+  private readonly petCanvas: PetCanvas;
   private readonly petMood = el('p', { class: 'pet-mood' });
   private readonly needs = el('div', { class: 'needs', 'aria-hidden': 'true' });
   private readonly statRows = new Map<StatKey, StatRow>();
@@ -91,38 +79,39 @@ export class UI {
   private readonly graveyardList = el('ol', { class: 'graveyard' });
 
   private readonly resultsList = el('dl', { class: 'results' });
-  private readonly resultsGlyph = el('div', { class: 'pet-glyph', 'aria-hidden': 'true' });
   private readonly resultsInput: HTMLInputElement;
 
   private messageTimer = 0;
+  private lastNeedsKey = '';
 
   constructor(
     private readonly root: HTMLElement,
     private readonly game: Game,
   ) {
     const start = this.nameForm('start', T.newGame);
-    this.startNotice = el('p', { class: 'notice', hidden: '' });
     this.startScreen = el('section', { class: 'screen screen-start' }, [
       el('h1', { text: T.title }),
-      el('div', { class: 'pet-glyph', 'aria-hidden': 'true', text: '🥚' }),
-      el('p', { text: T.intro }),
+      bigSprite('egg'),
+      el('p', { class: 'intro', text: T.intro }),
       this.startNotice,
       start.form,
     ]);
 
     this.gameScreen = this.buildGameScreen();
+    this.petCanvas = new PetCanvas(this.canvas);
 
     const results = this.nameForm('results', T.newEgg);
     this.resultsInput = results.input;
     this.resultsScreen = el('section', { class: 'screen screen-results' }, [
       el('h1', { text: T.resultsTitle }),
-      this.resultsGlyph,
+      bigSprite('grave'),
       this.resultsList,
       results.form,
     ]);
 
     this.root.append(this.startScreen, this.gameScreen, this.resultsScreen);
     this.bindEvents();
+    this.petCanvas.start();
   }
 
   showCorruptedNotice(): void {
@@ -150,10 +139,12 @@ export class UI {
     this.startScreen.hidden = screen !== 'start';
     this.gameScreen.hidden = screen !== 'game';
     this.resultsScreen.hidden = screen !== 'results';
+    this.petCanvas.setPet(screen === 'game' ? pet : null);
     if (pet && screen === 'game') this.renderGame(pet);
     if (pet && screen === 'results') this.renderResults(pet);
     this.renderGraveyard();
-    document.title = pet && getNeeds(pet).length > 0 && screen === 'game' ? `(!) ${T.title}` : T.title;
+    document.title =
+      pet && screen === 'game' && getNeeds(pet).length > 0 ? `(!) ${T.title}` : T.title;
   }
 
   // --- Построение ---
@@ -170,7 +161,7 @@ export class UI {
     const error = el('p', { class: 'error', role: 'alert' });
     const form = el('form', { class: 'name-form' }, [
       el('label', { for: id, text: T.nameLabel }),
-      el('div', { class: 'row' }, [input, el('button', { type: 'submit', text: submitLabel })]),
+      el('div', { class: 'row' }, [input, el('button', { type: 'submit', class: 'primary', text: submitLabel })]),
       error,
     ]);
     form.addEventListener('submit', (e) => {
@@ -203,15 +194,24 @@ export class UI {
         [fill],
       );
       const value = el('span', { class: 'stat-value' });
-      stats.append(el('div', { class: 'stat' }, [el('span', { text: STAT_LABELS[key] }), bar, value]));
+      stats.append(
+        el('div', { class: 'stat' }, [
+          iconImg(STAT_ICONS[key]),
+          el('span', { class: 'stat-label', text: STAT_LABELS[key] }),
+          bar,
+          value,
+        ]),
+      );
       this.statRows.set(key, { bar, fill, value });
     }
 
     const actions = el('div', { class: 'actions' });
     ACTIONS.forEach((action, i) => {
-      const btn = el('button', { type: 'button', 'data-action': action });
-      btn.append(el('span', { class: 'hotkey', 'aria-hidden': 'true', text: String(i + 1) }));
-      btn.append(el('span', { class: 'label' }));
+      const btn = el('button', { type: 'button', class: 'action', 'data-action': action }, [
+        iconImg(ACTION_ICONS[action], 'icon action-icon'),
+        el('span', { class: 'label' }),
+        el('span', { class: 'hotkey', 'aria-hidden': 'true', text: String(i + 1) }),
+      ]);
       actions.append(btn);
       this.actionButtons.set(action, btn);
     });
@@ -223,15 +223,21 @@ export class UI {
       el('button', { type: 'button', class: 'danger', 'data-reset': '', text: T.reset }),
     ]);
 
-    return el('section', { class: 'screen screen-game' }, [
-      el('header', {}, [this.petName, this.petStage]),
+    const device = el('div', { class: 'device' }, [
+      el('header', { class: 'device-header' }, [this.petName, this.petStage]),
+      el('div', { class: 'lcd' }, [this.canvas, this.needs]),
+      this.petMood,
+    ]);
+
+    const controls = el('div', { class: 'controls' }, [
       this.absenceBox,
-      el('div', { class: 'pet' }, [this.needs, this.petGlyphEl, this.petMood]),
       stats,
       actions,
       this.message,
       settings,
     ]);
+
+    return el('section', { class: 'screen screen-game' }, [device, controls]);
   }
 
   private bindEvents(): void {
@@ -252,8 +258,7 @@ export class UI {
     document.addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
       if (this.gameScreen.hidden) return;
-      const index = Number(e.key) - 1;
-      const action = ACTIONS[index];
+      const action = ACTIONS[Number(e.key) - 1];
       if (action) {
         e.preventDefault();
         this.game.act(action);
@@ -262,6 +267,7 @@ export class UI {
 
     const bus = this.game.bus;
     bus.on('changed', () => this.render());
+    bus.on('actionDone', (e) => this.petCanvas.play(e.action));
     bus.on('actionBlocked', (e) => {
       if (e.reason !== 'cooldown') this.say(BLOCK_REASONS[e.reason]);
     });
@@ -281,12 +287,18 @@ export class UI {
   private renderGame(pet: Pet): void {
     const now = this.game.currentTime();
     this.petName.textContent = pet.name;
-    this.petStage.textContent = `${T.stage}: ${stageText(pet)} · ${T.age}: ${formatDuration(pet.ageMs)}`;
+    this.petStage.textContent = `${stageText(pet)} · ${formatDuration(pet.ageMs)}`;
 
-    const mood = getMood(pet);
-    this.petGlyphEl.textContent = petGlyph(pet) + (pet.isSleeping ? '💤' : pet.isSick ? '🤒' : '');
-    this.petMood.textContent = pet.stage === 'egg' ? STAGE_LABELS.egg : MOOD_LABELS[mood];
-    this.needs.textContent = getNeeds(pet).map((k) => NEED_ICONS[k]).join(' ');
+    const mood = pet.stage === 'egg' ? STAGE_LABELS.egg : MOOD_LABELS[getMood(pet)];
+    this.petMood.textContent = mood;
+    this.canvas.setAttribute('aria-label', `${pet.name}: ${mood}`);
+
+    const needs = getNeeds(pet);
+    const needsKey = needs.join(',');
+    if (needsKey !== this.lastNeedsKey) {
+      this.lastNeedsKey = needsKey;
+      this.needs.replaceChildren(...needs.map((k) => iconImg(STAT_ICONS[k], 'icon need')));
+    }
 
     for (const key of STAT_ORDER) {
       const row = this.statRows.get(key);
@@ -301,8 +313,7 @@ export class UI {
     const { cooldowns } = this.game.state;
     for (const [action, btn] of this.actionButtons) {
       const reason = blockReason(pet, action, cooldowns, now);
-      const label =
-        action === 'sleep' && pet.isSleeping ? WAKE_LABEL : ACTION_LABELS[action];
+      const label = action === 'sleep' && pet.isSleeping ? WAKE_LABEL : ACTION_LABELS[action];
       const left = cooldownLeft(cooldowns, action, now);
       const labelEl = btn.querySelector('.label');
       if (labelEl) labelEl.textContent = left > 0 ? `${label} · ${Math.ceil(left / 1000)}` : label;
@@ -313,7 +324,6 @@ export class UI {
   }
 
   private renderResults(pet: Pet): void {
-    this.resultsGlyph.textContent = petGlyph(pet);
     const rows: Array<[string, string]> = [
       [T.name, pet.name],
       [T.age, formatDuration(pet.ageMs)],
