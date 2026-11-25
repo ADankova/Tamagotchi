@@ -36,7 +36,7 @@ import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
 import { CUTSCENE_MS, petSprite, POOP_SLOTS, stageSprite } from './scene';
 import { GamesOverlay } from './minigames';
-import { treatArtUrl } from './treatArt';
+import { ART } from './artData';
 import { SPECIES_LOOKS } from './species';
 import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
@@ -316,7 +316,7 @@ export class UI {
 
   private memoryButton(optional = true): HTMLButtonElement {
     const b = el('button', { type: 'button', class: 'chunky pill memory-link', 'data-open-memory': '' }, [
-      iconImg('grave', 'icon pill-icon'),
+      iconImg('memorial', 'icon pill-icon'),
       el('span', { class: 'btn-label' }),
     ]);
     b.dataset.optional = String(optional);
@@ -326,7 +326,7 @@ export class UI {
 
   private settingsButton(): HTMLButtonElement {
     return el('button', { type: 'button', class: 'chunky pill', 'data-open-settings': '' }, [
-      iconImg('iconGear', 'icon pill-icon'),
+      iconImg('settings', 'icon pill-icon'),
       el('span', { class: 'btn-label', text: SETTINGS_TEXT.title }),
     ]);
   }
@@ -552,7 +552,7 @@ export class UI {
         earnTreats: (n) => this.game.awardTreats(n),
         finishSlide: (lines, treats) =>
           this.game.finishMiniGame(treats > 0, 0, { game: 'slide', key: SLIDE_SIZE, score: lines }),
-        treatImage: treatArtUrl(),
+        treatImage: ART.snack,
       },
       () => {
         this.overlay = null;

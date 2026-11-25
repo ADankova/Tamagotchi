@@ -75,7 +75,7 @@ p {
 
 .icon {
   image-rendering: pixelated;
-  width: 14px;
+  width: 22px;
   height: auto;
 }
 
@@ -159,7 +159,8 @@ summary:focus-visible {
 }
 
 .pill-icon {
-  width: 16px;
+  width: 22px;
+  margin: -4px 0;
 }
 
 /* ================= Карточки-наклейки ================= */
@@ -460,7 +461,7 @@ summary:focus-visible {
 }
 
 .needs .need {
-  width: 18px;
+  width: 24px;
   animation: pulse 1s steps(2, jump-none) infinite;
 }
 
@@ -548,15 +549,15 @@ summary:focus-visible {
 .stat-icon {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   background: var(--stat);
   border: 2px solid var(--ink);
   border-radius: 50%;
 }
 
 .stat-icon .icon {
-  width: 12px;
+  width: 22px;
 }
 
 .bar {
@@ -594,11 +595,11 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 3px;
-  min-height: 14px;
+  min-height: 18px;
 }
 
 .poop-icon {
-  width: 14px;
+  width: 18px;
 }
 
 .poop-clean {
@@ -658,16 +659,16 @@ summary:focus-visible {
 .icon-badge {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   background: rgb(255 255 255 / 0.75);
   border: 2px solid var(--ink);
   border-radius: 50%;
 }
 
 .action-icon {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
