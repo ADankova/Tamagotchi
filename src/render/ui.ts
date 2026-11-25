@@ -1,5 +1,7 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_SICK_THRESHOLD } from '../core/config';
+import { levelStats } from '../core/stats';
+import { getLanguage, LANGUAGES, isLanguage, locale, setLanguage } from '../i18n';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
 import { SPECIES, type ActionType, type Pet, type Species, type StatKey } from '../core/types';
@@ -27,7 +29,7 @@ import {
   STAGE_LABELS,
   STAT_LABELS,
   T,
-  WAKE_LABEL,
+  wakeLabel,
 } from '../strings';
 import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
@@ -100,6 +102,9 @@ interface StatRow {
   value: HTMLElement;
 }
 
+/** После смены языка страница перезагружается и открывает настройки. */
+const REOPEN_KEY = 'tamagotchi.reopen';
+
 export class UI {
   private readonly startScreen: HTMLElement;
   private readonly gameScreen: HTMLElement;
@@ -142,6 +147,12 @@ export class UI {
   private readonly memorySummary = el('p', { class: 'memory-summary' });
   private readonly memoryList = el('ol', { class: 'memory-list' });
   private readonly memoryButtons: HTMLButtonElement[] = [];
+
+  private readonly languageSelect = el(
+    'select',
+    { id: 'setting-language', class: 'language-select' },
+    LANGUAGES.map((l) => el('option', { value: l.code, text: l.name })),
+  );
 
   private view: View = 'main';
   private memoryReturn: View = 'main';
@@ -206,6 +217,13 @@ export class UI {
         this.testButton,
         this.testStatus,
       ]),
+      el('div', { class: 'setting' }, [
+        el('label', { class: 'setting-label', for: 'setting-language' }, [
+          el('span', { class: 'setting-title', text: SETTINGS_TEXT.language }),
+          el('span', { class: 'setting-hint', text: SETTINGS_TEXT.languageHint }),
+        ]),
+        this.languageSelect,
+      ]),
       el('h2', { class: 'section-title', text: SETTINGS_TEXT.data }),
       el('div', { class: 'settings-buttons' }, [
         this.memoryButton(false),
@@ -220,6 +238,12 @@ export class UI {
     this.root.append(this.startScreen, this.gameScreen, this.resultsScreen, this.memoryScreen, this.settingsScreen);
     this.bindEvents();
     this.petCanvas.start();
+    try {
+      if (window.sessionStorage.getItem(REOPEN_KEY) === 'settings') this.view = 'settings';
+      window.sessionStorage.removeItem(REOPEN_KEY);
+    } catch {
+      // нет sessionStorage — остаёмся на главном экране
+    }
   }
 
   showCorruptedNotice(): void {
@@ -428,6 +452,20 @@ export class UI {
       this.game.setSettings({ sound: this.soundSwitch.checked });
       if (this.soundSwitch.checked) this.services.onSoundEnabled?.();
     });
+    this.languageSelect.addEventListener('change', () => {
+      const lang = this.languageSelect.value;
+      if (!isLanguage(lang) || lang === getLanguage()) return;
+      this.game.setSettings({ language: lang });
+      this.game.save();
+      setLanguage(lang);
+      // Все подписи собраны при запуске — проще всего перезапустить экран на новом языке.
+      try {
+        window.sessionStorage.setItem(REOPEN_KEY, 'settings');
+      } catch {
+        // не страшно: просто вернёмся на главный экран
+      }
+      window.location.reload();
+    });
     this.notifySwitch.addEventListener('change', () => void this.toggleNotifications(this.notifySwitch.checked));
     this.root.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -506,7 +544,8 @@ export class UI {
         petName: pet.name,
         petImage: spriteDataUrl(petSprite(pet), 6, LCD_TRANSPARENT),
         playSound: (name) => this.services.playSound?.(name),
-        onFinish: (won, reward) => this.game.finishMiniGame(won, reward),
+        stats: (size) => levelStats(this.game.state.gameStats, 'queens', size),
+        onFinish: (won, reward, size) => this.game.finishMiniGame(won, reward, { game: 'queens', key: size }),
       },
       () => {
         this.overlay = null;
@@ -619,11 +658,12 @@ export class UI {
     const last = this.services.lastReminder?.() ?? null;
     this.reminderInfo.textContent = last
       ? SETTINGS_TEXT.lastReminder(
-          new Date(last.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          new Date(last.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
           ATTENTION_SHORT[last.reason],
         )
       : '';
     this.soundSwitch.checked = settings.sound;
+    this.languageSelect.value = settings.language;
     this.notifySwitch.checked = settings.notifications;
     const { notifier } = this.services;
     const permission = await notifier.permission();
@@ -692,7 +732,7 @@ export class UI {
     const { cooldowns } = this.game.state;
     for (const [action, btn] of this.actionButtons) {
       const reason = blockReason(pet, action, cooldowns, now);
-      const label = action === 'sleep' && pet.isSleeping ? WAKE_LABEL : ACTION_LABELS[action];
+      const label = action === 'sleep' && pet.isSleeping ? wakeLabel() : ACTION_LABELS[action];
       const left = cooldownLeft(cooldowns, action, now);
       const labelEl = btn.querySelector('.label');
       if (labelEl) labelEl.textContent = label;
@@ -747,7 +787,7 @@ export class UI {
         ]),
         el('p', { text: `${stage} · ${T.lived} ${formatDuration(g.ageMs)}` }),
         el('p', { class: 'memory-details', text: details.join(' · ') }),
-        el('p', { class: 'memory-date', text: T.diedOn(new Date(g.diedAt).toLocaleDateString('ru-RU')) }),
+        el('p', { class: 'memory-date', text: T.diedOn(new Date(g.diedAt).toLocaleDateString(locale())) }),
       ]),
     ]);
   }

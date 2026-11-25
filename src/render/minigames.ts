@@ -10,6 +10,7 @@ import {
   type QueensRule,
 } from '../core/queens';
 import { randomSeed } from '../core/rng';
+import type { LevelStats } from '../core/stats';
 import { GAMES_TEXT } from '../strings';
 
 // Окно мини-игр поверх экрана питомца: список игр и «Судоку с питомцем».
@@ -19,8 +20,10 @@ export interface MiniGameHost {
   /** Картинка питомца (data URL) — ставится в клетки вместо кота. */
   petImage: string;
   playSound: (name: SoundName) => void;
-  /** Игра закончена: победа и награда в лакомствах. */
-  onFinish: (won: boolean, reward: number) => void;
+  /** Сыграно и выиграно на уровне «Судоку» с полем size×size. */
+  stats: (size: number) => LevelStats;
+  /** Партия закончена: победа, награда в лакомствах и размер поля (для счётчиков). */
+  onFinish: (won: boolean, reward: number, size: number) => void;
 }
 
 const DOUBLE_TAP_MS = 260;
@@ -83,6 +86,7 @@ export class GamesOverlay {
       const b = el('button', { type: 'button', class: 'chunky level-button' }, [
         el('span', { class: 'level-name', text: GAMES_TEXT.levelNames[i] ?? '' }),
         el('span', { class: 'level-info', text: GAMES_TEXT.level(level.size, level.reward) }),
+        el('span', { class: 'level-stats', text: ((st) => GAMES_TEXT.stats(st.played, st.won))(this.host.stats(level.size)) }),
       ]);
       b.addEventListener('click', () => this.startQueens(level));
       return b;
@@ -109,7 +113,7 @@ export class GamesOverlay {
       header: (title) => this.header(title, () => this.back(), '←'),
       replay: () => this.startQueens(level),
       done: (won) => {
-        this.host.onFinish(won, won ? level.reward : 0);
+        this.host.onFinish(won, won ? level.reward : 0, level.size);
         this.close();
       },
     });

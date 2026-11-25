@@ -9,6 +9,7 @@ import {
 } from './core/config';
 import { clampStat, createPet, normalizeName } from './core/pet';
 import { randomSeed } from './core/rng';
+import { recordGame, type MiniGameId } from './core/stats';
 import { tick } from './core/simulation';
 import type { ActionType, GameEvent, Pet, Species, StatKey } from './core/types';
 import { EventBus } from './events';
@@ -130,7 +131,11 @@ export class Game {
   }
 
   /** Итог мини-игры: эффект «Поиграть» и, при победе, награда лакомствами. */
-  finishMiniGame(won: boolean, reward: number): boolean {
+  finishMiniGame(won: boolean, reward: number, level?: { game: MiniGameId; key: string | number }): boolean {
+    if (level) {
+      this.current.gameStats = recordGame(this.current.gameStats, level.game, level.key, won);
+      this.save();
+    }
     this.advance(this.now());
     const result = finishPlay(this.current.pet, won, reward, this.current.cooldowns, this.now());
     if (!result.ok) {
@@ -173,7 +178,7 @@ export class Game {
 
   resetAll(): void {
     clearState(this.storage);
-    this.current = createInitialState(this.now());
+    this.current = createInitialState(this.now(), this.current.settings.language);
     this.bus.emit({ type: 'changed' });
   }
 

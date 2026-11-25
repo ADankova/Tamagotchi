@@ -5,6 +5,7 @@ import { hasNewNeed, soundForAction, soundForEvent } from './audio/tunes';
 import { getNeeds } from './core/pet';
 import type { Need } from './core/types';
 import { Game } from './game';
+import { setLanguage } from './i18n';
 import { createNotifier, setupNativeShell } from './platform';
 import { UI, type LastReminder } from './render/ui';
 import type { KeyValueStorage } from './storage/save';
@@ -31,6 +32,9 @@ async function main(): Promise<void> {
   if (!root) throw new Error('Не найден элемент #app');
 
   const game = new Game({ storage: pickStorage() });
+  // Сначала загружаем сохранение: от него зависит язык, на котором строится интерфейс.
+  const info = game.start();
+  setLanguage(game.state.settings.language);
   const sound = new Sound();
   const notifier = await createNotifier();
   const REMINDER_KEY = 'tamagotchi.reminder';
@@ -48,7 +52,6 @@ async function main(): Promise<void> {
     playSound: (name) => sound.play(name),
     lastReminder: readReminder,
   });
-  const info = game.start();
 
   // --- Звук ---
   const unlock = () => sound.unlock();

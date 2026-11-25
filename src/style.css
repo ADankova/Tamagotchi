@@ -854,6 +854,7 @@ body.overlay-open {
 }
 
 .level-button {
+  flex-wrap: wrap;
   justify-content: space-between;
   width: 100%;
   --btn: var(--sky);
@@ -999,6 +1000,9 @@ body.overlay-open {
 .q-cell[data-region='4'] { --cell: #bba8ff; }
 .q-cell[data-region='5'] { --cell: #ff9f8a; }
 .q-cell[data-region='6'] { --cell: #e8c39e; }
+.q-cell[data-region='7'] { --cell: #b5e48c; }
+.q-cell[data-region='8'] { --cell: #f4a6f0; }
+.q-cell[data-region='9'] { --cell: #9bb7ff; }
 
 /* Крестик: белый у игрока, красный — ошибка. */
 .q-x {
@@ -1486,4 +1490,23 @@ body.overlay-open {
   .bar-fill[data-level='low'] {
     animation: none;
   }
+}
+
+/* --- Язык и счётчики игр --- */
+.language-select {
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 10px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.level-stats {
+  flex-basis: 100%;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.75;
 }
