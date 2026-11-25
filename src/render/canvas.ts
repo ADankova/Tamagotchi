@@ -10,7 +10,11 @@ import {
   type CutsceneKind,
   type Scene,
 } from './scene';
-import { SPRITES, type Sprite } from './sprites';
+import { backdropAt, drawBackdrop, hourOf } from './backdrop';
+import { drawButterfly, drawPet, drawProp, petArtVersion } from './petArt';
+import { SPECIES_LOOKS, type BodyStage } from './species';
+import { SPRITES, type Sprite, type SpriteName } from './sprites';
+import type { Species } from '../core/types';
 
 export interface Palette {
   bg: string;
@@ -37,6 +41,60 @@ export const LCD_DIM: Palette = {
   shade: '#55614a',
   light: '#a9b496',
 };
+
+/** Цвета мелких предметов (миска, мяч, сердечки…) на цветном экране. */
+const PROP_PALETTE: Palette = {
+  bg: 'transparent',
+  ghost: 'transparent',
+  ink: '#5a3b36',
+  shade: '#b98f7e',
+  light: '#fffaf0',
+};
+
+const tint = (ink: string, shade: string, light = '#fffaf0'): Palette => ({ bg: 'transparent', ghost: 'transparent', ink, shade, light });
+
+/** Свои цвета у предметов, чтобы они не выглядели тёмными пятнами на светлом фоне. */
+const PROP_TINTS: Partial<Record<SpriteName, Palette>> = {
+  heart: tint('#e64f7a', '#ff9fb9'),
+  sparkle: tint('#f0a60e', '#ffd86b'),
+  zed: tint('#8e7cd6', '#c4b8f2'),
+  skull: tint('#6f9f82', '#a9d4b8', '#f1fff4'),
+  tear: tint('#4c9be0', '#9fd0f5', '#eaf6ff'),
+  bubble: tint('#5aaee6', '#a8dbf5', '#eafaff'),
+  poopSmall: tint('#6b4328', '#a8743f', '#d2a06a'),
+  bowl: tint('#c0663a', '#f4a96a', '#fff0d6'),
+  ball: tint('#e45c5c', '#5aaee6', '#ffffff'),
+  candy: tint('#d94f8c', '#ffa3c7', '#fff0f6'),
+  pill: tint('#d94f4f', '#f3bcbc', '#ffffff'),
+};
+
+/** Какое тело какому спрайту соответствует: по имени спрайта находим вид и стадию. */
+const BODY_OF = new Map<SpriteName, { species: Species; stage: BodyStage }>();
+const TAIL_NAMES = new Set<SpriteName>();
+for (const [species, look] of Object.entries(SPECIES_LOOKS) as [Species, (typeof SPECIES_LOOKS)[Species]][]) {
+  for (const [stage, name] of Object.entries(look.bodies) as [BodyStage, SpriteName][]) {
+    BODY_OF.set(name, { species, stage });
+  }
+  look.tail?.forEach((n) => TAIL_NAMES.add(n));
+}
+
+const propCache = new Map<SpriteName, HTMLCanvasElement>();
+
+/** Предмет, нарисованный один раз крупными пикселями; на экран выводится со сглаживанием. */
+function propImage(name: SpriteName): HTMLCanvasElement {
+  let c = propCache.get(name);
+  if (!c) {
+    const sprite = SPRITES[name];
+    const px = 4;
+    c = document.createElement('canvas');
+    c.width = sprite.w * px;
+    c.height = sprite.h * px;
+    const ctx = c.getContext('2d');
+    if (ctx) drawSprite(ctx, sprite, 0, 0, px, 0, PROP_TINTS[name] ?? PROP_PALETTE);
+    propCache.set(name, c);
+  }
+  return c;
+}
 
 export function colorFor(ch: string, palette: Palette, eyesClosed: boolean): string | null {
   switch (ch) {
@@ -154,24 +212,50 @@ export class PetCanvas {
 
   private draw(t: number): void {
     const scene = this.scene(t);
-    const key = scene ? JSON.stringify(scene) : 'empty';
+    const now = new Date();
+    const key = `${scene ? JSON.stringify(scene) : 'empty'}|${Math.floor(now.getTime() / 60000)}|${petArtVersion()}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
 
     const { ctx, cell } = this;
-    const palette = scene?.dim ? LCD_DIM : LCD;
-    const gap = cell >= 4 ? 1 : 0;
+    const { width, height } = this.canvas;
+    const reduced = this.motionQuery?.matches ?? false;
+    // Один пиксель рисунка питомца (64×64) занимает целое число пикселей экрана; взрослый занимает около трети ширины.
+    const scale = Math.max(1, Math.floor(cell / 4.5));
 
-    ctx.fillStyle = palette.bg;
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    if (gap) {
-      ctx.fillStyle = palette.ghost;
-      for (let y = 0; y < SCREEN_H; y++) {
-        for (let x = 0; x < SCREEN_W; x++) ctx.fillRect(x * cell, y * cell, cell - gap, cell - gap);
+    ctx.imageSmoothingEnabled = false;
+    drawBackdrop(ctx, width, height, backdropAt(hourOf(now)));
+
+    for (const item of scene?.items ?? []) {
+      const sprite = SPRITES[item.sprite];
+      const cx = (item.x + sprite.w / 2) * cell;
+      const feet = (item.y + sprite.h) * cell;
+      const body = BODY_OF.get(item.sprite);
+      if (body) {
+        drawPet(ctx, body.species, body.stage, item.anim ?? 'idle', item.frame ?? 0, cx, feet, scale);
+      } else if (TAIL_NAMES.has(item.sprite)) {
+        continue; // хвост нарисован вместе с телом
+      } else if (item.sprite === 'egg' || item.sprite === 'eggCracked') {
+        const frame = reduced ? 0 : Math.floor(t / 150);
+        drawProp(ctx, item.sprite, frame, cx, feet, scale);
+      } else if (item.sprite === 'grave') {
+        drawProp(ctx, 'grave', 0, cx, feet, scale);
+      } else {
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(propImage(item.sprite), item.x * cell, item.y * cell, sprite.w * cell, sprite.h * cell);
+        ctx.imageSmoothingEnabled = false;
       }
     }
-    for (const item of scene?.items ?? []) {
-      drawSprite(ctx, SPRITES[item.sprite], item.x, item.y, cell, gap, palette, item.eyesClosed);
+
+    if (scene?.butterfly) {
+      const b = scene.butterfly;
+      drawButterfly(ctx, b.frame, b.x * cell, b.y * cell, scale);
+    }
+
+    // Ночью во сне экран притемняется.
+    if (scene?.dim) {
+      ctx.fillStyle = 'rgba(24, 28, 70, 0.4)';
+      ctx.fillRect(0, 0, width, height);
     }
   }
 }

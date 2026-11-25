@@ -207,8 +207,8 @@ summary:focus-visible {
 
 .hero-sprite {
   display: block;
-  width: 108px;
-  height: auto;
+  width: 128px;
+  height: 128px;
   margin: 10px auto 14px;
   image-rendering: pixelated;
   animation: hop 1.2s steps(2, jump-none) infinite;
@@ -284,12 +284,12 @@ summary:focus-visible {
 }
 
 .species-sprite {
-  width: 56px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
   image-rendering: pixelated;
-  padding: 4px;
-  background: #c9d4b2;
+  padding: 2px;
+  background: linear-gradient(#fff4dc, #ffe7d2);
   border: 2px solid var(--ink);
   border-radius: 10px;
 }
@@ -449,7 +449,7 @@ summary:focus-visible {
   aspect-ratio: 4 / 3;
   border-radius: 8px;
   image-rendering: pixelated;
-  background: #c9d4b2;
+  background: #fff4e6;
 }
 
 .needs {
@@ -1217,13 +1217,13 @@ body.overlay-open {
 
 .memory-sprite {
   width: 72px;
-  height: 64px;
+  height: 72px;
   object-fit: contain;
   image-rendering: pixelated;
-  background: #c9d4b2;
+  background: linear-gradient(#fff4dc, #ffe7d2);
   border: 2px solid var(--ink);
   border-radius: 12px;
-  padding: 6px;
+  padding: 2px;
 }
 
 .memory-name {
