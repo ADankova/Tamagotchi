@@ -3,6 +3,7 @@ import { NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { ActionType, Pet, StatKey } from '../core/types';
 import type { Absence, Game } from '../game';
+import type { Notifier } from '../notify/notifier';
 import { careGrade, summarizeGraveyard } from '../memorial';
 import type { GraveRecord } from '../storage/save';
 import {
@@ -15,6 +16,7 @@ import {
   FORM_LABELS,
   formatDuration,
   MOOD_LABELS,
+  SETTINGS_TEXT,
   STAGE_LABELS,
   STAT_LABELS,
   T,
@@ -24,13 +26,21 @@ import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, spriteDataUrl, STAT_ICONS } from './icons';
 import { CUTSCENE_MS, stageSprite } from './scene';
 import type { SpriteName } from './sprites';
+import { APP_VERSION } from '../version';
 
 const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'hygiene', 'health'];
 const MESSAGE_TTL_MS = 4000;
 const LCD_TRANSPARENT = { ...LCD, bg: 'transparent', ghost: 'transparent' };
 
 type Attrs = Record<string, string>;
-type Screen = 'start' | 'game' | 'results' | 'memory';
+type Screen = 'start' | 'game' | 'results' | 'memory' | 'settings';
+type View = 'main' | 'memory' | 'settings';
+
+export interface UiServices {
+  notifier: Notifier;
+  /** Короткий звук-подтверждение (после включения звука). */
+  onSoundEnabled?: () => void;
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -75,6 +85,10 @@ export class UI {
   private readonly gameScreen: HTMLElement;
   private readonly resultsScreen: HTMLElement;
   private readonly memoryScreen: HTMLElement;
+  private readonly settingsScreen: HTMLElement;
+  private readonly soundSwitch: HTMLInputElement;
+  private readonly notifySwitch: HTMLInputElement;
+  private readonly notifyStatus = el('p', { class: 'setting-status', role: 'status' });
   private readonly startNotice = el('p', { class: 'notice', hidden: '' });
 
   private readonly petName = el('h2', { class: 'pet-name' });
@@ -96,7 +110,8 @@ export class UI {
   private readonly memoryList = el('ol', { class: 'memory-list' });
   private readonly memoryButtons: HTMLButtonElement[] = [];
 
-  private view: 'main' | 'memory' = 'main';
+  private view: View = 'main';
+  private memoryReturn: View = 'main';
   private messageTimer = 0;
   private lastNeedsKey = '';
   private lastMemoryKey = '';
@@ -105,6 +120,7 @@ export class UI {
   constructor(
     private readonly root: HTMLElement,
     private readonly game: Game,
+    private readonly services: UiServices,
   ) {
     const start = this.nameForm('start', T.newGame);
     this.startScreen = el('section', { class: 'screen screen-start' }, [
@@ -113,7 +129,10 @@ export class UI {
       el('p', { class: 'intro', text: T.intro }),
       this.startNotice,
       start.form,
-      this.memoryButton(),
+      el('div', { class: 'start-links' }, [
+        this.memoryButton(),
+        el('button', { type: 'button', class: 'link', 'data-open-settings': '', text: SETTINGS_TEXT.title }),
+      ]),
     ]);
 
     this.gameScreen = this.buildGameScreen();
@@ -138,11 +157,26 @@ export class UI {
       el('p', { class: 'intro', text: T.memoryIntro }),
       this.memorySummary,
       this.memoryList,
-      el('h2', { class: 'section-title', text: T.settings }),
-      el('button', { type: 'button', class: 'danger', 'data-reset': '', text: T.reset }),
     ]);
 
-    this.root.append(this.startScreen, this.gameScreen, this.resultsScreen, this.memoryScreen);
+    this.soundSwitch = el('input', { type: 'checkbox', role: 'switch', id: 'setting-sound' });
+    this.notifySwitch = el('input', { type: 'checkbox', role: 'switch', id: 'setting-notify' });
+    this.settingsScreen = el('section', { class: 'screen screen-settings', 'aria-labelledby': 'settings-title' }, [
+      el('div', { class: 'memory-head' }, [
+        el('button', { type: 'button', class: 'link', 'data-close-view': '', text: `← ${T.back}` }),
+        el('h1', { id: 'settings-title', text: SETTINGS_TEXT.title }),
+      ]),
+      this.settingRow(this.soundSwitch, SETTINGS_TEXT.sound, SETTINGS_TEXT.soundHint),
+      this.settingRow(this.notifySwitch, SETTINGS_TEXT.notifications, SETTINGS_TEXT.notificationsHint, this.notifyStatus),
+      el('h2', { class: 'section-title', text: SETTINGS_TEXT.data }),
+      el('div', { class: 'settings-buttons' }, [
+        this.memoryButton(false, 'plain'),
+        el('button', { type: 'button', class: 'danger', 'data-reset': '', text: T.reset }),
+      ]),
+      el('p', { class: 'version', text: SETTINGS_TEXT.version(APP_VERSION) }),
+    ]);
+
+    this.root.append(this.startScreen, this.gameScreen, this.resultsScreen, this.memoryScreen, this.settingsScreen);
     this.bindEvents();
     this.petCanvas.start();
   }
@@ -187,6 +221,8 @@ export class UI {
     this.gameScreen.hidden = screen !== 'game';
     this.resultsScreen.hidden = screen !== 'results';
     this.memoryScreen.hidden = screen !== 'memory';
+    this.settingsScreen.hidden = screen !== 'settings';
+    if (screen === 'settings') void this.renderSettings();
 
     if (pet && screen === 'game') this.renderGame(pet);
     if (pet && screen === 'results') this.renderResults(pet);
@@ -201,7 +237,7 @@ export class UI {
   }
 
   private currentScreen(pet: Pet | null): Screen {
-    if (this.view === 'memory') return 'memory';
+    if (this.view !== 'main') return this.view;
     if (!pet) return 'start';
     // Пока идёт сценка смерти, остаёмся на игровом экране.
     if (pet.stage === 'dead' && !this.petCanvas.isPlaying('death')) return 'results';
@@ -210,8 +246,9 @@ export class UI {
 
   // --- Построение ---
 
-  private memoryButton(optional = true): HTMLButtonElement {
-    const b = el('button', { type: 'button', class: 'link memory-link', 'data-open-memory': '' });
+  private memoryButton(optional = true, style: 'link' | 'plain' = 'link'): HTMLButtonElement {
+    const cls = style === 'link' ? 'link memory-link' : 'memory-link';
+    const b = el('button', { type: 'button', class: cls, 'data-open-memory': '' });
     b.dataset.optional = String(optional);
     this.memoryButtons.push(b);
     return b;
@@ -296,13 +333,21 @@ export class UI {
       stats,
       actions,
       this.message,
-      el('div', { class: 'controls-footer' }, [this.memoryButton(false)]),
+      el('div', { class: 'controls-footer' }, [
+        this.memoryButton(false),
+        el('button', { type: 'button', class: 'link', 'data-open-settings': '', text: SETTINGS_TEXT.title }),
+      ]),
     ]);
 
     return el('section', { class: 'screen screen-game' }, [device, controls]);
   }
 
   private bindEvents(): void {
+    this.soundSwitch.addEventListener('change', () => {
+      this.game.setSettings({ sound: this.soundSwitch.checked });
+      if (this.soundSwitch.checked) this.services.onSoundEnabled?.();
+    });
+    this.notifySwitch.addEventListener('change', () => void this.toggleNotifications(this.notifySwitch.checked));
     this.root.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const btn = target.closest<HTMLElement>('[data-action]');
@@ -311,8 +356,13 @@ export class UI {
         return;
       }
       if (target.closest('[data-dismiss]')) this.absenceBox.hidden = true;
-      if (target.closest('[data-open-memory]')) this.setView('memory');
-      if (target.closest('[data-close-memory]')) this.setView('main');
+      if (target.closest('[data-open-memory]')) {
+        this.memoryReturn = this.view === 'settings' ? 'settings' : 'main';
+        this.setView('memory');
+      }
+      if (target.closest('[data-open-settings]')) this.setView('settings');
+      if (target.closest('[data-close-memory]')) this.setView(this.memoryReturn);
+      if (target.closest('[data-close-view]')) this.setView('main');
       if (target.closest('[data-reset]') && window.confirm(T.resetConfirm)) {
         this.game.resetAll();
         this.absenceBox.hidden = true;
@@ -322,10 +372,7 @@ export class UI {
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.view === 'memory') {
-        this.setView('main');
-        return;
-      }
+      if (e.key === 'Escape' && this.handleBack()) return;
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
       if (this.gameScreen.hidden) return;
       const action = ACTIONS[Number(e.key) - 1];
@@ -352,15 +399,64 @@ export class UI {
     bus.on('wokeUp', (e) => e.auto && this.say(EVENT_MESSAGES.wokeUpAuto(this.name())));
   }
 
-  private setView(view: 'main' | 'memory'): void {
+  /** Системная «Назад» или Esc: закрыть вложенный экран. false — мы уже на главном. */
+  handleBack(): boolean {
+    if (this.view === 'main') return false;
+    this.setView(this.view === 'memory' ? this.memoryReturn : 'main');
+    return true;
+  }
+
+  private setView(view: View): void {
     this.view = view;
     this.render();
     const focusTarget =
       view === 'memory'
         ? this.memoryScreen.querySelector<HTMLElement>('[data-close-memory]')
-        : this.root.querySelector<HTMLElement>('.screen:not([hidden]) [data-open-memory]');
+        : view === 'settings'
+          ? this.settingsScreen.querySelector<HTMLElement>('[data-close-view]')
+          : this.root.querySelector<HTMLElement>('.screen:not([hidden]) [data-open-memory]');
     focusTarget?.focus();
     window.scrollTo({ top: 0 });
+  }
+
+  private settingRow(input: HTMLInputElement, title: string, hint: string, extra?: HTMLElement): HTMLElement {
+    return el('div', { class: 'setting' }, [
+      el('label', { class: 'setting-label', for: input.id }, [
+        el('span', { class: 'setting-title', text: title }),
+        el('span', { class: 'setting-hint', text: hint }),
+      ]),
+      el('span', { class: 'switch' }, [input, el('span', { class: 'switch-track', 'aria-hidden': 'true' })]),
+      ...(extra ? [extra] : []),
+    ]);
+  }
+
+  private async toggleNotifications(on: boolean): Promise<void> {
+    if (!on) {
+      this.game.setSettings({ notifications: false });
+      await this.services.notifier.cancel();
+      return;
+    }
+    const granted = await this.services.notifier.request();
+    this.game.setSettings({ notifications: granted });
+    if (!granted) this.notifySwitch.checked = false;
+    await this.renderSettings(true);
+  }
+
+  private async renderSettings(afterRequest = false): Promise<void> {
+    const { settings } = this.game.state;
+    this.soundSwitch.checked = settings.sound;
+    this.notifySwitch.checked = settings.notifications;
+    const { notifier } = this.services;
+    const permission = await notifier.permission();
+    this.notifySwitch.disabled = permission === 'unsupported';
+    this.notifyStatus.textContent =
+      permission === 'unsupported'
+        ? SETTINGS_TEXT.notificationsUnsupported
+        : permission === 'denied' && (afterRequest || settings.notifications)
+          ? SETTINGS_TEXT.notificationsDenied
+          : notifier.kind === 'web' && settings.notifications
+            ? SETTINGS_TEXT.notificationsWeb
+            : '';
   }
 
   // --- Отрисовка ---

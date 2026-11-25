@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.adankova.tamagotchi",
+  "appName": "Тамагочи",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#efe9dc"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_tamagotchi",
+      "iconColor": "#d9845a"
+    }
+  }
+}

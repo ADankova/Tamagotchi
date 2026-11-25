@@ -1,4 +1,9 @@
+import { Sound } from './audio/sound';
+import { hasNewNeed, soundForAction, soundForEvent } from './audio/tunes';
+import { getNeeds } from './core/pet';
+import type { StatKey } from './core/types';
 import { Game } from './game';
+import { createNotifier, setupNativeShell } from './platform';
 import { mountDebugPanel } from './render/debug';
 import { UI } from './render/ui';
 import type { KeyValueStorage } from './storage/save';
@@ -20,16 +25,64 @@ function pickStorage(): KeyValueStorage {
   }
 }
 
-const root = document.getElementById('app');
-if (!root) throw new Error('Не найден элемент #app');
+async function main(): Promise<void> {
+  const root = document.getElementById('app');
+  if (!root) throw new Error('Не найден элемент #app');
 
-const game = new Game({ storage: pickStorage() });
-const ui = new UI(root, game);
-const info = game.start();
+  const game = new Game({ storage: pickStorage() });
+  const sound = new Sound();
+  const notifier = await createNotifier();
+  const ui = new UI(root, game, { notifier, onSoundEnabled: () => sound.play('toggle') });
+  const info = game.start();
 
-if (info.status === 'corrupted') ui.showCorruptedNotice();
-if (info.absence) ui.showAbsence(info.absence);
-if (new URLSearchParams(window.location.search).get('debug') === '1') mountDebugPanel(root, game);
+  // --- Звук ---
+  const unlock = () => sound.unlock();
+  window.addEventListener('pointerdown', unlock, { passive: true });
+  window.addEventListener('keydown', unlock);
+  let lastNeeds: StatKey[] = [];
+  game.bus.onAny((e) => {
+    sound.setEnabled(game.state.settings.sound);
+    const pet = game.state.pet;
+    if (e.type === 'actionDone') sound.play(soundForAction(e.action, pet?.isSleeping ?? false));
+    else if (e.type === 'actionBlocked') {
+      if (e.reason !== 'cooldown') sound.play('blocked');
+    } else if (e.type === 'changed') {
+      const needs = pet && pet.stage !== 'dead' ? getNeeds(pet) : [];
+      if (hasNewNeed(lastNeeds, needs)) sound.play('alert');
+      lastNeeds = needs;
+    } else if (e.type !== 'saveFailed') {
+      const name = soundForEvent(e);
+      if (name) sound.play(name);
+    }
+  });
 
-ui.render();
-game.run(window);
+  // --- Напоминания: ставим, когда игра уходит в фон, снимаем при возвращении ---
+  const goAway = () => {
+    const pet = game.state.pet;
+    if (game.state.settings.notifications && pet && pet.stage !== 'dead') void notifier.scheduleAway(pet);
+  };
+  const comeBack = () => void notifier.cancel();
+  document.addEventListener('visibilitychange', () => (document.hidden ? goAway() : comeBack()));
+  await setupNativeShell({
+    onBack: () => ui.handleBack(),
+    onPause: () => {
+      game.update();
+      game.save();
+      goAway();
+    },
+    onResume: () => {
+      comeBack();
+      game.update();
+    },
+  });
+
+  if (info.status === 'corrupted') ui.showCorruptedNotice();
+  if (info.absence) ui.showAbsence(info.absence);
+  if (new URLSearchParams(window.location.search).get('debug') === '1') mountDebugPanel(root, game);
+
+  sound.setEnabled(game.state.settings.sound);
+  ui.render();
+  game.run(window);
+}
+
+void main();

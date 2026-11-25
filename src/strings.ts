@@ -1,6 +1,7 @@
 import type { AbsenceNote } from './core/absence';
 import type { ActionBlockReason } from './core/actions';
 import { DAY, HOUR, MINUTE } from './core/config';
+import type { AttentionReason } from './core/forecast';
 import type { ActionType, AdultForm, CauseOfDeath, LifeStage, Mood, StatKey } from './core/types';
 
 // Все тексты интерфейса — здесь, чтобы игру можно было перевести.
@@ -40,6 +41,28 @@ export const T = {
   diedOn: (date: string) => `умер ${date}`,
   diedWhileAway: (name: string) => `${name} не дождался тебя.`,
   openMemory: (n: number) => (n > 0 ? `Зал памяти (${n})` : 'Зал памяти'),
+} as const;
+
+export const ATTENTION_TEXT: Record<AttentionReason, (name: string) => string> = {
+  hatch: (name) => `${name} вылупился! Загляни познакомиться.`,
+  hungry: (name) => `${name} проголодался.`,
+  dirty: (name) => `${name} весь в грязи, пора убрать.`,
+  bored: (name) => `${name} скучает без тебя.`,
+  sick: (name) => `${name} заболел. Нужно лекарство.`,
+  dying: (name) => `${name} очень плохо себя чувствует!`,
+};
+
+export const SETTINGS_TEXT = {
+  title: 'Настройки',
+  sound: 'Звук',
+  soundHint: '8-битные звуки на действия и события.',
+  notifications: 'Напоминания',
+  notificationsHint: 'Сообщим, когда питомцу понадобится забота.',
+  notificationsDenied: 'Уведомления запрещены. Разрешите их в настройках браузера или телефона.',
+  notificationsUnsupported: 'Этот браузер не умеет показывать уведомления.',
+  notificationsWeb: 'В браузере напоминание придёт, только пока вкладка открыта.',
+  data: 'Данные',
+  version: (v: string) => `Версия ${v}`,
 } as const;
 
 export const CARE_LABELS: Record<AdultForm, string> = {
