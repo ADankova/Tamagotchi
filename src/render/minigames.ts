@@ -11,7 +11,9 @@ import {
 } from '../core/queens';
 import { randomSeed } from '../core/rng';
 import type { LevelStats } from '../core/stats';
+import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
+import { el } from './dom';
 
 // Окно мини-игр поверх экрана питомца: список игр и «Судоку с питомцем».
 
@@ -24,28 +26,34 @@ export interface MiniGameHost {
   stats: (size: number) => LevelStats;
   /** Партия закончена: победа, награда в лакомствах и размер поля (для счётчиков). */
   onFinish: (won: boolean, reward: number, size: number) => void;
+  /** «Питомцы-блоки»: сыграно и рекорд. */
+  slideStats: () => LevelStats;
+  /** Лакомство собрано прямо в игре — начислить сразу. */
+  earnTreats: (n: number) => void;
+  /** Партия «Питомцев-блоков» окончена: счётчики и эффект игры. */
+  finishSlide: (lines: number, treats: number) => void;
+  /** Картинка лакомства (data URL). */
+  treatImage: string;
+}
+
+/** Экран одной игры внутри окна. */
+export interface GameScreen {
+  readonly root: HTMLElement;
+  hasProgress(): boolean;
+  /** Что спросить, прежде чем выйти посреди партии. */
+  readonly leaveText: string;
+  /** Вызывается, когда игрок всё-таки вышел посреди партии. */
+  leave?(): void;
 }
 
 const DOUBLE_TAP_MS = 260;
 const RULES: readonly QueensRule[] = ['region', 'line', 'touch'];
 
-type Attrs = Record<string, string>;
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, children: Array<Node | string> = []): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') node.className = v;
-    else if (k === 'text') node.textContent = v;
-    else node.setAttribute(k, v);
-  }
-  node.append(...children);
-  return node;
-}
-
 /** Модальное окно мини-игр. close() закрывает его; системная «Назад» тоже ведёт сюда. */
 export class GamesOverlay {
   private readonly root: HTMLElement;
   private readonly body: HTMLElement;
-  private game: QueensGame | null = null;
+  private game: GameScreen | null = null;
 
   constructor(
     private readonly host: MiniGameHost,
@@ -61,7 +69,10 @@ export class GamesOverlay {
   /** «Назад»: из игры — в список, из списка — закрыть окно. */
   back(): void {
     if (this.game) {
-      if (this.game.hasProgress() && !window.confirm(GAMES_TEXT.leaveConfirm)) return;
+      if (this.game.hasProgress()) {
+        if (!window.confirm(this.game.leaveText)) return;
+        this.game.leave?.();
+      }
       this.game = null;
       this.showMenu();
     } else {
@@ -99,10 +110,26 @@ export class GamesOverlay {
       el('p', { class: 'game-card-about', text: GAMES_TEXT.queensAbout }),
       el('div', { class: 'level-buttons' }, levels),
     ]);
+    const slideStats = this.host.slideStats();
+    const slidePlay = el('button', { type: 'button', class: 'chunky level-button slide-play' }, [
+      el('span', { class: 'level-name', text: GAMES_TEXT.slidePlay }),
+      el('span', { class: 'level-info', text: '10×10' }),
+      el('span', { class: 'level-stats', text: GAMES_TEXT.slideStats(slideStats.played, slideStats.best ?? 0) }),
+    ]);
+    slidePlay.addEventListener('click', () => this.startSlide());
+    const slideCard = el('section', { class: 'game-card' }, [
+      el('div', { class: 'game-card-head' }, [
+        el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
+        el('h2', { text: GAMES_TEXT.slideTitle }),
+      ]),
+      el('p', { class: 'game-card-about', text: GAMES_TEXT.slideAbout }),
+      el('div', { class: 'level-buttons' }, [slidePlay]),
+    ]);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
       card,
+      slideCard,
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
     this.body.querySelector<HTMLElement>('.level-button')?.focus();
@@ -119,6 +146,15 @@ export class GamesOverlay {
     });
     this.body.replaceChildren(this.game.root);
   }
+
+  private startSlide(): void {
+    this.game = new SlideGame(this.host, {
+      header: (title) => this.header(title, () => this.back(), '←'),
+      replay: () => this.startSlide(),
+      done: () => this.close(),
+    });
+    this.body.replaceChildren(this.game.root);
+  }
 }
 
 interface QueensCallbacks {
@@ -130,7 +166,8 @@ interface QueensCallbacks {
 type Mark = 'none' | 'cross' | 'wrong' | 'pet';
 
 /** Экран головоломки: поле, сердечки, правила, победа и поражение. */
-class QueensGame {
+class QueensGame implements GameScreen {
+  readonly leaveText = GAMES_TEXT.leaveConfirm;
   readonly root: HTMLElement;
   private readonly puzzle: Puzzle;
   private readonly marks: Mark[][];

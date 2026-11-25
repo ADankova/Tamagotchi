@@ -142,7 +142,7 @@ export function deserialize(raw: string): GameState | null {
   const data = migrate(parsed);
   if (!data || !isGameState(data)) return null;
   const { pet, lastUpdated, cooldowns, settings, graveyard, gameStats } = data;
-  return { pet, lastUpdated, cooldowns, settings, graveyard, gameStats };
+  return { pet, lastUpdated, cooldowns, settings, graveyard, gameStats: { ...emptyStats(), ...gameStats } };
 }
 
 export function loadState(storage: KeyValueStorage, now: number): LoadResult {
@@ -251,7 +251,18 @@ function isGraveRecord(v: unknown): v is GraveRecord {
 
 function isGameStats(v: unknown): v is GameStats {
   if (!isRecord(v) || !isRecord(v.queens)) return false;
-  return Object.values(v.queens).every((l) => isRecord(l) && isNum(l.played) && l.played >= 0 && isNum(l.won) && l.won >= 0);
+  // «Питомцы-блоки» появились в 1.7.0 — в сохранениях 1.6.0 их счётчиков ещё нет.
+  if (v.slide !== undefined && !isRecord(v.slide)) return false;
+  const levels = [...Object.values(v.queens), ...Object.values(isRecord(v.slide) ? v.slide : {})];
+  return levels.every(
+    (l) =>
+      isRecord(l) &&
+      isNum(l.played) &&
+      l.played >= 0 &&
+      isNum(l.won) &&
+      l.won >= 0 &&
+      (l.best === undefined || isNum(l.best)),
+  );
 }
 
 function isGameState(v: Record<string, unknown>): v is Record<string, unknown> & GameState {
