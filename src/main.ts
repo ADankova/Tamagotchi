@@ -5,7 +5,7 @@ import type { StatKey } from './core/types';
 import { Game } from './game';
 import { createNotifier, setupNativeShell } from './platform';
 import { mountDebugPanel } from './render/debug';
-import { UI } from './render/ui';
+import { UI, type LastReminder } from './render/ui';
 import type { KeyValueStorage } from './storage/save';
 
 /** localStorage может быть недоступен (приватный режим, запрет cookies) — тогда играем без сохранения. */
@@ -32,7 +32,20 @@ async function main(): Promise<void> {
   const game = new Game({ storage: pickStorage() });
   const sound = new Sound();
   const notifier = await createNotifier();
-  const ui = new UI(root, game, { notifier, onSoundEnabled: () => sound.play('toggle') });
+  const REMINDER_KEY = 'tamagotchi.reminder';
+  const readReminder = (): LastReminder | null => {
+    try {
+      const v = JSON.parse(localStorage.getItem(REMINDER_KEY) ?? 'null');
+      return v && typeof v.at === 'number' && typeof v.reason === 'string' ? (v as LastReminder) : null;
+    } catch {
+      return null;
+    }
+  };
+  const ui = new UI(root, game, {
+    notifier,
+    onSoundEnabled: () => sound.play('toggle'),
+    lastReminder: readReminder,
+  });
   const info = game.start();
 
   // --- Звук ---
@@ -59,7 +72,15 @@ async function main(): Promise<void> {
   // --- Напоминания: ставим, когда игра уходит в фон, снимаем при возвращении ---
   const goAway = () => {
     const pet = game.state.pet;
-    if (game.state.settings.notifications && pet && pet.stage !== 'dead') void notifier.scheduleAway(pet);
+    if (!game.state.settings.notifications || !pet || pet.stage === 'dead') return;
+    void notifier.scheduleAway(pet).then((attention) => {
+      if (!attention) return;
+      try {
+        localStorage.setItem(REMINDER_KEY, JSON.stringify({ at: Date.now() + attention.inMs, reason: attention.reason }));
+      } catch {
+        // не страшно: это только подсказка в настройках
+      }
+    });
   };
   const comeBack = () => void notifier.cancel();
   document.addEventListener('visibilitychange', () => (document.hidden ? goAway() : comeBack()));

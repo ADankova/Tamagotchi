@@ -14,7 +14,11 @@ export interface Notifier {
   request(): Promise<boolean>;
   scheduleAway(pet: Pet): Promise<Attention | null>;
   cancel(): Promise<void>;
+  /** Пробное уведомление через несколько секунд — проверить, что они вообще доходят. */
+  test(): Promise<boolean>;
 }
+
+export const TEST_DELAY_MS = 5000;
 
 export function attentionMessage(pet: Pet, attention: Attention): { title: string; body: string } {
   return { title: T.title, body: ATTENTION_TEXT[attention.reason](pet.name) };
@@ -59,6 +63,18 @@ export class WebNotifier implements Notifier {
     window.clearTimeout(this.timer);
     this.timer = 0;
   }
+
+  async test(): Promise<boolean> {
+    if (!(await this.request())) return false;
+    window.setTimeout(() => {
+      try {
+        new Notification(T.title, { body: T.testNotification, tag: 'tamagotchi-test' });
+      } catch {
+        // конструктор запрещён на некоторых мобильных браузерах
+      }
+    }, TEST_DELAY_MS);
+    return true;
+  }
 }
 
 export class NoNotifier implements Notifier {
@@ -73,4 +89,7 @@ export class NoNotifier implements Notifier {
     return null;
   }
   async cancel(): Promise<void> {}
+  async test(): Promise<boolean> {
+    return false;
+  }
 }
