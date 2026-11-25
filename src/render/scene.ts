@@ -1,4 +1,4 @@
-import { getMood } from '../core/pet';
+import { getMood, getNeeds } from '../core/pet';
 import type { ActionType, AdultForm, LifeStage, Pet, Species } from '../core/types';
 import { bodyStage, SPECIES_LOOKS, TAIL_OVERLAP } from './species';
 import { SPRITES, type SpriteName } from './sprites';
@@ -52,12 +52,42 @@ export interface ActiveAction {
   startedAt: number;
 }
 
+/** Строка листа анимаций питомца: какую анимацию играть. */
+export type AnimRow = 'idle' | 'sleep' | 'eat' | 'sick' | 'hungry' | 'tired';
+
+/** Кадров в каждой анимации листа. */
+export const SHEET_FRAMES = 9;
+const ANIM_FRAME_MS: Readonly<Record<AnimRow, number>> = {
+  idle: 110,
+  sleep: 200,
+  eat: 130,
+  sick: 140,
+  hungry: 170,
+  tired: 200,
+};
+
+export function animFrame(row: AnimRow, t: number, motion: number): number {
+  return motion ? Math.floor(t / ANIM_FRAME_MS[row]) % SHEET_FRAMES : 0;
+}
+
 export interface Placed {
   sprite: SpriteName;
   x: number;
   y: number;
   eyesClosed?: boolean;
+  /** Только у тела питомца: строка и кадр цветной анимации. */
+  anim?: AnimRow;
+  frame?: number;
 }
+
+export interface Butterfly {
+  /** Левый верхний угол в клетках; бабочка занимает около 8×8 клеток. */
+  x: number;
+  y: number;
+  frame: number;
+}
+
+export const BUTTERFLY_FRAMES = 5;
 
 export interface Scene {
   state: AnimState;
@@ -65,6 +95,62 @@ export interface Scene {
   dim: boolean;
   /** Порядок отрисовки: первые — снизу. */
   items: Placed[];
+  /** Бабочка из режима ожидания: питомец за ней гоняется. */
+  butterfly?: Butterfly;
+}
+
+// --- Режим ожидания: прогулка, потом охота на бабочку ---
+const WALK_SPAN_MS = 14000;
+const CHASE_MS = 8000;
+const IDLE_CYCLE_MS = WALK_SPAN_MS + CHASE_MS;
+
+/** Идёт ли сейчас охота на бабочку (в миллисекундах от её начала). */
+export function chaseTime(t: number): number | null {
+  const c = t % IDLE_CYCLE_MS;
+  return c >= WALK_SPAN_MS ? c - WALK_SPAN_MS : null;
+}
+
+interface Chase {
+  /** Центр питомца по горизонтали, клетки. */
+  cx: number;
+  /** Подъём над полом, клетки (отрицательный dy). */
+  lift: number;
+  butterfly: Butterfly;
+}
+
+/** Где бабочка и питомец в момент e мс охоты. Кошка прыгает, собака хватает зубами, пушистик бегает кругами. */
+export function chaseFrame(species: Species, e: number, t: number): Chase {
+  const mid = SCREEN_W / 2;
+  const tau = Math.PI * 2;
+  const wave = (v: number) => Math.sin(tau * v);
+  // Влёт справа и вылет вверх в конце.
+  const entering = Math.max(0, 1 - e / 900);
+  const leaving = Math.max(0, (e - (CHASE_MS - 900)) / 900);
+  const fly = (x: number): Butterfly => ({
+    x: Math.round(x - 4 + entering * 18),
+    y: Math.round(5 + 2.5 * wave(e / 1100) - leaving * 14),
+    frame: Math.floor(t / 90) % BUTTERFLY_FRAMES,
+  });
+  switch (species) {
+    case 'cat': {
+      const bx = mid + 9 * wave(e / 4200 + 0.1);
+      const ph = (e % 1500) / 1500;
+      const lift = ph < 0.6 ? Math.round(7 * Math.sin((Math.PI * ph) / 0.6)) : 0;
+      return { cx: bx, lift, butterfly: fly(bx) };
+    }
+    case 'dog': {
+      const bx = mid + 9 * wave(e / 4200 + 0.1);
+      const px = mid + 9 * wave((e - 350) / 4200 + 0.1);
+      const ph = (e % 2000) / 2000;
+      const lift = ph < 0.25 ? Math.round(5 * Math.sin((Math.PI * ph) / 0.25)) : 0;
+      return { cx: px, lift, butterfly: fly(bx) };
+    }
+    case 'blob': {
+      const cx = mid + 12 * wave(e / 2000);
+      const bx = mid + 3 * wave(e / 3000);
+      return { cx, lift: 0, butterfly: fly(bx) };
+    }
+  }
 }
 
 export function stageSprite(stage: LifeStage, form?: AdultForm, species: Species = 'blob'): SpriteName {
@@ -146,7 +232,7 @@ function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
       } else if (e < 1800) {
         items.push({ sprite: 'eggCracked', x: center('eggCracked', mid), y: onGround('eggCracked') });
       } else {
-        items.push({ sprite: c.to, x: center(c.to, mid), y: onGround(c.to) });
+        items.push({ sprite: c.to, x: center(c.to, mid), y: onGround(c.to), anim: 'idle', frame: animFrame('idle', t, motion) });
         sparkles(c.to, motion === 1);
       }
       return { state: 'hatching', dim: false, items };
@@ -154,14 +240,14 @@ function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
     case 'evolve': {
       const swapping = e < 1800;
       const shown = swapping && motion === 1 && step(e, 200) % 2 === 0 ? c.from : c.to;
-      items.push({ sprite: shown, x: center(shown, mid), y: onGround(shown) });
+      items.push({ sprite: shown, x: center(shown, mid), y: onGround(shown), anim: 'idle', frame: animFrame('idle', t, motion) });
       sparkles(shown, motion === 1);
       return { state: 'evolving', dim: false, items };
     }
 
     case 'death':
       if (e < 800) {
-        items.push({ sprite: c.from, x: center(c.from, mid), y: onGround(c.from), eyesClosed: true });
+        items.push({ sprite: c.from, x: center(c.from, mid), y: onGround(c.from), eyesClosed: true, anim: 'sleep', frame: 0 });
       } else {
         const rise = motion ? Math.round(((e - 800) / (CUTSCENE_MS.death - 800)) * 16) : 6;
         items.push({ sprite: 'ghost', x: center('ghost', mid), y: Math.max(0, onGround('ghost') - rise) });
@@ -225,12 +311,15 @@ export function composeScene(
   const tailExtra = tail ? SPRITES[tail[0]].w - TAIL_OVERLAP : 0;
   // Тело вместе с хвостом всегда целиком на экране.
   const maxX = SCREEN_W - 1 - SPRITES[name].w - tailExtra;
-  const petAt = (cx: number, dy = 0, eyesClosed = blink): Placed => ({
+  const petAt = (cx: number, dy = 0, eyesClosed = blink, anim: AnimRow = 'idle'): Placed => ({
     sprite: name,
     x: Math.max(1, Math.min(maxX, center(name, cx))),
     y: onGround(name) + dy,
     eyesClosed,
+    anim,
+    frame: animFrame(anim, t, motion),
   });
+  let butterfly: Butterfly | undefined;
 
   // Какашки лежат на полу, пока их не уберут; питомец ходит перед ними.
   if (state !== 'dead' && state !== 'egg' && state !== 'cleaning') {
@@ -253,6 +342,13 @@ export function composeScene(
 
     case 'idle': {
       // Ходит туда-обратно рывками по 2 пикселя, как на настоящем LCD.
+      const e = motion ? chaseTime(t) : null;
+      if (e !== null) {
+        const chase = chaseFrame(pet.species, e, t);
+        items.push(petAt(chase.cx, -chase.lift));
+        butterfly = chase.butterfly;
+        break;
+      }
       const walkPhase = motion ? (step(t % WALK_PERIOD_MS, STEP_MS) * STEP_MS) / WALK_PERIOD_MS : 0.25;
       const offset = Math.round((triangle(walkPhase) - 0.5) * WALK_RANGE) * 2;
       items.push(petAt(mid + offset, bob));
@@ -260,7 +356,9 @@ export function composeScene(
     }
 
     case 'sad': {
-      const p = petAt(mid, motion * (step(t, BOB_MS * 2) % 2));
+      const needs = getNeeds(pet);
+      const row: AnimRow = needs.includes('hunger') ? 'hungry' : needs.includes('energy') ? 'tired' : 'idle';
+      const p = petAt(mid, motion * (step(t, BOB_MS * 2) % 2), blink, row);
       items.push(p);
       const cycle = t % 3000;
       if (cycle < 1200) {
@@ -271,14 +369,14 @@ export function composeScene(
 
     case 'sick': {
       const jitter = motion * (step(t, 200) % 2);
-      const p = petAt(mid + jitter, 0);
+      const p = petAt(mid + jitter, 0, blink, 'sick');
       items.push(p);
       items.push({ sprite: 'skull', x: p.x - 6, y: p.y - 2 - motion * (step(t, BOB_MS) % 2) });
       break;
     }
 
     case 'sleeping': {
-      const p = petAt(mid, motion * (step(t, BOB_MS * 3) % 2), true);
+      const p = petAt(mid, motion * (step(t, BOB_MS * 3) % 2), true, 'sleep');
       items.push(p);
       const right = p.x + SPRITES[name].w;
       for (let i = 0; i < 2; i++) {
@@ -289,13 +387,13 @@ export function composeScene(
     }
 
     case 'eating': {
-      items.push(petAt(mid - 8, motion * (step(t, BOB_MS / 2) % 2)));
+      items.push(petAt(mid - 8, 0, blink, 'eat'));
       if (elapsed < ACTION_ANIM_MS.feed * 0.85) items.push({ sprite: 'bowl', x: mid + 8, y: onGround('bowl') });
       break;
     }
 
     case 'snacking': {
-      const p = petAt(mid - 6, motion * (step(t, BOB_MS / 2) % 2));
+      const p = petAt(mid - 6, 0, blink, 'eat');
       items.push(p);
       if (elapsed < ACTION_ANIM_MS.snack / 2) {
         items.push({ sprite: 'candy', x: mid + 8, y: onGround('candy') - 2 });
@@ -355,5 +453,5 @@ export function composeScene(
     items.splice(body, 0, tailItem);
   }
 
-  return { state, dim: state === 'sleeping', items };
+  return { state, dim: state === 'sleeping', items, ...(butterfly ? { butterfly } : {}) };
 }

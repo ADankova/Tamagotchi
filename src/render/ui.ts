@@ -5,7 +5,7 @@ import { SLIDE_SIZE } from '../core/slide';
 import { getLanguage, LANGUAGES, isLanguage, locale, setLanguage } from '../i18n';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
-import { SPECIES, type ActionType, type Pet, type Species, type StatKey } from '../core/types';
+import { SPECIES, type ActionType, type AdultForm, type LifeStage, type Pet, type Species, type StatKey } from '../core/types';
 import type { SoundName } from '../audio/tunes';
 import type { Absence, Game } from '../game';
 import type { Notifier } from '../notify/notifier';
@@ -32,20 +32,19 @@ import {
   T,
   wakeLabel,
 } from '../strings';
-import { LCD, PetCanvas } from './canvas';
-import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, POOP_SLOTS, stageSprite } from './scene';
+import { PetCanvas } from './canvas';
+import { ACTION_ICONS, iconImg, NEED_ICONS, STAT_ICONS } from './icons';
+import { CUTSCENE_MS, POOP_SLOTS } from './scene';
 import { GamesOverlay } from './minigames';
 import { ART } from './artData';
-import { SPECIES_LOOKS } from './species';
+import { bodyStage } from './species';
+import { portrait } from './petArt';
 import { createDevPanel } from './debug';
-import type { SpriteName } from './sprites';
 import { APP_VERSION } from '../version';
 
 const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'health'];
 const MESSAGE_TTL_MS = 4000;
 const VERSION_TAPS_TO_UNLOCK = 7;
-const LCD_TRANSPARENT = { ...LCD, bg: 'transparent', ghost: 'transparent' };
 
 type Attrs = Record<string, string>;
 type Screen = 'start' | 'game' | 'results' | 'memory' | 'settings';
@@ -81,11 +80,17 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-/** Картинка спрайта в цветах экрана — для стартового экрана, итогов и зала памяти. */
-function lcdSprite(name: SpriteName, className: string, scale = 8): HTMLImageElement {
-  const img = el('img', { class: className, alt: '' });
-  img.src = spriteDataUrl(name, scale, LCD_TRANSPARENT);
-  return img;
+/** Цветной портрет питомца — для стартового экрана, выбора животного и зала памяти. */
+function petPicture(
+  species: Species,
+  stage: Exclude<LifeStage, 'egg' | 'dead'> | 'egg' | 'dead',
+  className: string,
+  form?: AdultForm,
+): HTMLCanvasElement {
+  const body = stage === 'egg' ? 'egg' : stage === 'dead' ? 'grave' : bodyStage(stage, form);
+  const canvas = portrait(species, body, className);
+  canvas.setAttribute('aria-hidden', 'true');
+  return canvas;
 }
 
 function stageText(pet: Pet): string {
@@ -171,7 +176,7 @@ export class UI {
     const start = this.nameForm('start', T.newGame);
     this.startScreen = el('section', { class: 'screen screen-start' }, [
       el('h1', { text: T.title }),
-      lcdSprite('egg', 'hero-sprite'),
+      petPicture('blob', 'egg', 'hero-sprite'),
       el('p', { class: 'intro', text: T.intro }),
       this.startNotice,
       start.form,
@@ -188,7 +193,7 @@ export class UI {
     this.resultsInput = results.input;
     this.resultsScreen = el('section', { class: 'screen screen-results' }, [
       el('h1', { text: T.resultsTitle }),
-      lcdSprite('grave', 'hero-sprite'),
+      petPicture('blob', 'dead', 'hero-sprite'),
       this.resultsNote,
       this.resultsList,
       results.form,
@@ -373,7 +378,7 @@ export class UI {
       return el('label', { class: 'species-option', for: id }, [
         radio,
         el('span', { class: 'species-card' }, [
-          lcdSprite(SPECIES_LOOKS[species].preview, 'species-sprite', 4),
+          petPicture(species, 'child', 'species-sprite'),
           el('span', { class: 'species-name', text: SPECIES_LABELS[species] }),
         ]),
       ]);
@@ -786,7 +791,7 @@ export class UI {
     if (g.careScore !== undefined) details.push(`${T.care.toLowerCase()}: ${careText(g.careScore)}`);
     if (g.sicknessCount !== undefined) details.push(`${T.sicknesses.toLowerCase()}: ${g.sicknessCount}`);
     return el('li', { class: isRecord ? 'memory-card record' : 'memory-card' }, [
-      lcdSprite(stageSprite(g.stage, g.form, g.species ?? 'blob'), 'memory-sprite', 4),
+      petPicture(g.species ?? 'blob', g.stage, 'memory-sprite', g.form),
       el('div', { class: 'memory-text' }, [
         el('p', { class: 'memory-name' }, [
           g.name,

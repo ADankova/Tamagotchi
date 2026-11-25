@@ -4,12 +4,15 @@ import { createPet } from '../src/core/pet';
 import {
   ACTION_ANIM_MS,
   animState,
+  chaseFrame,
+  chaseTime,
   composeScene,
   GROUND_Y,
   petSprite,
   petTail,
   SCREEN_H,
   SCREEN_W,
+  SHEET_FRAMES,
   type Scene,
 } from '../src/render/scene';
 import { SPECIES } from '../src/core/types';
@@ -198,5 +201,68 @@ describe('кошка и собака', () => {
       ).size;
     expect(still({ ...cat, isSleeping: true })).toBe(1);
     expect(still({ ...cat, stats: { ...START_STATS, happiness: 5 } })).toBe(1);
+  });
+});
+
+describe('цветной питомец: анимации и бабочка', () => {
+  const body = (scene: Scene, species: 'cat' | 'dog' | 'blob') => scene.items.find((i) => i.sprite === petSprite(makePet({ species })));
+
+  it('строка анимации зависит от состояния', () => {
+    const row = (overrides: Parameters<typeof makePet>[0], t = 100) => {
+      const pet = makePet(overrides);
+      return composeScene(pet, null, t).items.find((i) => i.sprite === petSprite(pet))?.anim;
+    };
+    expect(row({})).toBe('idle');
+    expect(row({ isSleeping: true })).toBe('sleep');
+    expect(row({ isSick: true })).toBe('sick');
+    expect(row({ stats: { ...START_STATS, hunger: 10 } })).toBe('hungry');
+    expect(row({ stats: { ...START_STATS, energy: 10 } })).toBe('tired');
+    const feed = composeScene(makePet(), { action: 'feed', startedAt: 0 }, 100);
+    expect(feed.items.find((i) => i.sprite === petSprite(makePet()))?.anim).toBe('eat');
+  });
+
+  it('кадры анимации меняются со временем и замирают при reduced motion', () => {
+    const frames = new Set<number>();
+    for (let t = 0; t < 2000; t += 110) frames.add(body(composeScene(makePet(), null, t), 'blob')?.frame ?? -1);
+    expect(frames.size).toBeGreaterThan(5);
+    for (const f of frames) expect(f).toBeLessThan(SHEET_FRAMES);
+    for (let t = 0; t < 2000; t += 110) expect(body(composeScene(makePet(), null, t, true), 'blob')?.frame).toBe(0);
+  });
+
+  it('бабочка прилетает только во время охоты и только при обычной анимации', () => {
+    for (const species of SPECIES) {
+      const pet = makePet({ species });
+      expect(composeScene(pet, null, 1000).butterfly).toBe(undefined);
+      expect(chaseTime(1000)).toBeNull();
+      expect(composeScene(pet, null, 17000).butterfly !== undefined).toBe(true);
+      expect(composeScene(pet, null, 17000, true).butterfly).toBe(undefined);
+      expect(composeScene(makePet({ species, isSleeping: true }), null, 17000).butterfly).toBe(undefined);
+    }
+  });
+
+  it('кошка прыгает за бабочкой, собака хватает, пушистик бегает кругами по полу', () => {
+    const peak = (species: 'cat' | 'dog' | 'blob') => {
+      let max = 0;
+      for (let e = 0; e < 8000; e += 50) max = Math.max(max, chaseFrame(species, e, e).lift);
+      return max;
+    };
+    expect(peak('cat')).toBeGreaterThanOrEqual(6);
+    expect(peak('dog')).toBeGreaterThanOrEqual(4);
+    expect(peak('dog')).toBeLessThan(peak('cat'));
+    expect(peak('blob')).toBe(0);
+    const xs = new Set<number>();
+    for (let e = 0; e < 8000; e += 100) xs.add(Math.round(chaseFrame('blob', e, e).cx));
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(18);
+  });
+
+  it('во время охоты питомец остаётся на экране', () => {
+    for (const species of SPECIES) {
+      const pet = makePet({ species });
+      for (let t = 14000; t < 22000; t += 100) {
+        const item = body(composeScene(pet, null, t), species);
+        const s = item && SPRITES[item.sprite];
+        expect(item && s && item.x >= 0 && item.x + s.w <= SCREEN_W && item.y >= 0).toBe(true);
+      }
+    }
   });
 });
