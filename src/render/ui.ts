@@ -36,6 +36,7 @@ import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
 import { CUTSCENE_MS, petSprite, POOP_SLOTS, stageSprite } from './scene';
 import { GamesOverlay } from './minigames';
+import { treatArtUrl } from './treatArt';
 import { SPECIES_LOOKS } from './species';
 import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
@@ -551,7 +552,7 @@ export class UI {
         earnTreats: (n) => this.game.awardTreats(n),
         finishSlide: (lines, treats) =>
           this.game.finishMiniGame(treats > 0, 0, { game: 'slide', key: SLIDE_SIZE, score: lines }),
-        treatImage: spriteDataUrl(ACTION_ICONS.snack, 6),
+        treatImage: treatArtUrl(),
       },
       () => {
         this.overlay = null;

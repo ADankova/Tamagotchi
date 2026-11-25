@@ -1623,28 +1623,34 @@ body.overlay-open {
 
 .s-treat {
   position: absolute;
-  left: 50%;
+  /* слева от мордочки (она справа); конфетка 16×8 — по ширине, чтобы не вылезала */
+  left: 10%;
   top: 50%;
-  width: auto;
-  height: 70%;
-  transform: translate(-50%, -50%);
+  width: min(42%, 2.2em);
+  max-height: 80%;
+  object-fit: contain;
+  transform: translateY(-50%);
   image-rendering: pixelated;
   pointer-events: none;
-  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff);
   animation: treat-glow 1.2s ease-in-out infinite alternate;
 }
 
+/* Блок из одной клетки: конфетка меньше и в нижнем углу, мордочку не закрывает. */
 .s-block.single .s-treat {
   left: auto;
-  right: -2px;
-  top: -2px;
-  height: 55%;
+  top: auto;
+  right: -3px;
+  bottom: -3px;
+  width: 62%;
   transform: none;
 }
 
 @keyframes treat-glow {
+  from {
+    filter: drop-shadow(0 0 1px #fff);
+  }
   to {
-    filter: drop-shadow(0 0 4px #ffe066) drop-shadow(0 0 2px #fff);
+    filter: drop-shadow(0 0 3px #fff6a0);
   }
 }
 
