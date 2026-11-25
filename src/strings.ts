@@ -8,7 +8,7 @@ import type { ActionType, AdultForm, CauseOfDeath, LifeStage, Mood, StatKey } fr
 
 export const T = {
   title: 'Тамагочи',
-  intro: 'Заведи питомца и заботься о нём. Он растёт, даже когда вкладка закрыта.',
+  intro: 'Заведи питомца и заботься о нём. Он растёт, даже когда приложение закрыто.',
   nameLabel: 'Имя питомца',
   namePlaceholder: 'Например, Пушок',
   nameRequired: 'Придумай питомцу имя.',
@@ -68,7 +68,7 @@ export const SETTINGS_TEXT = {
   soundHint: '8-битные звуки на действия и события.',
   notifications: 'Напоминания',
   notificationsHint: 'Сообщим, когда питомцу понадобится забота.',
-  notificationsDenied: 'Уведомления запрещены. Разрешите их в настройках браузера или телефона.',
+  notificationsDenied: 'Уведомления запрещены. Разрешите их в настройках телефона: Приложения → Тамагочи → Уведомления.',
   notificationsUnsupported: 'Этот браузер не умеет показывать уведомления.',
   notificationsWeb: 'В браузере напоминание придёт, только пока вкладка открыта.',
   testButton: 'Проверить уведомление',

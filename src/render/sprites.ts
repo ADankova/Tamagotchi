@@ -346,6 +346,18 @@ const iconCross = sprite([
   '..###..',
 ]);
 
+const iconGear = sprite([
+  '...###...',
+  '.#.###.#.',
+  '..#####..',
+  '####.####',
+  '###...###',
+  '####.####',
+  '..#####..',
+  '.#.###.#.',
+  '...###...',
+]);
+
 const iconMoon = sprite([
   '..###.',
   '.##...',
@@ -384,6 +396,7 @@ export const SPRITES = {
   iconDrop,
   iconCross,
   iconMoon,
+  iconGear,
 } as const satisfies Record<string, Sprite>;
 
 export type SpriteName = keyof typeof SPRITES;

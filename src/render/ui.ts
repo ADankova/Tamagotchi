@@ -1,5 +1,5 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
-import { NEED_ALERT_THRESHOLD } from '../core/config';
+import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
 import type { ActionType, Pet, StatKey } from '../core/types';
@@ -100,7 +100,7 @@ export class UI {
   private readonly notifyStatus = el('p', { class: 'setting-status', role: 'status' });
   private readonly reminderInfo = el('p', { class: 'setting-status' });
   private readonly testStatus = el('p', { class: 'setting-status', role: 'status' });
-  private readonly testButton = el('button', { type: 'button', class: 'test-button', 'data-test-notify': '' });
+  private readonly testButton = el('button', { type: 'button', class: 'chunky test-button', 'data-test-notify': '' });
   private readonly startNotice = el('p', { class: 'notice', hidden: '' });
 
   private readonly petName = el('h2', { class: 'pet-name' });
@@ -143,7 +143,7 @@ export class UI {
       start.form,
       el('div', { class: 'start-links' }, [
         this.memoryButton(),
-        el('button', { type: 'button', class: 'link', 'data-open-settings': '', text: SETTINGS_TEXT.title }),
+        this.settingsButton(),
       ]),
     ]);
 
@@ -163,7 +163,7 @@ export class UI {
 
     this.memoryScreen = el('section', { class: 'screen screen-memory', 'aria-labelledby': 'memory-title' }, [
       el('div', { class: 'memory-head' }, [
-        el('button', { type: 'button', class: 'link', 'data-close-memory': '', text: `← ${T.back}` }),
+        el('button', { type: 'button', class: 'chunky small back', 'data-close-memory': '', 'aria-label': T.back, text: '←' }),
         el('h1', { id: 'memory-title', text: T.graveyard }),
       ]),
       el('p', { class: 'intro', text: T.memoryIntro }),
@@ -175,7 +175,7 @@ export class UI {
     this.notifySwitch = el('input', { type: 'checkbox', role: 'switch', id: 'setting-notify' });
     this.settingsScreen = el('section', { class: 'screen screen-settings', 'aria-labelledby': 'settings-title' }, [
       el('div', { class: 'memory-head' }, [
-        el('button', { type: 'button', class: 'link', 'data-close-view': '', text: `← ${T.back}` }),
+        el('button', { type: 'button', class: 'chunky small back', 'data-close-view': '', 'aria-label': T.back, text: '←' }),
         el('h1', { id: 'settings-title', text: SETTINGS_TEXT.title }),
       ]),
       this.settingRow(this.soundSwitch, SETTINGS_TEXT.sound, SETTINGS_TEXT.soundHint),
@@ -187,8 +187,8 @@ export class UI {
       ]),
       el('h2', { class: 'section-title', text: SETTINGS_TEXT.data }),
       el('div', { class: 'settings-buttons' }, [
-        this.memoryButton(false, 'plain'),
-        el('button', { type: 'button', class: 'danger', 'data-reset': '', text: T.reset }),
+        this.memoryButton(false),
+        el('button', { type: 'button', class: 'chunky danger', 'data-reset': '', text: T.reset }),
       ]),
       el('p', { class: 'version', text: SETTINGS_TEXT.version(APP_VERSION) }),
     ]);
@@ -217,7 +217,7 @@ export class UI {
       lines.length
         ? el('ul', {}, lines.map((l) => el('li', { text: l })))
         : el('p', { text: T.absenceNothing }),
-      el('button', { type: 'button', class: 'link', 'data-dismiss': '', text: T.dismiss }),
+      el('button', { type: 'button', class: 'chunky small', 'data-dismiss': '', text: T.dismiss }),
     );
     this.absenceBox.hidden = false;
   }
@@ -246,7 +246,8 @@ export class UI {
     if (screen === 'memory') this.renderMemory();
     const count = this.game.state.graveyard.length;
     for (const b of this.memoryButtons) {
-      b.textContent = T.openMemory(count);
+      const label = b.querySelector('.btn-label');
+      if (label) label.textContent = T.openMemory(count);
       b.hidden = count === 0 && b.dataset.optional === 'true';
     }
     document.title =
@@ -263,12 +264,21 @@ export class UI {
 
   // --- Построение ---
 
-  private memoryButton(optional = true, style: 'link' | 'plain' = 'link'): HTMLButtonElement {
-    const cls = style === 'link' ? 'link memory-link' : 'memory-link';
-    const b = el('button', { type: 'button', class: cls, 'data-open-memory': '' });
+  private memoryButton(optional = true): HTMLButtonElement {
+    const b = el('button', { type: 'button', class: 'chunky pill memory-link', 'data-open-memory': '' }, [
+      iconImg('grave', 'icon pill-icon'),
+      el('span', { class: 'btn-label' }),
+    ]);
     b.dataset.optional = String(optional);
     this.memoryButtons.push(b);
     return b;
+  }
+
+  private settingsButton(): HTMLButtonElement {
+    return el('button', { type: 'button', class: 'chunky pill', 'data-open-settings': '' }, [
+      iconImg('iconGear', 'icon pill-icon'),
+      el('span', { class: 'btn-label', text: SETTINGS_TEXT.title }),
+    ]);
   }
 
   private nameForm(idSuffix: string, submitLabel: string): { form: HTMLFormElement; input: HTMLInputElement } {
@@ -283,7 +293,7 @@ export class UI {
     const error = el('p', { class: 'error', role: 'alert' });
     const form = el('form', { class: 'name-form' }, [
       el('label', { for: id, text: T.nameLabel }),
-      el('div', { class: 'row' }, [input, el('button', { type: 'submit', class: 'primary', text: submitLabel })]),
+      el('div', { class: 'row' }, [input, el('button', { type: 'submit', class: 'chunky primary', text: submitLabel })]),
       error,
     ]);
     form.addEventListener('submit', (e) => {
@@ -318,8 +328,8 @@ export class UI {
       );
       const value = el('span', { class: 'stat-value' });
       stats.append(
-        el('div', { class: 'stat' }, [
-          iconImg(STAT_ICONS[key]),
+        el('div', { class: 'stat', 'data-stat': key }, [
+          el('span', { class: 'stat-icon', 'aria-hidden': 'true' }, [iconImg(STAT_ICONS[key])]),
           el('span', { class: 'stat-label', text: STAT_LABELS[key] }),
           bar,
           value,
@@ -330,8 +340,8 @@ export class UI {
 
     const actions = el('div', { class: 'actions' });
     ACTIONS.forEach((action, i) => {
-      const btn = el('button', { type: 'button', class: 'action', 'data-action': action }, [
-        iconImg(ACTION_ICONS[action], 'icon action-icon'),
+      const btn = el('button', { type: 'button', class: 'chunky action', 'data-action': action }, [
+        el('span', { class: 'icon-badge' }, [iconImg(ACTION_ICONS[action], 'icon action-icon')]),
         el('span', { class: 'label' }),
         el('span', { class: 'hotkey', 'aria-hidden': 'true', text: String(i + 1) }),
       ]);
@@ -352,7 +362,7 @@ export class UI {
       this.message,
       el('div', { class: 'controls-footer' }, [
         this.memoryButton(false),
-        el('button', { type: 'button', class: 'link', 'data-open-settings': '', text: SETTINGS_TEXT.title }),
+        this.settingsButton(),
       ]),
     ]);
 
@@ -402,7 +412,10 @@ export class UI {
 
     const bus = this.game.bus;
     bus.on('changed', () => this.render());
-    bus.on('actionDone', (e) => this.petCanvas.play(e.action));
+    bus.on('actionDone', (e) => {
+      this.petCanvas.play(e.action);
+      this.startCooldown(e.action);
+    });
     bus.on('actionBlocked', (e) => {
       if (e.reason !== 'cooldown' && e.reason !== 'dead') this.say(BLOCK_REASONS[e.reason]);
     });
@@ -422,6 +435,16 @@ export class UI {
     if (this.view === 'main') return false;
     this.setView(this.view === 'memory' ? this.memoryReturn : 'main');
     return true;
+  }
+
+  /** Откат действия: заливка сползает с кнопки за время кулдауна. */
+  private startCooldown(action: ActionType): void {
+    const btn = this.actionButtons.get(action);
+    if (!btn) return;
+    btn.style.setProperty('--cd-ms', `${ACTION_COOLDOWN_MS[action]}ms`);
+    btn.classList.remove('cooling');
+    void btn.offsetWidth; // перезапуск CSS-анимации
+    btn.classList.add('cooling');
   }
 
   private setView(view: View): void {
@@ -532,7 +555,9 @@ export class UI {
       const label = action === 'sleep' && pet.isSleeping ? WAKE_LABEL : ACTION_LABELS[action];
       const left = cooldownLeft(cooldowns, action, now);
       const labelEl = btn.querySelector('.label');
-      if (labelEl) labelEl.textContent = left > 0 ? `${label} · ${Math.ceil(left / 1000)}` : label;
+      if (labelEl) labelEl.textContent = label;
+      btn.dataset.reason = reason ?? '';
+      if (left === 0) btn.classList.remove('cooling');
       btn.setAttribute('aria-label', label);
       btn.disabled = reason !== null;
       btn.title = reason ? BLOCK_REASONS[reason] : '';

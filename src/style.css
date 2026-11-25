@@ -1,21 +1,36 @@
+/* Тамагочи — «милый игровой» стиль: пастельные цвета, тёмный контур, объёмные кнопки-наклейки. */
+
 :root {
-  --bg: #efe9dc;
-  --panel: #fffdf7;
-  --ink: #2b2a27;
-  --muted: #6d6a62;
-  --line: #ddd5c4;
-  --accent: #3f6fd8;
-  --shell: #f2a477;
-  --shell-dark: #d9845a;
-  --shell-light: #f8c4a4;
-  --bezel: #39403a;
-  --ok: #3c9a5f;
-  --warn: #d9a227;
-  --low: #d0473c;
-  --radius: 16px;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ink: #3b2a1e;
+  --ink-soft: #7a6253;
+  --bg: #fff4e8;
+  --dots: #ffe2c9;
+  --paper: #fffaf3;
+  --track: #f4e6d4;
+
+  --shell: #ffb3c8;
+  --shell-light: #ffd9e4;
+  --shell-dark: #f28cab;
+  --bezel: #3d3340;
+
+  --butter: #ffd166;
+  --pink: #ff9ec4;
+  --sky: #8fd3ff;
+  --lilac: #bba8ff;
+  --mint: #7fe0c2;
+  --coral: #ff9f8a;
+  --low: #ff6b6b;
+
+  --radius: 22px;
+  --line: 2.5px;
+  --lift: 4px;
+
+  font-family: 'Nunito Variable', 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  font-weight: 600;
   color: var(--ink);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dots) 2.5px, transparent 3px);
+  background-size: 22px 22px;
 }
 
 * {
@@ -24,215 +39,358 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
-  /* Отступы под вырез камеры и системные панели телефона. */
-  padding: calc(16px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
-    calc(32px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   -webkit-tap-highlight-color: transparent;
 }
 
 #app {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
 }
 
 [hidden] {
   display: none !important;
 }
 
-h1 {
-  margin: 0 0 8px;
-  font-size: 1.6rem;
+h1,
+h2,
+h3 {
+  font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
-/* --- Стартовый экран и итоги --- */
+h1 {
+  margin: 0 0 6px;
+  font-size: 1.9rem;
+  text-shadow: 0 2px 0 #fff;
+}
+
+p {
+  margin: 0;
+}
+
+.icon {
+  image-rendering: pixelated;
+  width: 14px;
+  height: auto;
+}
+
+/* ================= Кнопки ================= */
+
+button {
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5b8cff;
+  outline-offset: 3px;
+}
+
+/* Кнопка-наклейка: контур, блик сверху и «подставка», в которую она вдавливается. */
+.chunky {
+  --btn: var(--paper);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  margin-bottom: var(--lift);
+  font-weight: 800;
+  background-color: var(--btn);
+  background-image: linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0) 55%);
+  border: var(--line) solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 var(--lift) 0 var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    transform 0.06s ease-out,
+    box-shadow 0.06s ease-out;
+}
+
+.chunky:active:not(:disabled) {
+  transform: translateY(calc(var(--lift) - 1px));
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.chunky:disabled {
+  cursor: default;
+}
+
+.chunky.primary {
+  --btn: var(--butter);
+}
+
+.chunky.danger {
+  --btn: #ffd3cc;
+  color: #b3322a;
+}
+
+.chunky.small {
+  min-height: 40px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  border-radius: 14px;
+}
+
+.chunky.back {
+  width: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+  border-radius: 50%;
+}
+
+.chunky.pill {
+  border-radius: 999px;
+  padding: 6px 14px;
+  min-height: 40px;
+  font-size: 0.92rem;
+}
+
+.pill-icon {
+  width: 16px;
+}
+
+/* ================= Карточки-наклейки ================= */
+
+.screen-start,
+.screen-results,
+.screen-memory,
+.screen-settings,
+.controls {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 0 var(--ink);
+}
 
 .screen-start,
 .screen-results,
 .screen-memory,
 .screen-settings {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 24px 20px;
+  padding: 22px 18px 20px;
+  margin-bottom: 8px;
   text-align: center;
-}
-
-.hero-sprite {
-  width: 104px;
-  height: auto;
-  image-rendering: pixelated;
-  margin: 8px auto 12px;
-  display: block;
 }
 
 .intro {
-  color: var(--muted);
-  margin: 0 0 8px;
+  color: var(--ink-soft);
 }
 
-button.memory-link {
-  margin-top: 12px;
+.notice,
+.absence {
+  background: #fff3b8;
+  border: var(--line) solid var(--ink);
+  border-radius: 16px;
+  padding: 10px 14px;
+  text-align: left;
+  box-shadow: 0 4px 0 var(--ink);
 }
 
-/* --- Зал памяти --- */
+.notice {
+  margin: 12px 0 4px;
+}
 
-.screen-memory {
+/* ================= Стартовый экран и итоги ================= */
+
+.hero-sprite {
+  display: block;
+  width: 108px;
+  height: auto;
+  margin: 10px auto 14px;
+  image-rendering: pixelated;
+  animation: hop 1.2s steps(2, jump-none) infinite;
+}
+
+@keyframes hop {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.name-form {
+  margin-top: 18px;
   text-align: left;
 }
 
-.memory-head {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
+.name-form label {
+  font-weight: 800;
+}
+
+.name-form .row {
+  display: flex;
   gap: 8px;
+  margin-top: 6px;
+  align-items: flex-start;
 }
 
-.memory-head .link {
-  justify-self: start;
-}
-
-.memory-head h1 {
-  margin: 0;
-  text-align: center;
-}
-
-.memory-head::after {
-  content: '';
-}
-
-.screen-memory .intro {
-  text-align: center;
-  margin-top: 4px;
-}
-
-.memory-summary {
-  margin: 12px 0;
-}
-
-.memory-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.memory-card {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+.name-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 8px 12px;
   background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 14px;
+  box-shadow: inset 0 3px 0 rgb(59 42 30 / 0.08);
 }
 
-.memory-card.record {
-  border-color: #e3c46b;
-  background: #fffaf0;
+.name-form input::placeholder {
+  color: #b9a796;
 }
 
-.memory-sprite {
-  width: 72px;
-  height: 64px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  background: #c9d4b2;
-  border-radius: 8px;
-  padding: 6px;
+.error {
+  color: #c2362d;
+  min-height: 1.3em;
+  margin-top: 4px;
+  font-weight: 700;
 }
 
-.memory-text p {
-  margin: 0;
+.start-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
 }
 
-.memory-name {
-  font-weight: 600;
-}
-
-.badge {
-  margin-left: 6px;
-  color: #c99a1c;
-}
-
-.memory-details,
-.memory-date {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.section-title {
-  font-size: 1.05rem;
-  margin: 24px 0 8px;
-}
-
-/* --- Игровой экран --- */
-
-.screen-game {
+.results {
   display: grid;
-  gap: 16px;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  text-align: left;
+  background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 16px;
+  padding: 12px 14px;
 }
 
-/* Корпус «брелока» */
+.results dt {
+  color: var(--ink-soft);
+}
+
+.results dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.screen-results .memory-link {
+  margin-top: 10px;
+}
+
+/* ================= Игровой экран ================= */
+
+/* Весь экран помещается по высоте: корпус забирает свободное место, экран питомца подстраивается. */
+.screen-game {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height: 540px;
+}
+
 .device {
   position: relative;
-  background: radial-gradient(120% 90% at 30% 15%, var(--shell-light), var(--shell) 55%, var(--shell-dark));
-  border-radius: 46% 46% 40% 40% / 30% 30% 26% 26%;
-  padding: 30px 26px 26px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+  padding: 12px 16px 12px;
+  background: radial-gradient(130% 90% at 28% 8%, var(--shell-light), var(--shell) 52%, var(--shell-dark));
+  border: 3px solid var(--ink);
+  border-radius: 48px 48px 38px 38px / 40px 40px 32px 32px;
   box-shadow:
-    inset 0 -6px 0 rgb(0 0 0 / 0.08),
-    0 10px 24px rgb(120 70 40 / 0.18);
+    0 6px 0 var(--ink),
+    inset 0 -8px 0 rgb(0 0 0 / 0.07),
+    inset 0 6px 0 rgb(255 255 255 / 0.4);
   text-align: center;
+}
+
+/* Колечко брелока. */
+.device::before {
+  content: '';
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translateX(-50%);
+  border: 4px solid var(--ink);
+  border-radius: 50%;
 }
 
 .device-header {
-  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 8px;
 }
 
 .pet-name {
   margin: 0;
-  font-size: 1.35rem;
-  letter-spacing: 0.02em;
+  font-size: 1.3rem;
+  text-shadow: 0 2px 0 rgb(255 255 255 / 0.7);
 }
 
 .pet-meta {
-  margin: 2px 0 0;
-  font-size: 0.9rem;
-  color: #5b3a25;
+  font-weight: 700;
+  color: #7b3f53;
+}
+
+.lcd-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
 }
 
 .lcd {
   position: relative;
+  padding: 8px;
   background: var(--bezel);
-  border-radius: 14px;
-  padding: 10px;
-  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.45);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.5);
 }
 
 .lcd-canvas {
   display: block;
-  width: 100%;
+  width: min(100cqw - 22px, (100cqh - 22px) * 4 / 3);
+  height: auto;
   aspect-ratio: 4 / 3;
-  border-radius: 6px;
+  border-radius: 8px;
   image-rendering: pixelated;
   background: #c9d4b2;
 }
 
 .needs {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 12px;
+  left: 12px;
   display: flex;
   gap: 6px;
 }
 
 .needs .need {
   width: 18px;
-  height: auto;
   animation: pulse 1s steps(2, jump-none) infinite;
 }
 
@@ -242,59 +400,120 @@ button.memory-link {
   }
 }
 
+/* Настроение — облачко. */
 .pet-mood {
-  margin: 12px 0 0;
-  font-weight: 600;
-  color: #5b3a25;
+  align-self: center;
+  margin-top: 8px;
+  padding: 3px 14px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  background: var(--paper);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
 }
 
 /* Панель управления */
 .controls {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
+  position: relative;
+  flex: 0 0 auto;
+  padding: 14px 12px 6px;
+  margin-bottom: 6px;
+}
+
+/* Сообщения всплывают ярлычком над панелью и не сдвигают кнопки. */
+.message {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  z-index: 2;
+  max-width: 92%;
+  transform: translateX(-50%);
+  padding: 3px 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #fff3b8;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.message:empty {
+  display: none;
 }
 
 .stats {
   display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 5px;
+  margin-bottom: 12px;
 }
 
 .stat {
+  --stat: var(--mint);
   display: grid;
-  grid-template-columns: 16px 76px 1fr 30px;
+  grid-template-columns: 24px 74px 1fr 30px;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
-.icon {
-  image-rendering: pixelated;
-  width: 14px;
-  height: auto;
+.stat[data-stat='hunger'] {
+  --stat: #ffb366;
+}
+.stat[data-stat='happiness'] {
+  --stat: var(--pink);
+}
+.stat[data-stat='energy'] {
+  --stat: #ffd84d;
+}
+.stat[data-stat='hygiene'] {
+  --stat: #6cc8ff;
+}
+.stat[data-stat='health'] {
+  --stat: #5fd39a;
+}
+
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: var(--stat);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.stat-icon .icon {
+  width: 12px;
 }
 
 .bar {
-  height: 12px;
-  background: #ebe5d6;
-  border-radius: 3px;
+  height: 14px;
+  background: var(--track);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  background: var(--ok);
+  background: var(--stat);
+  border-radius: 999px;
+  box-shadow: inset 0 3px 0 rgb(255 255 255 / 0.45);
   transition: width 0.4s steps(6, end);
-}
-
-.bar-fill[data-level='warn'] {
-  background: var(--warn);
 }
 
 .bar-fill[data-level='low'] {
   background: var(--low);
+  animation: alarm 1s steps(2, jump-none) infinite;
+}
+
+@keyframes alarm {
+  50% {
+    background: #ffb3b3;
+  }
 }
 
 .stat-value {
@@ -302,114 +521,220 @@ button.memory-link {
   font-variant-numeric: tabular-nums;
 }
 
+/* Кнопки действий — у каждой свой «конфетный» цвет. */
 .actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-button {
-  touch-action: manipulation;
-  font: inherit;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-button:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-button:focus-visible,
-input:focus-visible,
-summary:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .action {
-  user-select: none;
-  -webkit-user-select: none;
-  position: relative;
-  display: flex;
+  overflow: hidden;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 6px 10px;
-  box-shadow: 0 2px 0 var(--line);
+  gap: 3px;
+  min-height: 62px;
+  padding: 6px 4px 5px;
+  border-radius: 18px;
+}
+
+.action[data-action='feed'] {
+  --btn: var(--butter);
+}
+.action[data-action='snack'] {
+  --btn: var(--pink);
+}
+.action[data-action='play'] {
+  --btn: var(--sky);
+}
+.action[data-action='sleep'] {
+  --btn: var(--lilac);
+}
+.action[data-action='clean'] {
+  --btn: var(--mint);
+}
+.action[data-action='medicine'] {
+  --btn: var(--coral);
+}
+
+.icon-badge {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: rgb(255 255 255 / 0.75);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
 }
 
 .action-icon {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
 .action .label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 
 .hotkey {
+  display: none;
+}
+
+/* Недоступное действие — серое и «утоплено». */
+.action:disabled:not([data-reason='cooldown']) {
+  --btn: #e7ddd0;
+  color: #9c8a7b;
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.action:disabled:not([data-reason='cooldown']) .icon-badge {
+  opacity: 0.5;
+}
+
+/* Откат: тёмная заливка сползает вниз за время кулдауна. */
+.action::after {
+  content: '';
   position: absolute;
-  top: 4px;
-  right: 7px;
-  font-size: 0.7rem;
-  color: var(--muted);
+  inset: 0;
+  background: rgb(59 42 30 / 0.28);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  pointer-events: none;
 }
 
-.message {
-  min-height: 1.4em;
-  margin: 12px 0 0;
-  text-align: center;
+.action.cooling::after {
+  animation: cooldown var(--cd-ms, 3000ms) linear forwards;
 }
 
-.controls-footer {
-  border-top: 1px solid var(--line);
-  margin-top: 12px;
-  padding-top: 4px;
-  text-align: center;
+@keyframes cooldown {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0);
+  }
 }
 
 .controls-footer {
   display: flex;
   justify-content: center;
-  gap: 24px;
-}
-
-.controls-footer .memory-link {
-  margin-top: 0;
-}
-
-.start-links {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
+  gap: 10px;
   margin-top: 8px;
 }
 
-.start-links .memory-link {
-  margin-top: 0;
+/* Сводка «пока тебя не было» всплывает поверх экрана. */
+.absence:not([hidden]) {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  z-index: 10;
+  max-width: 452px;
+  margin: 0 auto;
 }
 
-/* --- Настройки --- */
+.absence ul {
+  margin: 6px 0 8px;
+  padding-left: 20px;
+}
 
+.absence-title {
+  font-weight: 900;
+}
+
+/* ================= Зал памяти и настройки ================= */
+
+.screen-memory,
 .screen-settings {
   text-align: left;
+}
+
+.memory-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.memory-head .back {
+  justify-self: start;
+}
+
+.memory-head h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.6rem;
+}
+
+.memory-head::after {
+  content: '';
+}
+
+.screen-memory .intro {
+  text-align: center;
+}
+
+.memory-summary {
+  margin: 12px 0;
+  font-weight: 700;
+}
+
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.memory-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.memory-card.record {
+  background: #fff6cf;
+}
+
+.memory-sprite {
+  width: 72px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #c9d4b2;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.memory-name {
+  font-weight: 900;
+}
+
+.badge {
+  margin-left: 6px;
+  color: #e0a100;
+}
+
+.memory-details,
+.memory-date {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  margin: 22px 0 10px;
 }
 
 .setting {
@@ -418,7 +743,7 @@ button:disabled {
   align-items: center;
   gap: 4px 16px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 2px dashed #e4d3c0;
 }
 
 .setting-label {
@@ -428,19 +753,18 @@ button:disabled {
 }
 
 .setting-title {
-  font-weight: 600;
+  font-weight: 900;
+  font-size: 1.05rem;
 }
 
-.setting-hint {
-  color: var(--muted);
+.setting-hint,
+.setting-status {
+  color: var(--ink-soft);
   font-size: 0.9rem;
 }
 
 .setting-status {
   grid-column: 1 / -1;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .setting-status:empty {
@@ -450,13 +774,13 @@ button:disabled {
 .test-button {
   grid-column: 1 / -1;
   justify-self: start;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .switch {
   position: relative;
-  width: 52px;
-  height: 32px;
+  width: 58px;
+  height: 34px;
 }
 
 .switch input {
@@ -473,34 +797,35 @@ button:disabled {
 .switch-track {
   position: absolute;
   inset: 0;
-  border-radius: 16px;
-  background: #d8d1c0;
+  background: #e9dccb;
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
   transition: background 0.15s;
 }
 
 .switch-track::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  width: 25px;
+  height: 25px;
   background: #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
   transition: transform 0.15s;
 }
 
 .switch input:checked + .switch-track {
-  background: var(--ok);
+  background: var(--mint);
 }
 
 .switch input:checked + .switch-track::after {
-  transform: translateX(20px);
+  transform: translateX(24px);
 }
 
 .switch input:focus-visible + .switch-track {
-  outline: 3px solid var(--accent);
+  outline: 3px solid #5b8cff;
   outline-offset: 2px;
 }
 
@@ -511,125 +836,30 @@ button:disabled {
 .settings-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .version {
-  margin: 24px 0 0;
-  color: var(--muted);
+  margin-top: 22px;
+  color: var(--ink-soft);
   font-size: 0.85rem;
   text-align: center;
 }
 
-button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
+/* ================= Отладка (?debug=1) ================= */
 
-.name-form {
-  margin-top: 16px;
-  text-align: left;
-}
-
-.name-form .row {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.name-form input {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-
-.error {
-  color: var(--low);
-  min-height: 1.2em;
-  margin: 4px 0 0;
-}
-
-.notice,
-.absence {
-  background: #fff6dc;
-  border: 1px solid #ecd9a0;
-  border-radius: 12px;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.absence {
-  margin-bottom: 16px;
-}
-
-.absence ul {
-  margin: 4px 0;
-  padding-left: 20px;
-}
-
-.absence-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-button.link {
-  min-height: 0;
-  border: none;
-  background: none;
-  color: var(--accent);
-  padding: 4px 0;
-}
-
-.results {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  text-align: left;
-}
-
-.results dt {
-  color: var(--muted);
-}
-
-.results dd {
-  margin: 0;
-}
-
-.settings,
 .debug {
   margin-top: 16px;
+  padding: 12px;
   text-align: left;
+  background: var(--paper);
+  border: 2px dashed var(--ink-soft);
+  border-radius: 14px;
 }
 
-.settings summary,
 .debug summary {
   cursor: pointer;
-  color: var(--muted);
-}
-
-.graveyard {
-  padding-left: 20px;
-}
-
-.graveyard .empty {
-  list-style: none;
-  margin-left: -20px;
-  color: var(--muted);
-}
-
-button.danger {
-  color: var(--low);
-}
-
-.debug {
-  background: var(--panel);
-  border: 1px dashed var(--line);
-  border-radius: 12px;
-  padding: 12px;
+  color: var(--ink-soft);
 }
 
 .debug .row {
@@ -640,9 +870,16 @@ button.danger {
   margin: 8px 0;
 }
 
+.debug button {
+  min-height: 36px;
+  padding: 4px 10px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+
 .debug button[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: #e8eefc;
+  background: var(--butter);
 }
 
 .debug-stat {
@@ -652,190 +889,96 @@ button.danger {
   gap: 8px;
 }
 
-/* --- Телефоны: игровой экран целиком помещается по высоте, без прокрутки --- */
-@media (max-width: 759px) {
-  body:has(.screen-game:not([hidden])) {
-    padding-top: calc(8px + env(safe-area-inset-top));
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  }
+/* ================= Маленькие экраны ================= */
 
-  .screen-game {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    min-height: 520px;
-  }
-
-  /* Корпус забирает всё свободное место, экран питомца подстраивается под него. */
-  .device {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 36px 36px 28px 28px / 32px 32px 24px 24px;
-    padding: 12px 16px 10px;
-  }
-
-  .device-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-
-  .pet-name {
-    font-size: 1.2rem;
-  }
-
-  .pet-meta {
-    margin: 0;
-  }
-
-  /* Свободное место по высоте; рамка экрана облегает картинку и стоит по центру. */
-  .lcd-area {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    container-type: size;
-  }
-
-  .lcd {
-    padding: 8px;
-  }
-
-  .lcd-canvas {
-    width: min(100cqw - 16px, (100cqh - 16px) * 4 / 3);
-    height: auto;
-  }
-
-  .needs {
-    top: 12px;
-    left: 12px;
-  }
-
-  .pet-mood {
-    margin-top: 6px;
-    font-size: 0.95rem;
-  }
-
-  .controls {
-    flex: 0 0 auto;
-    padding: 10px 12px 4px;
-  }
-
-  .stats {
-    gap: 3px;
-    margin-bottom: 8px;
-  }
-
-  .stat {
-    font-size: 0.9rem;
-    gap: 6px;
-  }
-
-  .bar {
-    height: 10px;
-  }
-
-  .actions {
-    gap: 6px;
-  }
-
-  .action {
-    min-height: 52px;
-    padding: 7px 4px 6px;
-    gap: 3px;
-  }
-
-  .action-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  .action .label {
-    font-size: 0.85rem;
-  }
-
-  .hotkey {
-    display: none;
-  }
-
-  .message {
-    min-height: 1.2em;
-    margin: 4px 0 0;
-    font-size: 0.85rem;
-  }
-
-  .controls-footer {
-    margin-top: 2px;
-    padding-top: 0;
-  }
-
-  .controls-footer button {
-    min-height: 40px;
-    padding: 4px 8px;
-  }
-
-  /* Сводка «пока тебя не было» всплывает поверх, не сдвигая кнопки. */
-  .absence:not([hidden]) {
-    position: fixed;
-    top: calc(12px + env(safe-area-inset-top));
-    left: 12px;
-    right: 12px;
-    z-index: 10;
-    margin: 0;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
-  }
-}
-
-/* --- Узкие телефоны --- */
 @media (max-width: 359px) {
   .stat {
-    grid-template-columns: 16px 1fr 30px;
+    grid-template-columns: 24px 1fr 30px;
   }
 
   .stat-label {
     display: none;
   }
+
+  .action .label {
+    font-size: 0.78rem;
+  }
 }
 
-/* --- Планшеты и десктоп: корпус слева, управление справа --- */
-@media (min-width: 760px) {
-  body {
-    align-items: flex-start;
-    padding-top: 40px;
-  }
-
-  #app:has(.screen-game:not([hidden])) {
-    max-width: 880px;
-  }
-
+/* Невысокие экраны: шкалы в две колонки (подписи — в иконках), кнопки пониже. */
+@media (max-height: 760px) {
   .screen-game {
-    grid-template-columns: minmax(320px, 400px) 1fr;
-    gap: 24px;
-    align-items: start;
+    gap: 10px;
   }
 
   .device {
-    position: sticky;
-    top: 24px;
+    padding: 8px 14px 10px;
   }
 
-  .debug {
-    max-width: 420px;
+  .device-header {
+    margin-bottom: 6px;
+  }
+
+  .pet-mood {
+    margin-top: 6px;
+    font-size: 0.88rem;
+  }
+
+  .controls {
+    padding: 12px 10px 4px;
+  }
+
+  .stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+    margin-bottom: 10px;
+  }
+
+  .stat {
+    grid-template-columns: 24px 1fr 28px;
+    gap: 6px;
+  }
+
+  .stat-label {
+    display: none;
+  }
+
+  .action {
+    min-height: 54px;
+    gap: 2px;
+  }
+
+  .icon-badge {
+    width: 26px;
+    height: 26px;
+  }
+
+  .action .label {
+    font-size: 0.8rem;
+  }
+
+  .controls-footer {
+    margin-top: 4px;
+  }
+
+  .chunky.pill {
+    min-height: 36px;
+    padding: 4px 12px;
+    font-size: 0.85rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bar-fill {
+  .bar-fill,
+  .chunky,
+  .switch-track,
+  .switch-track::after {
     transition: none;
   }
 
-  .needs .need {
+  .needs .need,
+  .hero-sprite,
+  .bar-fill[data-level='low'] {
     animation: none;
   }
 }

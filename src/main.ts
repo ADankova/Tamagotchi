@@ -1,3 +1,5 @@
+// Округлый шрифт Nunito (с кириллицей) вшивается в приложение при сборке.
+import '@fontsource-variable/nunito';
 import { Sound } from './audio/sound';
 import { hasNewNeed, soundForAction, soundForEvent } from './audio/tunes';
 import { getNeeds } from './core/pet';
