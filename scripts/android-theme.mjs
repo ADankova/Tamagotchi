@@ -7,7 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const BG = '#EFE9DC';
+const BG = '#FFF4E8'; // тот же цвет, что фон игры (--bg в style.css)
 const res = process.argv[2];
 if (!res) {
   console.error('Укажите папку res Android-проекта');

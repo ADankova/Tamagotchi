@@ -79,6 +79,18 @@ export const SETTINGS_TEXT = {
   version: (v: string) => `Версия ${v}`,
 } as const;
 
+export const DEV_TEXT = {
+  title: 'Режим тестирования',
+  hint: 'Ускоряет время, чтобы быстро проверить вылупление, взросление, болезни и напоминания. После перезапуска приложения скорость снова ×1.',
+  speed: 'Скорость времени',
+  stats: 'Показатели питомца',
+  hide: 'Скрыть режим тестирования',
+  enabled: 'Режим тестирования включён — он внизу настроек.',
+  tapsLeft: (n: number) => `Ещё ${n} — и откроется режим тестирования`,
+  badge: (scale: number) => `×${scale}`,
+  badgeLabel: (scale: number) => `Время ускорено в ${scale} раз. Нажмите, чтобы вернуть обычную скорость.`,
+} as const;
+
 export const CARE_LABELS: Record<AdultForm, string> = {
   good: 'отличный',
   normal: 'нормальный',

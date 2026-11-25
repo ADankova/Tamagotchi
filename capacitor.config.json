@@ -3,7 +3,7 @@
   "appName": "Тамагочи",
   "webDir": "dist",
   "android": {
-    "backgroundColor": "#efe9dc",
+    "backgroundColor": "#fff4e8",
     "adjustMarginsForEdgeToEdge": "force"
   },
   "plugins": {
