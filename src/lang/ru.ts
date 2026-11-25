@@ -99,6 +99,23 @@ const GAMES_TEXT = {
   level: (size: number, reward: number) => `${size}×${size} · +${reward} ${treatWord(reward)}`,
   levelNames: ['Легко', 'Средне', 'Сложно'] as readonly string[],
   stats: (played: number, won: number) => `Сыграно: ${played} · Побед: ${won}`,
+  slideTitle: 'Питомцы-блоки',
+  slideAbout:
+    'Двигай блоки пальцем влево и вправо. После каждого хода сверху падает новая полоса. Заполни полосу целиком — она исчезнет. Блок с лакомством исчезнет — лакомство твоё. Не дай стопке дорасти до верха!',
+  slidePlay: 'Играть',
+  slideStats: (played: number, best: number) => `Сыграно: ${played} · Рекорд: ${best} ${lineWord(best)}`,
+  slideLines: (n: number) => `${n} ${lineWord(n)}`,
+  slideTreats: (n: number) => `Лакомств: ${n}`,
+  slideNext: 'Дальше упадёт',
+  slideHint: 'Тяни блок пальцем влево или вправо',
+  slideOverTitle: 'Стопка до самого верха!',
+  slideOverText: (name: string, lines: number, treats: number) =>
+    treats > 0
+      ? `Убрано ${lines} ${lineWord(lines)}. ${name} получает ${treats} ${treatWord(treats)}!`
+      : `Убрано ${lines} ${lineWord(lines)}. ${name} отлично повеселился.`,
+  slideRecord: 'Новый рекорд!',
+  slideLeaveConfirm: 'Закончить игру? Собранные лакомства уже твои.',
+  slideBlock: (row: number, col: number, len: number) => `Блок: строка ${row}, клетки ${col}–${col + len - 1}`,
   soon: 'Скоро здесь появятся новые игры',
   rules: {
     region: '1 питомец на цвет',
@@ -240,6 +257,15 @@ function absenceNoteText(name: string, note: AbsenceNote): string {
     case 'died':
       return `${name} не дождался тебя`;
   }
+}
+
+/** «полоса / полосы / полос» по числу. */
+function lineWord(n: number): string {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return 'полоса';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'полосы';
+  return 'полос';
 }
 
 /** «какашка / какашки / какашек» по числу. */

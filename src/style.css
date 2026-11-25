@@ -1510,3 +1510,197 @@ body.overlay-open {
   font-weight: 700;
   opacity: 0.75;
 }
+
+/* ================= Питомцы-блоки ================= */
+
+.s-next-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.s-next-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.s-next {
+  position: relative;
+  width: min(100%, 62dvh);
+  aspect-ratio: 10 / 1;
+  opacity: 0.6;
+  /* выровнено по клеткам поля (у поля рамка 3px) */
+  padding: 0 3px;
+  box-sizing: border-box;
+}
+
+.s-next .s-block {
+  top: 0;
+  height: 100%;
+}
+
+.s-board {
+  /* Перетаскивание блоков не должно прокручивать страницу. */
+  touch-action: none;
+  position: relative;
+  width: min(100%, 62dvh);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, rgb(59 42 30 / 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(59 42 30 / 0.08) 1px, transparent 1px);
+  background-size: 10% 10%;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Верхняя полоса: туда дорастать нельзя. */
+.s-board::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 90% 0;
+  background: repeating-linear-gradient(135deg, rgb(255 77 109 / 0.1) 0 6px, transparent 6px 12px);
+  pointer-events: none;
+}
+
+.s-block {
+  position: absolute;
+  height: 10%;
+  padding: 2px;
+  box-sizing: border-box;
+  transition:
+    top 0.17s ease-in,
+    left 0.12s ease-out;
+  cursor: grab;
+  touch-action: none;
+}
+
+.s-block.dragging {
+  transition: none;
+  z-index: 2;
+  cursor: grabbing;
+}
+
+.s-block.dragging .s-body {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.s-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 0 3px;
+  box-sizing: border-box;
+  background: var(--block);
+  border: 2px solid var(--ink);
+  /* вытянутый питомец: круглые бока, как у котиков-колбасок */
+  border-radius: 999px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.s-block.single .s-body {
+  justify-content: center;
+  padding: 0;
+  border-radius: 40%;
+}
+
+.s-pet {
+  height: 92%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.s-treat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: auto;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff);
+  animation: treat-glow 1.2s ease-in-out infinite alternate;
+}
+
+.s-block.single .s-treat {
+  left: auto;
+  right: -2px;
+  top: -2px;
+  height: 55%;
+  transform: none;
+}
+
+@keyframes treat-glow {
+  to {
+    filter: drop-shadow(0 0 4px #ffe066) drop-shadow(0 0 2px #fff);
+  }
+}
+
+.s-block[data-color='0'] { --block: #ffb26b; }
+.s-block[data-color='1'] { --block: #b7bcc9; }
+.s-block[data-color='2'] { --block: #fff1e0; }
+.s-block[data-color='3'] { --block: #a78bfa; }
+.s-block[data-color='4'] { --block: #8fd3ff; }
+.s-block[data-color='5'] { --block: #ff9ec4; }
+
+.s-block.spawn {
+  animation: block-drop 0.18s ease-out;
+}
+
+@keyframes block-drop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+.s-block.clearing .s-body {
+  animation: block-clear 0.36s ease-in forwards;
+}
+
+@keyframes block-clear {
+  30% {
+    transform: scale(1.08);
+    background: #fff9c4;
+  }
+  to {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+
+.s-block.stuck .s-body {
+  animation: block-stuck 0.25s ease-in-out;
+}
+
+@keyframes block-stuck {
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.s-record {
+  font-weight: 900;
+  color: #c2362d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s-block,
+  .s-block.spawn,
+  .s-block.clearing .s-body,
+  .s-treat {
+    transition: none;
+    animation: none;
+  }
+}

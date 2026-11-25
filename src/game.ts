@@ -5,6 +5,7 @@ import {
   AUTOSAVE_INTERVAL_MS,
   MAX_OFFLINE_MS,
   MAX_POOPS,
+  MAX_TREATS,
   TICK_INTERVAL_MS,
 } from './core/config';
 import { clampStat, createPet, normalizeName } from './core/pet';
@@ -131,9 +132,13 @@ export class Game {
   }
 
   /** Итог мини-игры: эффект «Поиграть» и, при победе, награда лакомствами. */
-  finishMiniGame(won: boolean, reward: number, level?: { game: MiniGameId; key: string | number }): boolean {
+  finishMiniGame(
+    won: boolean,
+    reward: number,
+    level?: { game: MiniGameId; key: string | number; score?: number },
+  ): boolean {
     if (level) {
-      this.current.gameStats = recordGame(this.current.gameStats, level.game, level.key, won);
+      this.current.gameStats = recordGame(this.current.gameStats, level.game, level.key, won, level.score);
       this.save();
     }
     this.advance(this.now());
@@ -149,6 +154,16 @@ export class Game {
     this.save();
     this.bus.emit({ type: 'changed' });
     return true;
+  }
+
+  /** Лакомство, добытое прямо во время мини-игры: начисляется сразу, чтобы не потеряться. */
+  awardTreats(amount: number): void {
+    const pet = this.current.pet;
+    if (!pet || pet.stage === 'dead' || pet.stage === 'egg' || amount <= 0) return;
+    pet.treats = Math.min(MAX_TREATS, pet.treats + amount);
+    this.save();
+    this.bus.emit({ type: 'treatsEarned', amount });
+    this.bus.emit({ type: 'changed' });
   }
 
   /** Новое яйцо. Имя обязательно. */

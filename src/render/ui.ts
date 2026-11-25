@@ -1,6 +1,7 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_SICK_THRESHOLD } from '../core/config';
 import { levelStats } from '../core/stats';
+import { SLIDE_SIZE } from '../core/slide';
 import { getLanguage, LANGUAGES, isLanguage, locale, setLanguage } from '../i18n';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
@@ -546,6 +547,11 @@ export class UI {
         playSound: (name) => this.services.playSound?.(name),
         stats: (size) => levelStats(this.game.state.gameStats, 'queens', size),
         onFinish: (won, reward, size) => this.game.finishMiniGame(won, reward, { game: 'queens', key: size }),
+        slideStats: () => levelStats(this.game.state.gameStats, 'slide', SLIDE_SIZE),
+        earnTreats: (n) => this.game.awardTreats(n),
+        finishSlide: (lines, treats) =>
+          this.game.finishMiniGame(treats > 0, 0, { game: 'slide', key: SLIDE_SIZE, score: lines }),
+        treatImage: spriteDataUrl(ACTION_ICONS.snack, 6),
       },
       () => {
         this.overlay = null;

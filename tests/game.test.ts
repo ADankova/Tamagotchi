@@ -146,6 +146,24 @@ describe('мини-игры', () => {
     expect(game.state.pet?.treats).toBe(1);
   });
 
+  it('лакомство из «Питомцев-блоков» начисляется сразу и сохраняется', () => {
+    const { clock, make, storage } = setup();
+    const game = make();
+    game.start();
+    game.newPet('Пушок');
+    clock.advance(10 * MINUTE);
+    game.update();
+    const earned: number[] = [];
+    game.bus.on('treatsEarned', (e) => earned.push(e.amount));
+    game.awardTreats(1);
+    expect(earned).toEqual([1]);
+    expect(JSON.parse(storage.data.get('tamagotchi.save') ?? '{}').pet.treats).toBe(1);
+    // Конец партии: счётчик и рекорд; лакомства второй раз не начисляются.
+    game.finishMiniGame(true, 0, { game: 'slide', key: 10, score: 9 });
+    expect(game.state.pet?.treats).toBe(1);
+    expect(game.state.gameStats.slide['10']).toEqual({ played: 1, won: 1, best: 9 });
+  });
+
   it('в яйце поиграть нельзя', () => {
     const { make } = setup();
     const game = make();

@@ -38,7 +38,7 @@ describe('счётчики мини-игр', () => {
     const moved = migrate(v4);
     expect(moved?.version).toBe(SAVE_VERSION);
     expect((moved?.settings as { language: string }).language).toBe('ru');
-    expect(moved?.gameStats).toEqual({ queens: {} });
+    expect(moved?.gameStats).toEqual({ queens: {}, slide: {} });
   });
 
   it('Game.finishMiniGame записывает партию, даже если питомец уже не может играть', () => {
@@ -53,5 +53,19 @@ describe('счётчики мини-игр', () => {
     game.finishMiniGame(false, 0, { game: 'queens', key: 6 });
     game.finishMiniGame(true, 1, { game: 'queens', key: 6 });
     expect(levelStats(game.state.gameStats, 'queens', 6)).toEqual({ played: 2, won: 1 });
+  });
+
+  it('«Питомцы-блоки»: рекорд полос и лакомства прямо во время игры', () => {
+    let s = emptyStats();
+    s = recordGame(s, 'slide', 10, false, 12);
+    s = recordGame(s, 'slide', 10, true, 7);
+    expect(levelStats(s, 'slide', 10)).toEqual({ played: 2, won: 1, best: 12 });
+  });
+
+  it('сохранение 1.6.0 без счётчиков «Питомцев-блоков» читается', () => {
+    const raw = JSON.parse(serialize(createInitialState(1000, 'ru')));
+    raw.gameStats = { queens: { '6': { played: 3, won: 2 } } };
+    const back = deserialize(JSON.stringify(raw));
+    expect(back?.gameStats).toEqual({ queens: { '6': { played: 3, won: 2 } }, slide: {} });
   });
 });
