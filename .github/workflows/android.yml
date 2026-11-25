@@ -62,12 +62,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete android-latest --yes --cleanup-tag || true
-          gh release create android-latest tamagotchi-debug.apk \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --title "Тамагочи для Android — тестовая сборка" \
-            --notes "Сборка из ветки ${GITHUB_REF_NAME}, коммит ${GITHUB_SHA::7}.
+          NOTES="Сборка из ветки ${GITHUB_REF_NAME}, коммит ${GITHUB_SHA::7}.
 
           Как установить: скачайте tamagotchi-debug.apk на телефон, откройте файл и разрешите установку из этого источника.
           Это отладочная сборка для тестирования, не для Google Play."
+          # API GitHub иногда отвечает 500 — пробуем несколько раз.
+          for attempt in 1 2 3 4 5; do
+            gh release delete android-latest --yes --cleanup-tag || true
+            if gh release create android-latest tamagotchi-debug.apk \
+                --prerelease --target "$GITHUB_SHA" \
+                --title "Тамагочи для Android — тестовая сборка" \
+                --notes "$NOTES"; then
+              exit 0
+            fi
+            echo "Попытка $attempt не удалась, ждём..."
+            sleep $((attempt * 10))
+          done
+          exit 1
