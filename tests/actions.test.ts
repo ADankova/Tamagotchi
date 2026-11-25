@@ -18,6 +18,15 @@ describe('доступность действий', () => {
     expect(blockReason(makePet({ stage: 'dead' }), 'feed', {}, T0)).toBe('dead');
   });
 
+  it('во сне нельзя кормить, давать лакомство, лечить и играть; можно разбудить и убрать', () => {
+    const sleeping = makePet({ isSleeping: true, isSick: true });
+    for (const action of ['feed', 'snack', 'play', 'medicine'] as const) {
+      expect(blockReason(sleeping, action, {}, T0)).toBe('sleeping');
+    }
+    expect(blockReason(sleeping, 'sleep', {}, T0)).toBeNull();
+    expect(blockReason(sleeping, 'clean', {}, T0)).toBeNull();
+  });
+
   it('играть нельзя во сне и при болезни', () => {
     expect(blockReason(makePet({ isSleeping: true }), 'play', {}, T0)).toBe('sleeping');
     expect(blockReason(makePet({ isSick: true }), 'play', {}, T0)).toBe('sick');

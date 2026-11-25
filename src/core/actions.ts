@@ -22,6 +22,9 @@ import type { ActionType, Cooldowns, GameEvent, Pet, StatKey } from './types';
 
 export const ACTIONS: readonly ActionType[] = ['feed', 'snack', 'play', 'sleep', 'clean', 'medicine'];
 
+/** Во сне питомца нельзя кормить, баловать, лечить и играть с ним — только разбудить или прибраться. */
+export const SLEEP_BLOCKED: readonly ActionType[] = ['feed', 'snack', 'play', 'medicine'];
+
 export type ActionBlockReason = 'noPet' | 'egg' | 'dead' | 'sleeping' | 'sick' | 'cooldown';
 
 export type ActionResult =
@@ -43,10 +46,8 @@ export function blockReason(
   if (!pet) return 'noPet';
   if (pet.stage === 'dead') return 'dead';
   if (pet.stage === 'egg') return 'egg';
-  if (action === 'play') {
-    if (pet.isSleeping) return 'sleeping';
-    if (pet.isSick) return 'sick';
-  }
+  if (pet.isSleeping && SLEEP_BLOCKED.includes(action)) return 'sleeping';
+  if (action === 'play' && pet.isSick) return 'sick';
   if (cooldownLeft(cooldowns, action, now) > 0) return 'cooldown';
   return null;
 }
