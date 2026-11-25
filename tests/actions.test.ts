@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockReason, cooldownLeft, performAction } from '../src/core/actions';
+import { blockReason, cooldownLeft, finishPlay, performAction } from '../src/core/actions';
 import { HOUR, MINUTE, SECOND, START_STATS } from '../src/core/config';
 import { createPet } from '../src/core/pet';
 import type { ActionType, Pet } from '../src/core/types';
@@ -19,7 +19,7 @@ describe('доступность действий', () => {
   });
 
   it('во сне нельзя кормить, давать лакомство, лечить и играть; можно разбудить и убрать', () => {
-    const sleeping = makePet({ isSleeping: true, isSick: true });
+    const sleeping = makePet({ isSleeping: true, isSick: true, poops: 2 });
     for (const action of ['feed', 'snack', 'play', 'medicine'] as const) {
       expect(blockReason(sleeping, action, {}, T0)).toBe('sleeping');
     }
@@ -68,14 +68,15 @@ describe('эффекты действий (таблица 2.2)', () => {
   });
 
   it('лакомство: счастье +15, сытость +5', () => {
-    const pet = act(makePet({ stats: { ...START_STATS, happiness: 50, hunger: 50 } }), 'snack');
+    const pet = act(makePet({ treats: 2, stats: { ...START_STATS, happiness: 50, hunger: 50 } }), 'snack');
+    expect(pet.treats).toBe(1);
     expect(pet.stats.happiness).toBe(65);
     expect(pet.stats.hunger).toBe(55);
     expect(pet.stats.health).toBe(100);
   });
 
   it('четвёртое лакомство за час отнимает 5 здоровья, через час лимит сбрасывается', () => {
-    let pet = makePet();
+    let pet = makePet({ treats: 10 });
     for (let i = 0; i < 3; i++) pet = act(pet, 'snack', T0 + i * MINUTE);
     expect(pet.stats.health).toBe(100);
     pet = act(pet, 'snack', T0 + 3 * MINUTE);
@@ -105,6 +106,11 @@ describe('эффекты действий (таблица 2.2)', () => {
     expect(pet.stats.happiness).toBe(80);
   });
 
+  it('когда убирать нечего, кнопка «Убрать» неактивна', () => {
+    expect(blockReason(makePet({ poops: 0 }), 'clean', {}, T0)).toBe('clean');
+    expect(blockReason(makePet({ poops: 1 }), 'clean', {}, T0)).toBeNull();
+  });
+
   it('уборка убирает все какашки', () => {
     expect(act(makePet({ poops: 4 }), 'clean').poops).toBe(0);
   });
@@ -123,5 +129,36 @@ describe('эффекты действий (таблица 2.2)', () => {
 
   it('лекарство здоровому — счастье −10', () => {
     expect(act(makePet(), 'medicine').stats.happiness).toBe(70);
+  });
+});
+
+describe('лакомства как валюта', () => {
+  it('новый питомец начинает без лакомств, и дать лакомство нельзя', () => {
+    const pet = makePet();
+    expect(pet.treats).toBe(0);
+    expect(blockReason(pet, 'snack', {}, T0)).toBe('noTreats');
+    expect(performAction(pet, 'snack', {}, T0)).toEqual({ ok: false, reason: 'noTreats' });
+  });
+
+  it('победа в мини-игре: эффект «Поиграть», радость сильнее и лакомства в награду', () => {
+    const pet = makePet({ stats: { ...START_STATS, happiness: 50 } });
+    const won = finishPlay(pet, true, 2, {}, T0);
+    expect(won.ok).toBe(true);
+    if (!won.ok) return;
+    expect(won.pet.treats).toBe(2);
+    expect(won.pet.stats.happiness).toBe(80);
+    expect(won.pet.stats.energy).toBe(90);
+    expect(won.cooldowns.play).toBeGreaterThan(T0);
+  });
+
+  it('поражение: только эффект «Поиграть», без награды', () => {
+    const lost = finishPlay(makePet({ stats: { ...START_STATS, happiness: 50 } }), false, 3, {}, T0);
+    expect(lost.ok && lost.pet.treats).toBe(0);
+    expect(lost.ok && lost.pet.stats.happiness).toBe(70);
+  });
+
+  it('во сне и при болезни поиграть нельзя — и награду не получить', () => {
+    expect(finishPlay(makePet({ isSleeping: true }), true, 2, {}, T0)).toEqual({ ok: false, reason: 'sleeping' });
+    expect(finishPlay(makePet({ isSick: true }), true, 2, {}, T0)).toEqual({ ok: false, reason: 'sick' });
   });
 });

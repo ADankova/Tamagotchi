@@ -32,6 +32,7 @@ export function createPet(name: string, now: number, seed: number, species: Spec
     stage: 'egg',
     stats: { ...START_STATS },
     poops: 0,
+    treats: 0,
     poopTimerMs: firstPoopIn,
     bornAt: now,
     ageMs: 0,

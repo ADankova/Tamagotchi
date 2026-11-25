@@ -80,6 +80,47 @@ export const SETTINGS_TEXT = {
   version: (v: string) => `Версия ${v}`,
 } as const;
 
+export function treatWord(n: number): string {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return 'лакомство';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'лакомства';
+  return 'лакомств';
+}
+
+export const GAMES_TEXT = {
+  menuTitle: 'Мини-игры',
+  menuIntro: 'Играй с питомцем и зарабатывай лакомства.',
+  close: 'Закрыть',
+  queensTitle: 'Судоку с питомцем',
+  queensAbout: 'Расставь питомцев: по одному в каждой строке, столбце и цветной зоне. Питомцы не должны касаться друг друга — даже углами.',
+  level: (size: number, reward: number) => `${size}×${size} · +${reward} ${treatWord(reward)}`,
+  levelNames: ['Легко', 'Средне', 'Сложно'] as readonly string[],
+  soon: 'Скоро здесь появятся новые игры',
+  rules: {
+    region: '1 питомец на цвет',
+    line: '1 в строке и столбце',
+    touch: 'Не соприкасаются',
+  },
+  hint: 'Касание — крестик, двойное касание — поставить питомца',
+  progress: (placed: number, size: number) => `${placed}/${size}`,
+  livesLabel: (n: number) => `Осталось сердечек: ${n}`,
+  wrong: 'Здесь питомца быть не может',
+  winTitle: 'Победа!',
+  winText: (name: string, reward: number) => `${name} в восторге! Награда: +${reward} ${treatWord(reward)}.`,
+  winButton: 'Забрать награду',
+  loseTitle: 'Сердечки закончились',
+  loseText: (name: string) => `Ничего страшного — ${name} всё равно повеселился.`,
+  retry: 'Ещё раз',
+  finish: 'Закончить',
+  leaveConfirm: 'Выйти из игры? Прогресс не сохранится.',
+  cell: (r: number, c: number, color: string) => `Строка ${r}, столбец ${c}, ${color} зона`,
+  cellPet: 'питомец',
+  cellCross: 'крестик',
+  regionColors: ['розовая', 'жёлтая', 'голубая', 'мятная', 'сиреневая', 'коралловая', 'песочная'] as readonly string[],
+  earned: (n: number) => `+${n} ${treatWord(n)}!`,
+} as const;
+
 export const DEV_TEXT = {
   title: 'Режим тестирования',
   hint: 'Ускоряет время, чтобы быстро проверить вылупление, взросление, болезни и напоминания. После перезапуска приложения скорость снова ×1.',
@@ -162,6 +203,8 @@ export const BLOCK_REASONS: Record<ActionBlockReason, string> = {
   sleeping: 'Питомец спит.',
   sick: 'Питомец болеет и не хочет играть.',
   cooldown: 'Подожди пару секунд.',
+  noTreats: 'Нет лакомств — заработай в «Поиграть»!',
+  clean: 'Убирать нечего — всё чисто.',
 };
 
 export const EVENT_MESSAGES = {

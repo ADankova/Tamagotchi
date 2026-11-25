@@ -3,6 +3,8 @@ import {
   EARLY_WAKE_HAPPINESS_PENALTY,
   FEED_HUNGER,
   FULL_ENERGY,
+  MAX_TREATS,
+  PLAY_WIN_HAPPINESS_BONUS,
   HOUR,
   MEDICINE_HEALTH,
   NEEDLESS_MEDICINE_HAPPINESS_PENALTY,
@@ -24,7 +26,7 @@ export const ACTIONS: readonly ActionType[] = ['feed', 'snack', 'play', 'sleep',
 /** Во сне питомца нельзя кормить, баловать, лечить и играть с ним — только разбудить или прибраться. */
 export const SLEEP_BLOCKED: readonly ActionType[] = ['feed', 'snack', 'play', 'medicine'];
 
-export type ActionBlockReason = 'noPet' | 'egg' | 'dead' | 'sleeping' | 'sick' | 'cooldown';
+export type ActionBlockReason = 'noPet' | 'egg' | 'dead' | 'sleeping' | 'sick' | 'cooldown' | 'noTreats' | 'clean';
 
 export type ActionResult =
   | { ok: true; pet: Pet; cooldowns: Cooldowns; events: GameEvent[] }
@@ -47,6 +49,8 @@ export function blockReason(
   if (pet.stage === 'egg') return 'egg';
   if (pet.isSleeping && SLEEP_BLOCKED.includes(action)) return 'sleeping';
   if (action === 'play' && pet.isSick) return 'sick';
+  if (action === 'snack' && pet.treats <= 0) return 'noTreats';
+  if (action === 'clean' && pet.poops <= 0) return 'clean';
   if (cooldownLeft(cooldowns, action, now) > 0) return 'cooldown';
   return null;
 }
@@ -79,6 +83,7 @@ export function performAction(
       add('happiness', SNACK_HAPPINESS);
       add('hunger', SNACK_HUNGER);
       p.snackTimes = [...recent, now];
+      p.treats = Math.max(0, p.treats - 1);
       break;
     }
 
@@ -120,4 +125,23 @@ export function performAction(
     cooldowns: { ...cooldowns, [action]: now + ACTION_COOLDOWN_MS[action] },
     events,
   };
+}
+
+/**
+ * Итог мини-игры: тот же эффект, что у «Поиграть», плюс при победе — радость сильнее
+ * и лакомства в награду. Проверки — как у «Поиграть» (не во сне, не при болезни, кулдаун).
+ */
+export function finishPlay(
+  pet: Pet | null,
+  won: boolean,
+  reward: number,
+  cooldowns: Cooldowns,
+  now: number,
+): ActionResult {
+  const result = performAction(pet, 'play', cooldowns, now);
+  if (!result.ok || !won) return result;
+  const p = result.pet;
+  p.stats.happiness = clampStat(p.stats.happiness + PLAY_WIN_HAPPINESS_BONUS);
+  p.treats = Math.min(MAX_TREATS, p.treats + Math.max(0, reward));
+  return result;
 }

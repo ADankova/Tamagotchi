@@ -125,3 +125,33 @@ describe('Game', () => {
     expect(storage.data.size).toBe(0);
   });
 });
+
+describe('мини-игры', () => {
+  it('итог игры сохраняется, а награда приходит событием', () => {
+    const { clock, make, storage } = setup();
+    const game = make();
+    game.start();
+    game.newPet('Пушок');
+    clock.advance(10 * MINUTE);
+    game.update();
+    expect(game.playBlockReason()).toBeNull();
+    const earned: number[] = [];
+    game.bus.on('treatsEarned', (e) => earned.push(e.amount));
+    expect(game.finishMiniGame(true, 2)).toBe(true);
+    expect(earned).toEqual([2]);
+    expect(game.state.pet?.treats).toBe(2);
+    expect(JSON.parse(storage.data.get('tamagotchi.save') ?? '{}').pet.treats).toBe(2);
+    expect(game.playBlockReason()).toBe('cooldown');
+    expect(game.act('snack')).toBeNull();
+    expect(game.state.pet?.treats).toBe(1);
+  });
+
+  it('в яйце поиграть нельзя', () => {
+    const { make } = setup();
+    const game = make();
+    game.start();
+    game.newPet('Пушок');
+    expect(game.playBlockReason()).toBe('egg');
+    expect(game.finishMiniGame(true, 3)).toBe(false);
+  });
+});

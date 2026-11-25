@@ -100,6 +100,9 @@ export const SNACK_OVERLIMIT_HEALTH_PENALTY = 5;
 export const PLAY_HAPPINESS = 20;
 export const PLAY_ENERGY_COST = 10;
 export const PLAY_HUNGER_COST = 5;
+/** Победа в мини-игре радует сильнее. */
+export const PLAY_WIN_HAPPINESS_BONUS = 10;
+export const MAX_TREATS = 99;
 
 export const EARLY_WAKE_HAPPINESS_PENALTY = 10;
 
