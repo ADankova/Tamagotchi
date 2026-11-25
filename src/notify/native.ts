@@ -32,11 +32,12 @@ export class NativeNotifier implements Notifier {
     }
   }
 
-  async scheduleAway(pet: Pet): Promise<Attention | null> {
+  async scheduleAway(pet: Pet, timeScale = 1): Promise<Attention | null> {
     await this.cancel();
     if ((await this.permission()) !== 'granted') return null;
-    const attention = nextAttention(pet);
-    if (!attention) return null;
+    const forecast = nextAttention(pet);
+    if (!forecast) return null;
+    const attention = { ...forecast, inMs: Math.max(1000, Math.round(forecast.inMs / timeScale)) };
     const { title, body } = attentionMessage(pet, attention);
     await LocalNotifications.schedule({
       notifications: [

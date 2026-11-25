@@ -12,7 +12,8 @@ export interface Notifier {
   readonly kind: 'web' | 'native' | 'none';
   permission(): Promise<PermissionResult>;
   request(): Promise<boolean>;
-  scheduleAway(pet: Pet): Promise<Attention | null>;
+  /** timeScale > 1 — режим тестирования: напоминание придёт во столько же раз раньше. */
+  scheduleAway(pet: Pet, timeScale?: number): Promise<Attention | null>;
   cancel(): Promise<void>;
   /** Пробное уведомление через несколько секунд — проверить, что они вообще доходят. */
   test(): Promise<boolean>;
@@ -43,11 +44,12 @@ export class WebNotifier implements Notifier {
     return (await Notification.requestPermission()) === 'granted';
   }
 
-  async scheduleAway(pet: Pet): Promise<Attention | null> {
+  async scheduleAway(pet: Pet, timeScale = 1): Promise<Attention | null> {
     await this.cancel();
     if ((await this.permission()) !== 'granted') return null;
-    const attention = nextAttention(pet);
-    if (!attention) return null;
+    const forecast = nextAttention(pet);
+    if (!forecast) return null;
+    const attention = { ...forecast, inMs: Math.max(1000, Math.round(forecast.inMs / timeScale)) };
     const { title, body } = attentionMessage(pet, attention);
     this.timer = window.setTimeout(() => {
       try {

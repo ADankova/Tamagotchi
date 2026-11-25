@@ -17,6 +17,7 @@ import {
   EVENT_MESSAGES,
   FORM_LABELS,
   formatDuration,
+  DEV_TEXT,
   MOOD_LABELS,
   SETTINGS_TEXT,
   STAGE_LABELS,
@@ -27,11 +28,13 @@ import {
 import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, spriteDataUrl, STAT_ICONS } from './icons';
 import { CUTSCENE_MS, stageSprite } from './scene';
+import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
 import { APP_VERSION } from '../version';
 
 const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'hygiene', 'health'];
 const MESSAGE_TTL_MS = 4000;
+const VERSION_TAPS_TO_UNLOCK = 7;
 const LCD_TRANSPARENT = { ...LCD, bg: 'transparent', ghost: 'transparent' };
 
 type Attrs = Record<string, string>;
@@ -105,6 +108,11 @@ export class UI {
 
   private readonly petName = el('h2', { class: 'pet-name' });
   private readonly petStage = el('p', { class: 'pet-meta' });
+  private readonly speedBadge = el('button', { type: 'button', class: 'speed-badge', 'data-reset-speed': '', hidden: '' });
+  private readonly versionLine = el('p', { class: 'version' });
+  private readonly devStatus = el('p', { class: 'setting-status dev-status', role: 'status' });
+  private devPanel: HTMLElement | null = null;
+  private versionTaps: number[] = [];
   private readonly canvas = el('canvas', { class: 'lcd-canvas', role: 'img' });
   private readonly petCanvas: PetCanvas;
   private readonly petMood = el('p', { class: 'pet-mood' });
@@ -190,8 +198,11 @@ export class UI {
         this.memoryButton(false),
         el('button', { type: 'button', class: 'chunky danger', 'data-reset': '', text: T.reset }),
       ]),
-      el('p', { class: 'version', text: SETTINGS_TEXT.version(APP_VERSION) }),
+      this.versionLine,
+      this.devStatus,
     ]);
+    this.versionLine.textContent = SETTINGS_TEXT.version(APP_VERSION);
+    if (readDevFlag()) this.enableDevMode(false);
 
     this.root.append(this.startScreen, this.gameScreen, this.resultsScreen, this.memoryScreen, this.settingsScreen);
     this.bindEvents();
@@ -351,6 +362,7 @@ export class UI {
 
     const device = el('div', { class: 'device' }, [
       el('header', { class: 'device-header' }, [this.petName, this.petStage]),
+      this.speedBadge,
       el('div', { class: 'lcd-area' }, [el('div', { class: 'lcd' }, [this.canvas, this.needs])]),
       this.petMood,
     ]);
@@ -389,6 +401,8 @@ export class UI {
       }
       if (target.closest('[data-open-settings]')) this.setView('settings');
       if (target.closest('[data-test-notify]')) void this.testNotification();
+      if (target.closest('[data-reset-speed]')) this.game.setTimeScale(1);
+      if (target === this.versionLine) this.countVersionTap();
       if (target.closest('[data-close-memory]')) this.setView(this.memoryReturn);
       if (target.closest('[data-close-view]')) this.setView('main');
       if (target.closest('[data-reset]') && window.confirm(T.resetConfirm)) {
@@ -435,6 +449,35 @@ export class UI {
     if (this.view === 'main') return false;
     this.setView(this.view === 'memory' ? this.memoryReturn : 'main');
     return true;
+  }
+
+  /** Скрытый режим тестирования: 7 быстрых касаний по строке версии. */
+  private countVersionTap(): void {
+    if (this.devPanel) return;
+    const now = Date.now();
+    this.versionTaps = [...this.versionTaps.filter((t) => now - t < 3000), now];
+    const left = VERSION_TAPS_TO_UNLOCK - this.versionTaps.length;
+    if (left <= 0) {
+      this.versionTaps = [];
+      this.enableDevMode(true);
+    } else if (this.versionTaps.length >= 3) {
+      this.devStatus.textContent = DEV_TEXT.tapsLeft(left);
+    }
+  }
+
+  enableDevMode(announce: boolean): void {
+    if (this.devPanel) return;
+    writeDevFlag(true);
+    this.devPanel = createDevPanel(this.game, () => this.disableDevMode());
+    this.versionLine.before(this.devPanel);
+    this.devStatus.textContent = announce ? DEV_TEXT.enabled : '';
+  }
+
+  private disableDevMode(): void {
+    writeDevFlag(false);
+    this.devPanel?.remove();
+    this.devPanel = null;
+    this.devStatus.textContent = '';
   }
 
   /** Откат действия: заливка сползает с кнопки за время кулдауна. */
@@ -527,6 +570,11 @@ export class UI {
     const now = this.game.currentTime();
     this.petName.textContent = pet.name;
     this.petStage.textContent = `${stageText(pet)} · ${formatDuration(pet.ageMs)}`;
+
+    const scale = this.game.timeScale;
+    this.speedBadge.hidden = scale === 1;
+    this.speedBadge.textContent = DEV_TEXT.badge(scale);
+    this.speedBadge.setAttribute('aria-label', DEV_TEXT.badgeLabel(scale));
 
     const mood = pet.stage === 'egg' ? STAGE_LABELS.egg : MOOD_LABELS[getMood(pet)];
     this.petMood.textContent = mood;
@@ -621,5 +669,24 @@ export class UI {
     this.messageTimer = window.setTimeout(() => {
       this.message.textContent = '';
     }, MESSAGE_TTL_MS);
+  }
+}
+
+const DEV_FLAG_KEY = 'tamagotchi.dev';
+
+function readDevFlag(): boolean {
+  try {
+    return localStorage.getItem(DEV_FLAG_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeDevFlag(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(DEV_FLAG_KEY, '1');
+    else localStorage.removeItem(DEV_FLAG_KEY);
+  } catch {
+    // не страшно: режим просто не запомнится
   }
 }

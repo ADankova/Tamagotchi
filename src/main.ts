@@ -6,7 +6,6 @@ import { getNeeds } from './core/pet';
 import type { StatKey } from './core/types';
 import { Game } from './game';
 import { createNotifier, setupNativeShell } from './platform';
-import { mountDebugPanel } from './render/debug';
 import { UI, type LastReminder } from './render/ui';
 import type { KeyValueStorage } from './storage/save';
 
@@ -75,7 +74,7 @@ async function main(): Promise<void> {
   const goAway = () => {
     const pet = game.state.pet;
     if (!game.state.settings.notifications || !pet || pet.stage === 'dead') return;
-    void notifier.scheduleAway(pet).then((attention) => {
+    void notifier.scheduleAway(pet, game.timeScale).then((attention) => {
       if (!attention) return;
       try {
         localStorage.setItem(REMINDER_KEY, JSON.stringify({ at: Date.now() + attention.inMs, reason: attention.reason }));
@@ -101,7 +100,7 @@ async function main(): Promise<void> {
 
   if (info.status === 'corrupted') ui.showCorruptedNotice();
   if (info.absence) ui.showAbsence(info.absence);
-  if (new URLSearchParams(window.location.search).get('debug') === '1') mountDebugPanel(root, game);
+  if (new URLSearchParams(window.location.search).get('debug') === '1') ui.enableDevMode(false);
 
   sound.setEnabled(game.state.settings.sound);
   ui.render();
