@@ -2,7 +2,7 @@ import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
-import type { ActionType, Pet, StatKey } from '../core/types';
+import { SPECIES, type ActionType, type Pet, type Species, type StatKey } from '../core/types';
 import type { Absence, Game } from '../game';
 import type { Notifier } from '../notify/notifier';
 import { careGrade, summarizeGraveyard } from '../memorial';
@@ -20,6 +20,7 @@ import {
   DEV_TEXT,
   MOOD_LABELS,
   SETTINGS_TEXT,
+  SPECIES_LABELS,
   STAGE_LABELS,
   STAT_LABELS,
   T,
@@ -28,6 +29,7 @@ import {
 import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, spriteDataUrl, STAT_ICONS } from './icons';
 import { CUTSCENE_MS, stageSprite } from './scene';
+import { SPECIES_LOOKS } from './species';
 import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
 import { APP_VERSION } from '../version';
@@ -302,14 +304,17 @@ export class UI {
       autocomplete: 'off',
     });
     const error = el('p', { class: 'error', role: 'alert' });
+    const picker = this.speciesPicker(idSuffix);
     const form = el('form', { class: 'name-form' }, [
+      picker,
       el('label', { for: id, text: T.nameLabel }),
       el('div', { class: 'row' }, [input, el('button', { type: 'submit', class: 'chunky primary', text: submitLabel })]),
       error,
     ]);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (this.game.newPet(input.value)) {
+      const chosen = picker.querySelector<HTMLInputElement>('input:checked')?.value as Species | undefined;
+      if (this.game.newPet(input.value, chosen ?? 'cat')) {
         input.value = '';
         error.textContent = '';
         this.absenceBox.hidden = true;
@@ -320,6 +325,23 @@ export class UI {
       }
     });
     return { form, input };
+  }
+
+  /** Карточки выбора животного: превью, подпись, радиокнопка. */
+  private speciesPicker(idSuffix: string): HTMLElement {
+    const options = SPECIES.map((species, i) => {
+      const id = `species-${idSuffix}-${species}`;
+      const radio = el('input', { type: 'radio', name: `species-${idSuffix}`, value: species, id });
+      if (i === 0) radio.checked = true;
+      return el('label', { class: 'species-option', for: id }, [
+        radio,
+        el('span', { class: 'species-card' }, [
+          lcdSprite(SPECIES_LOOKS[species].preview, 'species-sprite', 4),
+          el('span', { class: 'species-name', text: SPECIES_LABELS[species] }),
+        ]),
+      ]);
+    });
+    return el('fieldset', { class: 'species-picker' }, [el('legend', { text: T.chooseSpecies }), ...options]);
   }
 
   private buildGameScreen(): HTMLElement {
@@ -646,7 +668,7 @@ export class UI {
     if (g.careScore !== undefined) details.push(`${T.care.toLowerCase()}: ${careText(g.careScore)}`);
     if (g.sicknessCount !== undefined) details.push(`${T.sicknesses.toLowerCase()}: ${g.sicknessCount}`);
     return el('li', { class: isRecord ? 'memory-card record' : 'memory-card' }, [
-      lcdSprite(stageSprite(g.stage, g.form), 'memory-sprite', 4),
+      lcdSprite(stageSprite(g.stage, g.form, g.species ?? 'blob'), 'memory-sprite', 4),
       el('div', { class: 'memory-text' }, [
         el('p', { class: 'memory-name' }, [
           g.name,

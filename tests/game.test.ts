@@ -19,6 +19,9 @@ describe('Game', () => {
     expect(game.newPet('   ')).toBe(false);
     expect(game.newPet('Пушок')).toBe(true);
     expect(game.state.pet?.stage).toBe('egg');
+    expect(game.state.pet?.species).toBe('cat');
+    game.newPet('Шарик', 'dog');
+    expect(game.state.pet?.species).toBe('dog');
   });
 
   it('после закрытия вкладки догоняет пропущенное время и показывает сводку', () => {

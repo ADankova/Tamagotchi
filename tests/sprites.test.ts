@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCREEN_W } from '../src/render/scene';
+import { SPECIES, type Species } from '../src/core/types';
+import { SPECIES_LOOKS } from '../src/render/species';
 import { SPRITES, type SpriteName } from '../src/render/sprites';
 
 const NAMES = Object.keys(SPRITES) as SpriteName[];
@@ -13,6 +15,20 @@ const CREATURES: SpriteName[] = [
   'adultNaughty',
   'elder',
   'grave',
+  'catBaby',
+  'catChild',
+  'catTeen',
+  'catAdultGood',
+  'catAdultNormal',
+  'catAdultNaughty',
+  'catElder',
+  'dogBaby',
+  'dogChild',
+  'dogTeen',
+  'dogAdultGood',
+  'dogAdultNormal',
+  'dogAdultNaughty',
+  'dogElder',
 ];
 
 describe('спрайты', () => {
@@ -37,8 +53,20 @@ describe('спрайты', () => {
   });
 
   it('у живых персонажей есть глаза (их можно закрыть)', () => {
-    for (const name of ['baby', 'child', 'teen', 'adultGood', 'adultNormal', 'adultNaughty', 'elder'] as const) {
+    for (const name of CREATURES.filter((n) => n !== 'egg' && n !== 'grave')) {
       expect(SPRITES[name].rows.join('').includes('e')).toBe(true);
+    }
+  });
+});
+
+describe('животные', () => {
+  it.each(SPECIES)('%s: облик есть у каждой стадии, хвост — два кадра одного размера', (species: Species) => {
+    const look = SPECIES_LOOKS[species];
+    for (const sprite of Object.values(look.bodies)) expect(SPRITES[sprite].h).toBeGreaterThan(0);
+    if (look.tail) {
+      const [a, b] = look.tail;
+      expect(SPRITES[a].w).toBe(SPRITES[b].w);
+      expect(SPRITES[a].h).toBe(SPRITES[b].h);
     }
   });
 });

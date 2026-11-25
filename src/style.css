@@ -224,8 +224,78 @@ summary:focus-visible {
   text-align: left;
 }
 
-.name-form label {
+.name-form > label {
   font-weight: 800;
+}
+
+/* Выбор животного */
+.species-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.species-picker legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 800;
+}
+
+.species-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.species-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.species-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  margin-bottom: 4px;
+  background: #fff;
+  border: var(--line) solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--ink);
+  transition:
+    transform 0.06s ease-out,
+    box-shadow 0.06s ease-out;
+}
+
+.species-option input:checked + .species-card {
+  background: var(--butter);
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.species-option input:focus-visible + .species-card {
+  outline: 3px solid #5b8cff;
+  outline-offset: 3px;
+}
+
+.species-sprite {
+  width: 56px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  padding: 4px;
+  background: #c9d4b2;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+
+.species-name {
+  font-weight: 800;
+  font-size: 0.9rem;
 }
 
 .name-form .row {

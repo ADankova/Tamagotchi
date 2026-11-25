@@ -1,6 +1,7 @@
 import { NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood } from '../core/pet';
-import type { ActionType, AdultForm, LifeStage, Pet } from '../core/types';
+import type { ActionType, AdultForm, LifeStage, Pet, Species } from '../core/types';
+import { bodyStage, SPECIES_LOOKS, TAIL_OVERLAP } from './species';
 import { SPRITES, type SpriteName } from './sprites';
 
 // Чистая функция «что нарисовать в момент t»: без DOM и без часов,
@@ -64,28 +65,31 @@ export interface Scene {
   items: Placed[];
 }
 
-export function stageSprite(stage: LifeStage, form?: AdultForm): SpriteName {
-  switch (stage) {
-    case 'egg':
-      return 'egg';
-    case 'baby':
-      return 'baby';
-    case 'child':
-      return 'child';
-    case 'teen':
-      return 'teen';
-    case 'adult':
-      return form === 'good' ? 'adultGood' : form === 'naughty' ? 'adultNaughty' : 'adultNormal';
-    case 'elder':
-      return 'elder';
-    case 'dead':
-      return 'grave';
-  }
+export function stageSprite(stage: LifeStage, form?: AdultForm, species: Species = 'blob'): SpriteName {
+  if (stage === 'egg') return 'egg';
+  if (stage === 'dead') return 'grave';
+  return SPECIES_LOOKS[species].bodies[bodyStage(stage, form)];
 }
 
 export function petSprite(pet: Pet): SpriteName {
-  return stageSprite(pet.stage, pet.form);
+  return stageSprite(pet.stage, pet.form, pet.species);
 }
+
+/** Кадры хвоста питомца, если он у него сейчас есть (у малыша, в яйце и после смерти — нет). */
+export function petTail(pet: Pet): readonly [SpriteName, SpriteName] | null {
+  if (pet.stage === 'egg' || pet.stage === 'baby' || pet.stage === 'dead') return null;
+  return SPECIES_LOOKS[pet.species].tail ?? null;
+}
+
+/** Как часто виляет хвост: быстро — когда весело, никак — когда грустно, больно или сон. */
+const WAG_MS: Partial<Record<AnimState, number>> = {
+  idle: 400,
+  eating: 180,
+  snacking: 180,
+  playing: 160,
+  cleaning: 250,
+  medicine: 300,
+};
 
 // --- Сценки смены стадии ---
 
@@ -215,9 +219,13 @@ export function composeScene(
   const items: Placed[] = [];
   const mid = SCREEN_W / 2;
 
+  const tail = petTail(pet);
+  const tailExtra = tail ? SPRITES[tail[0]].w - TAIL_OVERLAP : 0;
+  // Тело вместе с хвостом всегда целиком на экране.
+  const maxX = SCREEN_W - 1 - SPRITES[name].w - tailExtra;
   const petAt = (cx: number, dy = 0, eyesClosed = blink): Placed => ({
     sprite: name,
-    x: center(name, cx),
+    x: Math.max(1, Math.min(maxX, center(name, cx))),
     y: onGround(name) + dy,
     eyesClosed,
   });
@@ -327,6 +335,20 @@ export function composeScene(
       }
       break;
     }
+  }
+
+  const body = items.findIndex((i) => i.sprite === name);
+  const bodyItem = items[body];
+  if (tail && bodyItem) {
+    const wag = WAG_MS[state];
+    const frame = tail[motion && wag ? step(t, wag) % 2 : 0];
+    const b = SPRITES[name];
+    const tailItem: Placed = {
+      sprite: frame,
+      x: bodyItem.x + b.w - TAIL_OVERLAP,
+      y: bodyItem.y + b.h - SPRITES[frame].h - 2,
+    };
+    items.splice(body, 0, tailItem);
   }
 
   return { state, dim: state === 'sleeping', items };

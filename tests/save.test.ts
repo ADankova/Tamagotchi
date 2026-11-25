@@ -103,3 +103,22 @@ describe('сохранение', () => {
     expect(loadState(broken, T0).status).toBe('corrupted');
   });
 });
+
+describe('перенос старых сохранений', () => {
+  it('сейв версии 1 без вида животного загружается: питомец и записи зала — «Пушистики»', () => {
+    const state = sampleState();
+    const v1 = JSON.parse(serialize(state));
+    v1.version = 1;
+    delete v1.pet.species;
+    delete v1.graveyard[0].species;
+    const loaded = deserialize(JSON.stringify(v1));
+    expect(loaded?.pet?.species).toBe('blob');
+    expect(loaded?.graveyard[0]?.species).toBe('blob');
+  });
+
+  it('неизвестный вид животного — повреждённый сейв', () => {
+    const data = JSON.parse(serialize(sampleState()));
+    data.pet.species = 'dragon';
+    expect(deserialize(JSON.stringify(data))).toBeNull();
+  });
+});
