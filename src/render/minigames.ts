@@ -102,14 +102,7 @@ export class GamesOverlay {
       b.addEventListener('click', () => this.startQueens(level));
       return b;
     });
-    const card = el('section', { class: 'game-card' }, [
-      el('div', { class: 'game-card-head' }, [
-        el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
-        el('h2', { text: GAMES_TEXT.queensTitle }),
-      ]),
-      el('p', { class: 'game-card-about', text: GAMES_TEXT.queensAbout }),
-      el('div', { class: 'level-buttons' }, levels),
-    ]);
+    const card = this.gameCard('queens', GAMES_TEXT.queensTitle, GAMES_TEXT.queensAbout, levels);
     const slideStats = this.host.slideStats();
     const slidePlay = el('button', { type: 'button', class: 'chunky level-button slide-play' }, [
       el('span', { class: 'level-name', text: GAMES_TEXT.slidePlay }),
@@ -117,14 +110,7 @@ export class GamesOverlay {
       el('span', { class: 'level-stats', text: GAMES_TEXT.slideStats(slideStats.played, slideStats.best ?? 0) }),
     ]);
     slidePlay.addEventListener('click', () => this.startSlide());
-    const slideCard = el('section', { class: 'game-card' }, [
-      el('div', { class: 'game-card-head' }, [
-        el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
-        el('h2', { text: GAMES_TEXT.slideTitle }),
-      ]),
-      el('p', { class: 'game-card-about', text: GAMES_TEXT.slideAbout }),
-      el('div', { class: 'level-buttons' }, [slidePlay]),
-    ]);
+    const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, [slidePlay]);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
@@ -133,6 +119,35 @@ export class GamesOverlay {
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
     this.body.querySelector<HTMLElement>('.level-button')?.focus();
+  }
+
+  /** Карточка игры: описание спрятано и раскрывается кнопкой «i». */
+  private gameCard(id: string, title: string, about: string, buttons: HTMLElement[]): HTMLElement {
+    const aboutId = `game-about-${id}`;
+    const text = el('p', { class: 'game-card-about', id: aboutId, text: about });
+    text.hidden = true;
+    const info = el('button', {
+      type: 'button',
+      class: 'info-button',
+      'aria-expanded': 'false',
+      'aria-controls': aboutId,
+      'aria-label': GAMES_TEXT.rulesButton(title),
+      text: 'i',
+    });
+    info.addEventListener('click', () => {
+      text.hidden = !text.hidden;
+      info.setAttribute('aria-expanded', String(!text.hidden));
+      info.classList.toggle('open', !text.hidden);
+    });
+    return el('section', { class: 'game-card' }, [
+      el('div', { class: 'game-card-head' }, [
+        el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
+        el('h2', { text: title }),
+        info,
+      ]),
+      text,
+      el('div', { class: 'level-buttons' }, buttons),
+    ]);
   }
 
   private startQueens(level: QueensLevel): void {
