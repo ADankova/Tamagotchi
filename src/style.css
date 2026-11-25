@@ -586,6 +586,35 @@ summary:focus-visible {
   }
 }
 
+.stat[data-stat='poop'] {
+  --stat: #c9a27e;
+}
+
+.poop-icons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 14px;
+}
+
+.poop-icon {
+  width: 14px;
+}
+
+.poop-clean {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.stat-poop[data-level='warn'] .stat-icon {
+  background: var(--butter);
+}
+
+.stat-poop[data-level='low'] .stat-icon {
+  background: var(--low);
+  animation: alarm 1s steps(2, jump-none) infinite;
+}
+
 .stat-value {
   text-align: right;
   font-variant-numeric: tabular-nums;

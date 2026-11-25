@@ -1,4 +1,4 @@
-import { NEED_ALERT_THRESHOLD } from './config';
+import { NEED_ALERT_THRESHOLD, POOP_SICK_THRESHOLD } from './config';
 import type { GameEvent, LifeStage, Pet } from './types';
 
 /** Что произошло, пока игрока не было. Текст подбирает UI. */
@@ -8,7 +8,8 @@ export type AbsenceNote =
   | { kind: 'gotSick' }
   | { kind: 'sleeping' }
   | { kind: 'hungry' }
-  | { kind: 'dirty' }
+  | { kind: 'dirty'; poops: number }
+  | { kind: 'pooped'; poops: number }
   | { kind: 'bored' }
   | { kind: 'died' };
 
@@ -25,7 +26,9 @@ export function describeAbsence(after: Pet, events: readonly GameEvent[]): Absen
   }
   if (after.isSleeping) notes.push({ kind: 'sleeping' });
   if (after.stats.hunger < NEED_ALERT_THRESHOLD) notes.push({ kind: 'hungry' });
-  if (after.stats.hygiene < NEED_ALERT_THRESHOLD) notes.push({ kind: 'dirty' });
+  const pooped = events.filter((e) => e.type === 'pooped').length;
+  if (after.poops >= POOP_SICK_THRESHOLD) notes.push({ kind: 'dirty', poops: after.poops });
+  else if (pooped > 0) notes.push({ kind: 'pooped', poops: after.poops });
   if (after.stats.happiness < NEED_ALERT_THRESHOLD) notes.push({ kind: 'bored' });
   return notes;
 }

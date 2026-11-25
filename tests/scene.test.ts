@@ -78,19 +78,26 @@ describe('сцена', () => {
     expect(sprites(scene).filter((s) => s === 'zed')).toHaveLength(2);
   });
 
-  it('болезнь показывает череп, грязь — какашку на полу', () => {
+  it('болезнь показывает череп, какашки лежат на полу (не больше 6)', () => {
     expect(sprites(composeScene(makePet({ isSick: true }), null, 0))).toContain('skull');
-    const dirty = composeScene(makePet({ stats: { ...START_STATS, hygiene: 10 } }), null, 0);
-    expect(sprites(dirty).filter((s) => s === 'poop')).toHaveLength(2);
+    const dirty = composeScene(makePet({ poops: 2 }), null, 0);
+    expect(sprites(dirty).filter((s) => s === 'poopSmall')).toHaveLength(2);
+    const many = composeScene(makePet({ poops: 9 }), null, 0);
+    expect(sprites(many).filter((s) => s === 'poopSmall')).toHaveLength(6);
   });
 
   it('после уборки какашек нет', () => {
-    const scene = composeScene(makePet({ stats: { ...START_STATS, hygiene: 10 } }), { action: 'clean', startedAt: 0 }, 50);
-    expect(sprites(scene)).not.toContain('poop');
+    const scene = composeScene(makePet({ poops: 4 }), { action: 'clean', startedAt: 0 }, 50);
+    expect(sprites(scene)).not.toContain('poopSmall');
   });
 
   it('смерть — только надгробие', () => {
     expect(sprites(composeScene(makePet({ stage: 'dead' }), null, 0))).toEqual(['grave']);
+  });
+
+  it('какашки не налезают друг на друга', () => {
+    const xs = composeScene(makePet({ poops: 6 }), null, 0, true).items.filter((i) => i.sprite === 'poopSmall').map((i) => i.x).sort((a, b) => a - b);
+    for (let k = 1; k < xs.length; k++) expect((xs.at(k) ?? 0) - (xs.at(k - 1) ?? 0)).toBeGreaterThanOrEqual(SPRITES.poopSmall.w + 1);
   });
 
   it('питомец стоит на земле', () => {
@@ -121,7 +128,7 @@ describe('сцена', () => {
       makePet(),
       makePet({ stage: 'teen' }),
       makePet({ stage: 'adult', form: 'good' }),
-      makePet({ stage: 'elder', stats: { ...START_STATS, hygiene: 5 } }),
+      makePet({ stage: 'elder', poops: 9 }),
       makePet({ isSleeping: true, stage: 'adult' }),
       makePet({ isSick: true, stage: 'elder' }),
       makePet({ stage: 'teen', stats: { ...START_STATS, happiness: 5 } }),

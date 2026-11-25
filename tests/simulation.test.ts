@@ -24,7 +24,6 @@ describe('tick: базовые правила', () => {
     expect(pet.stats.hunger).toBeCloseTo(72);
     expect(pet.stats.happiness).toBeCloseTo(74);
     expect(pet.stats.energy).toBeCloseTo(95);
-    expect(pet.stats.hygiene).toBeCloseTo(96);
     expect(pet.stats.health).toBe(100);
   });
 
@@ -66,7 +65,6 @@ describe('tick: сон', () => {
     expect(pet.stats.energy).toBeCloseTo(65);
     expect(pet.stats.hunger).toBeCloseTo(76);
     expect(pet.stats.happiness).toBeCloseTo(77);
-    expect(pet.stats.hygiene).toBeCloseTo(98);
     expect(pet.isSleeping).toBe(true);
   });
 
@@ -92,13 +90,13 @@ describe('tick: сон', () => {
 
 describe('tick: здоровье, болезнь, смерть', () => {
   it('каждый показатель ниже 20 отнимает 3 здоровья в час', () => {
-    const stats = { ...START_STATS, hunger: 5, happiness: 5, hygiene: 50 };
+    const stats = { ...START_STATS, hunger: 5, happiness: 5 };
     const { pet } = tick(makePet({ stats }), HOUR);
     expect(pet.stats.health).toBeCloseTo(94);
   });
 
-  it('при грязи питомец со временем заболевает, и это детерминировано', () => {
-    const dirty = makePet({ stats: { ...START_STATS, hygiene: 25 } });
+  it('при 3+ какашках питомец со временем заболевает, и это детерминировано', () => {
+    const dirty = makePet({ poops: 3 });
     const a = tick(dirty, 24 * HOUR);
     const b = tick(dirty, 24 * HOUR);
     expect(a.pet.isSick).toBe(true);
@@ -113,7 +111,7 @@ describe('tick: здоровье, болезнь, смерть', () => {
   });
 
   it('умирает от голода, когда здоровье падает до 0', () => {
-    const stats = { ...START_STATS, hunger: 0, health: 3, hygiene: 100, happiness: 100 };
+    const stats = { ...START_STATS, hunger: 0, health: 3, happiness: 100 };
     const { pet, events } = tick(makePet({ stats }), 2 * HOUR);
     expect(pet.stage).toBe('dead');
     expect(pet.causeOfDeath).toBe('hunger');
@@ -169,7 +167,7 @@ describe('жизненный цикл целиком', () => {
         if (e.type === 'died') deaths.push(e);
       }
       // «Идеальный игрок»: каждый час всё восстанавливает.
-      if (pet.stage !== 'dead') pet = { ...pet, stats: { ...START_STATS, happiness: 100 } };
+      if (pet.stage !== 'dead') pet = { ...pet, stats: { ...START_STATS, happiness: 100 }, poops: 0 };
     }
     expect(stages).toEqual(['baby', 'child', 'teen', 'adult', 'elder']);
     expect(deaths).toEqual([{ type: 'died', cause: 'oldAge' }]);
@@ -187,5 +185,49 @@ describe('жизненный цикл целиком', () => {
     const { pet } = tick(neglected, MINUTE);
     expect(pet.stage).toBe('adult');
     expect(pet.form).toBe('naughty');
+  });
+});
+
+describe('какашки', () => {
+  it('у малыша первая появляется через 2 часа ± 30 минут', () => {
+    const egg = createPet('Пушок', T0, 3);
+    expect(egg.poops).toBe(0);
+    expect(egg.poopTimerMs).toBeGreaterThanOrEqual(90 * MINUTE);
+    expect(egg.poopTimerMs).toBeLessThanOrEqual(150 * MINUTE);
+  });
+
+  it('пока питомец в яйце, какашек нет', () => {
+    const { pet } = tick(createPet('Пушок', T0, 3), 4 * MINUTE);
+    expect(pet.poops).toBe(0);
+  });
+
+  it('ребёнок насорил примерно раз в 3 часа', () => {
+    const { pet, events } = tick(makePet({ poopTimerMs: 3 * HOUR }), 12 * HOUR + MINUTE);
+    const pooped = events.filter((e) => e.type === 'pooped').length;
+    expect(pooped).toBeGreaterThanOrEqual(3);
+    expect(pooped).toBeLessThanOrEqual(5);
+    expect(pet.poops).toBe(pooped);
+    expect(events).toContainEqual({ type: 'pooped', poops: 1 });
+  });
+
+  it('во сне — вдвое реже', () => {
+    const awake = tick(makePet({ poopTimerMs: HOUR }), HOUR).pet;
+    const asleep = tick(makePet({ poopTimerMs: HOUR, isSleeping: true, stats: { ...START_STATS, energy: 20 } }), HOUR).pet;
+    expect(awake.poops).toBe(1);
+    expect(asleep.poops).toBe(0);
+    expect(asleep.poopTimerMs).toBeCloseTo(30 * MINUTE, -2);
+  });
+
+  it('больше 5 какашек отнимают 3 здоровья в час, 5 — ещё нет', () => {
+    // Оба уже больны (−5/ч), чтобы случайная болезнь не вмешалась в сравнение.
+    const five = tick(makePet({ poops: 5, poopTimerMs: 10 * HOUR, isSick: true }), HOUR).pet;
+    const six = tick(makePet({ poops: 6, poopTimerMs: 10 * HOUR, isSick: true }), HOUR).pet;
+    expect(five.stats.health).toBeCloseTo(95);
+    expect(six.stats.health).toBeCloseTo(92);
+  });
+
+  it('копится не больше 9', () => {
+    const { pet } = tick(makePet({ poops: 9, poopTimerMs: MINUTE }), HOUR);
+    expect(pet.poops).toBe(9);
   });
 });

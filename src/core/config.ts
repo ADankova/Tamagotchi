@@ -14,7 +14,6 @@ export const START_STATS: Readonly<Stats> = {
   hunger: 80,
   happiness: 80,
   energy: 100,
-  hygiene: 100,
   health: 100,
 };
 
@@ -23,7 +22,6 @@ export const DECAY_PER_HOUR = {
   hunger: 8,
   happiness: 6,
   energy: 5,
-  hygiene: 4,
 } as const;
 
 export const SLEEP_ENERGY_GAIN_PER_HOUR = 15;
@@ -34,8 +32,21 @@ export const SLEEP_NEEDS_DECAY_MULTIPLIER = 0.5;
 export const CRITICAL_THRESHOLD = 20;
 export const HEALTH_LOSS_PER_CRITICAL_PER_HOUR = 3;
 
-/** Ниже этой чистоты питомец может заболеть. */
-export const SICK_HYGIENE_THRESHOLD = 30;
+// Какашки (как в настоящем Тамагочи): появляются по таймеру, «Убрать» убирает все.
+/** Обычный интервал между какашками; у малыша — чаще. */
+export const POOP_INTERVAL_MS = 3 * HOUR;
+export const BABY_POOP_INTERVAL_MS = 2 * HOUR;
+/** Случайный разброс интервала: ±30 минут. */
+export const POOP_JITTER_MS = 30 * MINUTE;
+/** Во сне какашки появляются вдвое реже. */
+export const SLEEP_POOP_MULTIPLIER = 0.5;
+/** С этого количества питомец грустит и может заболеть. */
+export const POOP_SICK_THRESHOLD = 3;
+/** Больше этого количества — падает здоровье. */
+export const POOP_HEALTH_THRESHOLD = 5;
+export const POOP_HEALTH_LOSS_PER_HOUR = 3;
+/** Больше не копится (на экране помещается 6). */
+export const MAX_POOPS = 9;
 export const SICK_CHANCE_PER_HOUR = 0.25;
 /** Дополнительная потеря здоровья во время болезни. */
 export const SICK_HEALTH_LOSS_PER_HOUR = 5;

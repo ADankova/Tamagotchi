@@ -1,5 +1,5 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
-import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD } from '../core/config';
+import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_SICK_THRESHOLD } from '../core/config';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
 import type { AttentionReason } from '../core/forecast';
 import { SPECIES, type ActionType, type Pet, type Species, type StatKey } from '../core/types';
@@ -19,6 +19,7 @@ import {
   formatDuration,
   DEV_TEXT,
   MOOD_LABELS,
+  POOP_TEXT,
   SETTINGS_TEXT,
   SPECIES_LABELS,
   STAGE_LABELS,
@@ -27,14 +28,14 @@ import {
   WAKE_LABEL,
 } from '../strings';
 import { LCD, PetCanvas } from './canvas';
-import { ACTION_ICONS, iconImg, spriteDataUrl, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, stageSprite } from './scene';
+import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
+import { CUTSCENE_MS, POOP_SLOTS, stageSprite } from './scene';
 import { SPECIES_LOOKS } from './species';
 import { createDevPanel } from './debug';
 import type { SpriteName } from './sprites';
 import { APP_VERSION } from '../version';
 
-const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'hygiene', 'health'];
+const STAT_ORDER: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'health'];
 const MESSAGE_TTL_MS = 4000;
 const VERSION_TAPS_TO_UNLOCK = 7;
 const LCD_TRANSPARENT = { ...LCD, bg: 'transparent', ghost: 'transparent' };
@@ -119,6 +120,9 @@ export class UI {
   private readonly petCanvas: PetCanvas;
   private readonly petMood = el('p', { class: 'pet-mood' });
   private readonly needs = el('div', { class: 'needs', 'aria-hidden': 'true' });
+  private readonly poopIcons = el('span', { class: 'poop-icons', role: 'img' });
+  private readonly poopValue = el('span', { class: 'stat-value' });
+  private lastPoops = -1;
   private readonly statRows = new Map<StatKey, StatRow>();
   private readonly actionButtons = new Map<ActionType, HTMLButtonElement>();
   private readonly message = el('p', { class: 'message', role: 'status', 'aria-live': 'polite' });
@@ -370,6 +374,14 @@ export class UI {
       );
       this.statRows.set(key, { bar, fill, value });
     }
+    stats.append(
+      el('div', { class: 'stat stat-poop', 'data-stat': 'poop' }, [
+        el('span', { class: 'stat-icon', 'aria-hidden': 'true' }, [iconImg('poop')]),
+        el('span', { class: 'stat-label', text: POOP_TEXT.label }),
+        this.poopIcons,
+        this.poopValue,
+      ]),
+    );
 
     const actions = el('div', { class: 'actions' });
     ACTIONS.forEach((action, i) => {
@@ -461,6 +473,7 @@ export class UI {
       if (e.stage !== 'baby' && e.stage !== 'egg') this.say(EVENT_MESSAGES.grew(this.name(), e.stage));
     });
     bus.on('gotSick', () => this.say(EVENT_MESSAGES.gotSick(this.name())));
+    bus.on('pooped', () => this.say(POOP_TEXT.pooped(this.name())));
     bus.on('recovered', () => this.say(EVENT_MESSAGES.recovered(this.name())));
     bus.on('fellAsleep', (e) => e.auto && this.say(EVENT_MESSAGES.fellAsleepAuto(this.name())));
     bus.on('wokeUp', (e) => e.auto && this.say(EVENT_MESSAGES.wokeUpAuto(this.name())));
@@ -606,7 +619,7 @@ export class UI {
     const needsKey = needs.join(',');
     if (needsKey !== this.lastNeedsKey) {
       this.lastNeedsKey = needsKey;
-      this.needs.replaceChildren(...needs.map((k) => iconImg(STAT_ICONS[k], 'icon need')));
+      this.needs.replaceChildren(...needs.map((k) => iconImg(NEED_ICONS[k], 'icon need')));
     }
 
     for (const key of STAT_ORDER) {
@@ -617,6 +630,20 @@ export class UI {
       row.fill.dataset.level = value > 60 ? 'ok' : value >= NEED_ALERT_THRESHOLD ? 'warn' : 'low';
       row.bar.setAttribute('aria-valuenow', String(value));
       row.value.textContent = String(value);
+    }
+
+    if (pet.poops !== this.lastPoops) {
+      this.lastPoops = pet.poops;
+      const shown = Math.min(pet.poops, POOP_SLOTS.length);
+      this.poopIcons.replaceChildren(
+        ...(shown === 0
+          ? [el('span', { class: 'poop-clean', text: POOP_TEXT.clean })]
+          : Array.from({ length: shown }, () => iconImg('poop', 'icon poop-icon'))),
+      );
+      this.poopIcons.setAttribute('aria-label', pet.poops === 0 ? POOP_TEXT.clean : POOP_TEXT.count(pet.poops));
+      this.poopValue.textContent = String(pet.poops);
+      const level = pet.poops > POOP_HEALTH_THRESHOLD ? 'low' : pet.poops >= POOP_SICK_THRESHOLD ? 'warn' : 'ok';
+      this.poopIcons.parentElement?.setAttribute('data-level', level);
     }
 
     const { cooldowns } = this.game.state;

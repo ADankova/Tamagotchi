@@ -1,4 +1,4 @@
-import { CRITICAL_THRESHOLD, DAY, MINUTE } from './config';
+import { CRITICAL_THRESHOLD, DAY, MINUTE, POOP_SICK_THRESHOLD } from './config';
 import { tick } from './simulation';
 import type { Pet } from './types';
 
@@ -22,7 +22,7 @@ function reasonNow(p: Pet, wasEgg: boolean): AttentionReason | null {
   if (p.stage === 'dead' || p.stats.health < DYING_HEALTH) return 'dying';
   if (p.isSick) return 'sick';
   if (p.stats.hunger < CRITICAL_THRESHOLD) return 'hungry';
-  if (p.stats.hygiene < CRITICAL_THRESHOLD) return 'dirty';
+  if (p.poops >= POOP_SICK_THRESHOLD) return 'dirty';
   if (p.stats.happiness < CRITICAL_THRESHOLD) return 'bored';
   return null;
 }

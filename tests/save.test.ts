@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createInitialState,
   deserialize,
+  hygieneToPoops,
   loadState,
   SAVE_KEY,
   SAVE_VERSION,
@@ -120,5 +121,41 @@ describe('перенос старых сохранений', () => {
     const data = JSON.parse(serialize(sampleState()));
     data.pet.species = 'dragon';
     expect(deserialize(JSON.stringify(data))).toBeNull();
+  });
+});
+
+describe('сейв версии 2 → 3: чистота превращается в какашки', () => {
+  it.each([
+    [100, 0],
+    [75, 1],
+    [40, 3],
+    [0, 5],
+  ])('чистота %d → %d какашек', (hygiene: number, poops: number) => {
+    expect(hygieneToPoops(hygiene)).toBe(poops);
+  });
+
+  it('старый сейв с чистотой загружается без потерь', () => {
+    const state = sampleState();
+    const v2 = JSON.parse(serialize(state));
+    v2.version = 2;
+    v2.pet.stats.hygiene = 35;
+    delete v2.pet.poops;
+    delete v2.pet.poopTimerMs;
+    const loaded = deserialize(JSON.stringify(v2));
+    expect(loaded?.pet?.poops).toBe(3);
+    expect(loaded?.pet?.poopTimerMs).toBe(3 * 3600 * 1000);
+    expect(loaded?.pet?.stats).toEqual(state.pet?.stats);
+  });
+
+  it('из версии 1 — сразу через обе миграции', () => {
+    const v1 = JSON.parse(serialize(sampleState()));
+    v1.version = 1;
+    delete v1.pet.species;
+    delete v1.pet.poops;
+    delete v1.pet.poopTimerMs;
+    v1.pet.stats.hygiene = 100;
+    const loaded = deserialize(JSON.stringify(v1));
+    expect(loaded?.pet?.species).toBe('blob');
+    expect(loaded?.pet?.poops).toBe(0);
   });
 });

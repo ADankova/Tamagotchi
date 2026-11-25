@@ -3,7 +3,7 @@ import '@fontsource-variable/nunito';
 import { Sound } from './audio/sound';
 import { hasNewNeed, soundForAction, soundForEvent } from './audio/tunes';
 import { getNeeds } from './core/pet';
-import type { StatKey } from './core/types';
+import type { Need } from './core/types';
 import { Game } from './game';
 import { createNotifier, setupNativeShell } from './platform';
 import { UI, type LastReminder } from './render/ui';
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   const unlock = () => sound.unlock();
   window.addEventListener('pointerdown', unlock, { passive: true });
   window.addEventListener('keydown', unlock);
-  let lastNeeds: StatKey[] = [];
+  let lastNeeds: Need[] = [];
   game.bus.onAny((e) => {
     sound.setEnabled(game.state.settings.sound);
     const pet = game.state.pet;

@@ -48,7 +48,7 @@ export const T = {
 export const ATTENTION_TEXT: Record<AttentionReason, (name: string) => string> = {
   hatch: (name) => `${name} вылупился! Загляни познакомиться.`,
   hungry: (name) => `${name} проголодался.`,
-  dirty: (name) => `${name} весь в грязи, пора убрать.`,
+  dirty: (name) => `${name} насорил — пора убрать.`,
   bored: (name) => `${name} скучает без тебя.`,
   sick: (name) => `${name} заболел. Нужно лекарство.`,
   dying: (name) => `${name} очень плохо себя чувствует!`,
@@ -86,6 +86,7 @@ export const DEV_TEXT = {
   speed: 'Скорость времени',
   stats: 'Показатели питомца',
   hide: 'Скрыть режим тестирования',
+  addPoop: '+1 какашка',
   enabled: 'Режим тестирования включён — он внизу настроек.',
   tapsLeft: (n: number) => `Ещё ${n} — и откроется режим тестирования`,
   badge: (scale: number) => `×${scale}`,
@@ -108,7 +109,6 @@ export const STAT_LABELS: Record<StatKey, string> = {
   hunger: 'Сытость',
   happiness: 'Счастье',
   energy: 'Энергия',
-  hygiene: 'Чистота',
   health: 'Здоровье',
 };
 
@@ -186,13 +186,31 @@ export function absenceNoteText(name: string, note: AbsenceNote): string {
     case 'hungry':
       return `${name} проголодался`;
     case 'dirty':
-      return `${name} весь в грязи`;
+      return `${name} насорил — на полу ${note.poops} ${poopWord(note.poops)}`;
+    case 'pooped':
+      return `${name} насорил (${note.poops} ${poopWord(note.poops)})`;
     case 'bored':
       return `${name} заскучал`;
     case 'died':
       return `${name} не дождался тебя`;
   }
 }
+
+/** «какашка / какашки / какашек» по числу. */
+export function poopWord(n: number): string {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return 'какашка';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'какашки';
+  return 'какашек';
+}
+
+export const POOP_TEXT = {
+  label: 'Уборка',
+  clean: 'чисто',
+  count: (n: number) => `${n} ${poopWord(n)} на полу`,
+  pooped: (name: string) => `${name} насорил. Пора убрать!`,
+} as const;
 
 export function formatDuration(ms: number): string {
   const days = Math.floor(ms / DAY);

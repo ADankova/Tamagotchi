@@ -105,8 +105,8 @@ describe('эффекты действий (таблица 2.2)', () => {
     expect(pet.stats.happiness).toBe(80);
   });
 
-  it('уборка: чистота 100', () => {
-    expect(act(makePet({ stats: { ...START_STATS, hygiene: 12 } }), 'clean').stats.hygiene).toBe(100);
+  it('уборка убирает все какашки', () => {
+    expect(act(makePet({ poops: 4 }), 'clean').poops).toBe(0);
   });
 
   it('лекарство лечит и даёт +30 здоровья', () => {

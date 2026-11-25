@@ -38,7 +38,8 @@ describe('звуки', () => {
   it('пищим только о новой потребности', () => {
     expect(hasNewNeed([], ['hunger'])).toBe(true);
     expect(hasNewNeed(['hunger'], ['hunger'])).toBe(false);
-    expect(hasNewNeed(['hunger', 'hygiene'], ['hunger'])).toBe(false);
+    expect(hasNewNeed(['hunger', 'poop'], ['hunger'])).toBe(false);
+    expect(hasNewNeed(['hunger'], ['hunger', 'poop'])).toBe(true);
   });
 
   it('новая игра: звук включён по умолчанию', () => {
@@ -67,6 +68,12 @@ describe('прогноз заботы для напоминаний', () => {
   it('яйцо, которому осталось 2 минуты, — напоминание через 2 минуты', () => {
     const egg = { ...createPet('Пушок', T0, 1), ageMs: 3 * MINUTE };
     expect(nextAttention(egg)).toEqual({ inMs: 2 * MINUTE, reason: 'hatch' });
+  });
+
+  it('напомнит убрать, когда наберётся 3 какашки', () => {
+    const pet = makePet({ poops: 2, poopTimerMs: 40 * MINUTE, stats: { ...START_STATS, hunger: 100 } });
+    expect(nextAttention(pet)).toEqual({ inMs: 40 * MINUTE, reason: 'dirty' });
+    expect(attentionMessage(pet, { inMs: 1, reason: 'dirty' }).body).toBe('Пушок насорил — пора убрать.');
   });
 
   it('если забота нужна уже сейчас — не напоминаем повторно', () => {

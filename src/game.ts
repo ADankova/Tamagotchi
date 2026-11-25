@@ -4,6 +4,7 @@ import {
   ABSENCE_SUMMARY_MIN_MS,
   AUTOSAVE_INTERVAL_MS,
   MAX_OFFLINE_MS,
+  MAX_POOPS,
   TICK_INTERVAL_MS,
 } from './core/config';
 import { clampStat, createPet, normalizeName } from './core/pet';
@@ -157,6 +158,15 @@ export class Game {
   setTimeScale(scale: number): void {
     this.advance(this.now());
     this.scale = Math.max(1, scale);
+    this.bus.emit({ type: 'changed' });
+  }
+
+  addPoop(): void {
+    const pet = this.current.pet;
+    if (!pet || pet.stage === 'dead' || pet.stage === 'egg') return;
+    pet.poops = Math.min(MAX_POOPS, pet.poops + 1);
+    this.save();
+    this.bus.emit({ type: 'pooped', poops: pet.poops });
     this.bus.emit({ type: 'changed' });
   }
 

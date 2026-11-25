@@ -3,7 +3,7 @@ import type { Game } from '../game';
 import { DEV_TEXT, STAT_LABELS } from '../strings';
 
 export const SPEEDS = [1, 10, 100, 1000] as const;
-const STATS: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'hygiene', 'health'];
+const STATS: readonly StatKey[] = ['hunger', 'happiness', 'energy', 'health'];
 
 /**
  * Раздел «Режим тестирования» для экрана настроек: ускорение времени и ползунки показателей.
@@ -56,6 +56,16 @@ export function createDevPanel(game: Game, onHide: () => void): HTMLElement {
     panel.append(label);
     inputs.set(key, input);
   }
+
+  const poopRow = document.createElement('div');
+  poopRow.className = 'dev-speeds';
+  const addPoop = document.createElement('button');
+  addPoop.type = 'button';
+  addPoop.className = 'chunky small';
+  addPoop.textContent = DEV_TEXT.addPoop;
+  addPoop.addEventListener('click', () => game.addPoop());
+  poopRow.append(addPoop);
+  panel.append(poopRow);
 
   const hide = document.createElement('button');
   hide.type = 'button';
