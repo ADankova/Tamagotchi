@@ -1,24 +1,19 @@
-// Рисует иконки Android-приложения из пиксельного спрайта питомца — без сторонних пакетов.
+// Рисует иконки Android-приложения из картинки art/app-icon.png (нарисована в PixelLab) — без сторонних пакетов.
 //
 //   node scripts/android-icons.mjs android/app/src/main/res   — записать иконки в проект
 //   node scripts/android-icons.mjs --preview icons.png         — картинка для проверки
 //
 // Нужен Node.js 22.18+ (он умеет импортировать .ts напрямую).
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { deflateSync } from 'node:zlib';
-import { SPRITES } from '../src/render/sprites.ts';
+import { deflateSync, inflateSync } from 'node:zlib';
 
-const ICON_SPRITE = SPRITES.adultGood;
-const NOTIFY_SPRITE = SPRITES.child;
+const ART_FILE = new URL('../art/app-icon.png', import.meta.url);
 
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16), 255];
-const SHELL = hex('#f2a477');
-const LCD_BG = hex('#c9d4b2');
-const INK = hex('#28321f');
-const SHADE = hex('#6f7d5c');
-const LIGHT = hex('#e8eed9');
+const BG_HEX = '#FFF4E8'; // фон игры
+const BG = hex(BG_HEX);
 const WHITE = [255, 255, 255, 255];
 
 // --- PNG ---
@@ -63,6 +58,119 @@ function encodePng(img) {
   ]);
 }
 
+/** Чтение PNG 8 бит RGBA (тип 6) или RGB (тип 2), без чересстрочности. */
+function decodePng(buf) {
+  let pos = 8;
+  let w = 0;
+  let h = 0;
+  let type = 0;
+  const idat = [];
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const kind = buf.toString('ascii', pos + 4, pos + 8);
+    const data = buf.subarray(pos + 8, pos + 8 + len);
+    if (kind === 'IHDR') {
+      w = data.readUInt32BE(0);
+      h = data.readUInt32BE(4);
+      type = data[9];
+      if (data[8] !== 8 || (type !== 6 && type !== 2) || data[12] !== 0) throw new Error('Нужен PNG 8 бит RGB/RGBA без чересстрочности');
+    } else if (kind === 'IDAT') idat.push(data);
+    pos += 12 + len;
+  }
+  const bpp = type === 6 ? 4 : 3;
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = w * bpp;
+  const cur = Buffer.alloc(stride * h);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)];
+    for (let x = 0; x < stride; x++) {
+      const v = raw[y * (stride + 1) + 1 + x];
+      const a = x >= bpp ? cur[y * stride + x - bpp] : 0;
+      const b = y > 0 ? cur[(y - 1) * stride + x] : 0;
+      const c = x >= bpp && y > 0 ? cur[(y - 1) * stride + x - bpp] : 0;
+      let pred = 0;
+      if (f === 1) pred = a;
+      else if (f === 2) pred = b;
+      else if (f === 3) pred = (a + b) >> 1;
+      else if (f === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      cur[y * stride + x] = (v + pred) & 0xff;
+    }
+  }
+  const px = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    px[i * 4] = cur[i * bpp];
+    px[i * 4 + 1] = cur[i * bpp + 1];
+    px[i * 4 + 2] = cur[i * bpp + 2];
+    px[i * 4 + 3] = bpp === 4 ? cur[i * bpp + 3] : 255;
+  }
+  return { w, h, px };
+}
+
+/**
+ * Пиксель-арт в размер size×size: сначала крупные пиксели (увеличение в целое число раз),
+ * потом аккуратное усреднение до нужного размера — пиксели остаются чёткими, без «лесенки».
+ */
+function scaleArt(src, size) {
+  const k = Math.max(1, Math.ceil(size / src.w) * 2);
+  const big = src.w * k;
+  const out = image(size, size);
+  const ratio = big / size;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let n = 0;
+      for (let yy = Math.floor(y * ratio); yy < Math.floor((y + 1) * ratio); yy++) {
+        for (let xx = Math.floor(x * ratio); xx < Math.floor((x + 1) * ratio); xx++) {
+          const i = (Math.floor(yy / k) * src.w + Math.floor(xx / k)) * 4;
+          const al = src.px[i + 3];
+          r += src.px[i] * al;
+          g += src.px[i + 1] * al;
+          b += src.px[i + 2] * al;
+          a += al;
+          n++;
+        }
+      }
+      if (a > 0) out.px.set([Math.round(r / a), Math.round(g / a), Math.round(b / a), Math.round(a / n)], (y * size + x) * 4);
+    }
+  }
+  return out;
+}
+
+/** Наложить картинку по центру (с учётом прозрачности). */
+function blit(dst, src, x0, y0) {
+  for (let y = 0; y < src.h; y++) {
+    for (let x = 0; x < src.w; x++) {
+      const i = (y * src.w + x) * 4;
+      const a = src.px[i + 3] / 255;
+      if (a === 0) continue;
+      const dx = x0 + x;
+      const dy = y0 + y;
+      if (dx < 0 || dy < 0 || dx >= dst.w || dy >= dst.h) continue;
+      const j = (dy * dst.w + dx) * 4;
+      const da = dst.px[j + 3] / 255;
+      const oa = a + da * (1 - a);
+      for (let c = 0; c < 3; c++) dst.px[j + c] = Math.round((src.px[i + c] * a + dst.px[j + c] * da * (1 - a)) / oa);
+      dst.px[j + 3] = Math.round(oa * 255);
+    }
+  }
+}
+
+const ART = decodePng(readFileSync(ART_FILE));
+
+function placeArt(img, artSize) {
+  const art = scaleArt(ART, artSize);
+  blit(img, art, Math.round((img.w - artSize) / 2), Math.round((img.h - artSize) / 2));
+}
+
 // --- Рисование ---
 
 function image(w, h) {
@@ -85,49 +193,30 @@ function roundRect(img, x0, y0, w, h, radius, rgba) {
   }
 }
 
-function drawSprite(img, sprite, cx, cy, cell, colorOf) {
-  const x0 = Math.round(cx - (sprite.w * cell) / 2);
-  const y0 = Math.round(cy - (sprite.h * cell) / 2);
-  sprite.rows.forEach((row, sy) => {
-    [...row].forEach((ch, sx) => {
-      const c = colorOf(ch);
-      if (!c) return;
-      for (let y = 0; y < cell; y++) for (let x = 0; x < cell; x++) set(img, x0 + sx * cell + x, y0 + sy * cell + y, c);
-    });
-  });
-}
-
-const lcdColors = (ch) => (ch === '#' || ch === 'e' ? INK : ch === '+' ? SHADE : ch === 'o' ? LIGHT : null);
-
-/** Обычная иконка: корпус-«брелок» с экраном и питомцем. */
+/** Обычная иконка: светлая подложка (квадрат со скруглением или круг) и картинка. */
 function legacyIcon(size, round) {
   const img = image(size, size);
   const pad = Math.round(size * 0.04);
-  roundRect(img, pad, pad, size - 2 * pad, size - 2 * pad, round ? (size - 2 * pad) / 2 : size * 0.22, SHELL);
-  const screen = Math.round(size * (round ? 0.56 : 0.64));
-  const s0 = Math.round((size - screen) / 2);
-  roundRect(img, s0, s0, screen, screen, size * 0.08, LCD_BG);
-  const cell = Math.max(1, Math.floor((screen * 0.8) / Math.max(ICON_SPRITE.w, ICON_SPRITE.h)));
-  drawSprite(img, ICON_SPRITE, size / 2, size / 2, cell, lcdColors);
+  roundRect(img, pad, pad, size - 2 * pad, size - 2 * pad, round ? (size - 2 * pad) / 2 : size * 0.22, BG);
+  placeArt(img, Math.round(size * (round ? 0.8 : 0.86)));
   return img;
 }
 
 /** Передний слой адаптивной иконки (Android 8+): 108dp, видимая зона — центральные 66dp. */
 function adaptiveForeground(size) {
   const img = image(size, size);
-  const screen = Math.round(size * 0.5);
-  const s0 = Math.round((size - screen) / 2);
-  roundRect(img, s0, s0, screen, screen, size * 0.06, LCD_BG);
-  const cell = Math.max(1, Math.floor((screen * 0.8) / Math.max(ICON_SPRITE.w, ICON_SPRITE.h)));
-  drawSprite(img, ICON_SPRITE, size / 2, size / 2, cell, lcdColors);
+  placeArt(img, Math.round(size * 0.62));
   return img;
 }
 
-/** Маленькая иконка в строке уведомлений: только белый силуэт. */
+/** Маленькая иконка в строке уведомлений: только белый силуэт картинки. */
 function notificationIcon(size) {
   const img = image(size, size);
-  const cell = Math.max(1, Math.floor((size * 0.9) / Math.max(NOTIFY_SPRITE.w, NOTIFY_SPRITE.h)));
-  drawSprite(img, NOTIFY_SPRITE, size / 2, size / 2, cell, (ch) => (ch === '.' || ch === 'e' ? null : WHITE));
+  placeArt(img, size);
+  for (let i = 0; i < size * size; i++) {
+    const a = img.px[i * 4 + 3];
+    img.px.set(a > 110 ? WHITE : [0, 0, 0, 0], i * 4);
+  }
   return img;
 }
 
@@ -147,7 +236,7 @@ function writeResources(res) {
   }
   write(
     join(res, 'values', 'ic_launcher_background.xml'),
-    '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#F2A477</color>\n</resources>\n',
+    `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">${BG_HEX}</color>\n</resources>\n`,
   );
   console.log(`Иконки записаны в ${res}`);
 }

@@ -44,6 +44,7 @@ jobs:
           npx cap add android
           node scripts/android-icons.mjs android/app/src/main/res
           node scripts/android-theme.mjs android/app/src/main/res
+          node scripts/android-strings.mjs android/app/src/main/res
           node scripts/android-manifest.mjs android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
@@ -53,7 +54,9 @@ jobs:
           grep -q '"adjustMarginsForEdgeToEdge": "force"' android/app/src/main/assets/capacitor.config.json
           grep -q tamagotchi_background android/app/src/main/res/values/styles.xml
           grep -q USE_EXACT_ALARM android/app/src/main/AndroidManifest.xml
-          echo "Отступы от системных панелей и тема на месте."
+          grep -q "Тамагочи" android/app/src/main/res/values-ru/strings.xml
+          grep -q ">Tamagotchi<" android/app/src/main/res/values/strings.xml
+          echo "Отступы от системных панелей, тема и названия на месте."
 
 
       - name: Постоянный ключ подписи и номер версии

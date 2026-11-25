@@ -1,30 +1,32 @@
 import type { ActionType, Need, StatKey } from '../core/types';
 import { drawSprite, LCD, type Palette } from './canvas';
+import { ART, type ArtIcon } from './artData';
 import { SPRITES, type SpriteName } from './sprites';
 
-export const STAT_ICONS: Readonly<Record<StatKey, SpriteName>> = {
-  hunger: 'iconHunger',
-  happiness: 'heart',
-  energy: 'iconBolt',
-  health: 'iconCross',
+// Цветные иконки интерфейса нарисованы в PixelLab (art/ui/*.png → artData.ts).
+export const STAT_ICONS: Readonly<Record<StatKey, ArtIcon>> = {
+  hunger: 'hunger',
+  happiness: 'happiness',
+  energy: 'energy',
+  health: 'health',
 };
 
 /** Иконки потребностей над экраном питомца. */
-export const NEED_ICONS: Readonly<Record<Need, SpriteName>> = {
-  hunger: 'iconHunger',
-  happiness: 'heart',
-  energy: 'iconBolt',
-  health: 'iconCross',
+export const NEED_ICONS: Readonly<Record<Need, ArtIcon>> = {
+  hunger: 'hunger',
+  happiness: 'happiness',
+  energy: 'energy',
+  health: 'health',
   poop: 'poop',
 };
 
-export const ACTION_ICONS: Readonly<Record<ActionType, SpriteName>> = {
-  feed: 'bowl',
-  snack: 'candy',
-  play: 'ball',
-  sleep: 'iconMoon',
-  clean: 'sparkle',
-  medicine: 'pill',
+export const ACTION_ICONS: Readonly<Record<ActionType, ArtIcon>> = {
+  feed: 'feed',
+  snack: 'snack',
+  play: 'play',
+  sleep: 'sleep',
+  clean: 'clean',
+  medicine: 'medicine',
 };
 
 /** Иконки рисуются тёмным по прозрачному, без сетки пикселей. */
@@ -49,12 +51,14 @@ export function spriteDataUrl(name: SpriteName, scale = 4, palette: Palette = IC
   return url;
 }
 
-export function iconImg(name: SpriteName, className = 'icon'): HTMLImageElement {
+/** Цветная иконка интерфейса (32×32, размер на экране задаёт CSS). */
+export function iconImg(name: ArtIcon, className = 'icon'): HTMLImageElement {
   const img = document.createElement('img');
-  img.src = spriteDataUrl(name);
+  img.src = ART[name];
   img.alt = '';
   img.className = className;
-  img.width = SPRITES[name].w * 2;
-  img.height = SPRITES[name].h * 2;
+  img.width = 32;
+  img.height = 32;
+  img.draggable = false;
   return img;
 }
