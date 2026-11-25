@@ -998,7 +998,7 @@ body.overlay-open {
 .q-cell[data-region='5'] { --cell: #ff9f8a; }
 .q-cell[data-region='6'] { --cell: #e8c39e; }
 
-/* Крестик: белый у игрока, бледный — поставленный автоматически, красный — ошибка. */
+/* Крестик: белый у игрока, красный — ошибка. */
 .q-x {
   position: relative;
   width: 58%;
@@ -1020,10 +1020,6 @@ body.overlay-open {
 
 .q-x::after {
   transform: translateY(-50%) rotate(-45deg);
-}
-
-.q-cell[data-mark='auto'] .q-x {
-  opacity: 0.55;
 }
 
 .q-cell[data-mark='wrong'] .q-x::before,
