@@ -3,7 +3,7 @@
   "version": "1.0.4",
   "private": true,
   "type": "module",
-  "description": "Браузерная игра «Тамагочи» на TypeScript",
+  "description": "Игра «Тамагочи» для Android на TypeScript",
   "engines": {
     "node": ">=20"
   },
