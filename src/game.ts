@@ -19,6 +19,7 @@ import {
   type GameState,
   type KeyValueStorage,
   type LoadResult,
+  type Settings,
 } from './storage/save';
 
 export type UiEvent =
@@ -131,6 +132,12 @@ export class Game {
     this.save();
     this.bus.emit({ type: 'changed' });
     return true;
+  }
+
+  setSettings(patch: Partial<Settings>): void {
+    this.current.settings = { ...this.current.settings, ...patch };
+    this.save();
+    this.bus.emit({ type: 'changed' });
   }
 
   save(): boolean {

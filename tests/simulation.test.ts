@@ -61,10 +61,19 @@ describe('tick: яйцо', () => {
 });
 
 describe('tick: сон', () => {
-  it('во сне энергия растёт на 15 в час', () => {
+  it('во сне энергия растёт на 15 в час, а потребности падают вдвое медленнее', () => {
     const { pet } = tick(makePet({ isSleeping: true, stats: { ...START_STATS, energy: 50 } }), HOUR);
     expect(pet.stats.energy).toBeCloseTo(65);
+    expect(pet.stats.hunger).toBeCloseTo(76);
+    expect(pet.stats.happiness).toBeCloseTo(77);
+    expect(pet.stats.hygiene).toBeCloseTo(98);
     expect(pet.isSleeping).toBe(true);
+  });
+
+  it('брошенный малыш переживает полдня без ухода', () => {
+    const { pet } = tick(makePet({ stage: 'baby', ageMs: HOUR }), 12 * HOUR);
+    expect(pet.stage).toBe('baby');
+    expect(pet.stats.health).toBeGreaterThan(30);
   });
 
   it('выспавшись, просыпается сам', () => {
@@ -82,10 +91,10 @@ describe('tick: сон', () => {
 });
 
 describe('tick: здоровье, болезнь, смерть', () => {
-  it('каждый показатель ниже 20 отнимает 5 здоровья в час', () => {
+  it('каждый показатель ниже 20 отнимает 3 здоровья в час', () => {
     const stats = { ...START_STATS, hunger: 5, happiness: 5, hygiene: 50 };
     const { pet } = tick(makePet({ stats }), HOUR);
-    expect(pet.stats.health).toBeCloseTo(90);
+    expect(pet.stats.health).toBeCloseTo(94);
   });
 
   it('при грязи питомец со временем заболевает, и это детерминировано', () => {

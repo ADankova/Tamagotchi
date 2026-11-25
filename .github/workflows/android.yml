@@ -1,0 +1,91 @@
+name: Android APK
+
+# Собирает тестовый APK и выкладывает его в релиз «android-latest»,
+# откуда его можно скачать прямо на телефон.
+on:
+  push:
+    branches: [main, stage-4-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Установка зависимостей
+        run: npm install --no-audit --no-fund
+
+      - name: Тесты
+        run: npm test
+
+      - name: Сборка веб-версии
+        run: npm run build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android-проект
+        run: |
+          npx cap add android
+          node scripts/android-icons.mjs android/app/src/main/res
+          npx cap sync android
+
+      - name: Сборка APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Переименовать APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk tamagotchi-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tamagotchi-debug-apk
+          path: tamagotchi-debug.apk
+
+      - name: Обновить релиз android-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remove_old() {
+            # Удаляем прошлые релизы и черновики с этой меткой (черновики не находятся по метке).
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq '.[] | select(.tag_name == "android-latest") | .id' |
+              while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id" || true; done
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/android-latest" 2>/dev/null || true
+          }
+          # Создаём релиз с латинским названием (создание с кириллицей API иногда отклоняет с 500),
+          # затем ставим русское описание. При сбоях API пробуем ещё раз.
+          for attempt in 1 2 3 4 5; do
+            remove_old
+            if gh release create android-latest tamagotchi-debug.apk \
+                --prerelease --target "$GITHUB_SHA" \
+                --title "Tamagotchi for Android (test build)" \
+                --notes "Build ${GITHUB_SHA::7}"; then
+              gh release edit android-latest \
+                --title "Тамагочи для Android — тестовая сборка" \
+                --notes "Сборка из ветки ${GITHUB_REF_NAME}, коммит ${GITHUB_SHA::7}.
+
+          Как установить: скачайте tamagotchi-debug.apk на телефон, откройте файл и разрешите установку из этого источника.
+          Это отладочная сборка для тестирования, не для Google Play." || echo "Описание не обновилось — не страшно."
+              exit 0
+            fi
+            echo "Попытка $attempt не удалась, ждём..."
+            sleep $((attempt * 10))
+          done
+          exit 1

@@ -27,10 +27,12 @@ export const DECAY_PER_HOUR = {
 } as const;
 
 export const SLEEP_ENERGY_GAIN_PER_HOUR = 15;
+/** Во сне сытость, счастье и чистота падают медленнее — можно спокойно уйти спать. */
+export const SLEEP_NEEDS_DECAY_MULTIPLIER = 0.5;
 
 /** Ниже этого уровня сытость, чистота или счастье отнимают здоровье. */
 export const CRITICAL_THRESHOLD = 20;
-export const HEALTH_LOSS_PER_CRITICAL_PER_HOUR = 5;
+export const HEALTH_LOSS_PER_CRITICAL_PER_HOUR = 3;
 
 /** Ниже этой чистоты питомец может заболеть. */
 export const SICK_HYGIENE_THRESHOLD = 30;

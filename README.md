@@ -15,6 +15,27 @@ npm test           # юнит-тесты
 npm run build      # проверка типов + сборка в dist/
 ```
 
+## Android
+
+APK собирается в GitHub Actions (`.github/workflows/android.yml`) при каждом пуше в `main` и выкладывается в релиз [android-latest](https://github.com/ADankova/Tamagotchi/releases/tag/android-latest). Скачайте `tamagotchi-debug.apk` на телефон, откройте и разрешите установку из этого источника.
+
+Собрать локально (нужны Android Studio / Android SDK и JDK 21):
+
+```bash
+npm install
+npm run build
+npx cap add android        # один раз
+npm run android:icons
+npx cap sync android
+cd android && ./gradlew assembleDebug
+```
+
+В приложении работают системная кнопка «Назад» и настоящие напоминания: когда приложение свёрнуто, ставится уведомление на момент, когда питомцу понадобится забота.
+
+## Веб-версия
+
+Публикуется на GitHub Pages из `main` (`.github/workflows/pages.yml`). Один раз включите: Settings → Pages → Source: **GitHub Actions**.
+
 Панель отладки (ускорение времени ×10…×1000, ручная установка характеристик) открывается по адресу `http://localhost:5173/?debug=1`.
 
 ## Структура
@@ -24,6 +45,9 @@ src/
   core/          чистая логика без DOM: модель, tick, действия, стадии, баланс (config.ts)
   storage/       сохранение в localStorage, версия сейва, проверка и миграции
   render/        интерфейс (ui.ts) и панель отладки (debug.ts)
+  audio/         8-битные звуки (Web Audio)
+  notify/        напоминания: браузер и Android
+  platform.ts    отличия браузера и Android-приложения
   game.ts        игровой цикл: время, офлайн-прогресс, шина событий
   strings.ts     все тексты интерфейса
   main.ts        точка входа
@@ -37,4 +61,4 @@ tests/           Vitest
 - [x] Этап 1 — ядро, сохранение, офлайн-прогресс, тесты, простой интерфейс
 - [x] Этап 2 — графика и интерфейс
 - [x] Этап 3 — сценки вылупления, взросления и смерти, «Зал памяти»
-- [ ] Этап 4 — звук, уведомления, настройки, деплой
+- [x] Этап 4 — звук, напоминания, настройки, баланс, публикация, Android-приложение

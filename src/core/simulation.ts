@@ -11,6 +11,7 @@ import {
   SICK_HYGIENE_THRESHOLD,
   SIM_STEP_MS,
   SLEEP_ENERGY_GAIN_PER_HOUR,
+  SLEEP_NEEDS_DECAY_MULTIPLIER,
   STAGE_DECAY_MULTIPLIER,
 } from './config';
 import { computeCareScore, formForCareScore, stageForAge } from './lifecycle';
@@ -54,7 +55,8 @@ function advance(p: Pet, dt: number, events: GameEvent[]): void {
   }
 
   const s = p.stats;
-  const mult = STAGE_DECAY_MULTIPLIER[p.stage] ?? 1;
+  const mult =
+    (STAGE_DECAY_MULTIPLIER[p.stage] ?? 1) * (p.isSleeping ? SLEEP_NEEDS_DECAY_MULTIPLIER : 1);
   s.hunger = clampStat(s.hunger - DECAY_PER_HOUR.hunger * mult * hours);
   s.happiness = clampStat(s.happiness - DECAY_PER_HOUR.happiness * mult * hours);
   s.hygiene = clampStat(s.hygiene - DECAY_PER_HOUR.hygiene * mult * hours);
@@ -62,8 +64,8 @@ function advance(p: Pet, dt: number, events: GameEvent[]): void {
   if (p.isSleeping) {
     s.energy = clampStat(s.energy + SLEEP_ENERGY_GAIN_PER_HOUR * hours);
   } else {
-    const energyMult = p.stage === 'elder' ? ELDER_ENERGY_MULTIPLIER : 1;
-    s.energy = clampStat(s.energy - DECAY_PER_HOUR.energy * mult * energyMult * hours);
+    const energyMult = (STAGE_DECAY_MULTIPLIER[p.stage] ?? 1) * (p.stage === 'elder' ? ELDER_ENERGY_MULTIPLIER : 1);
+    s.energy = clampStat(s.energy - DECAY_PER_HOUR.energy * energyMult * hours);
   }
 
   const healthLoss =

@@ -57,7 +57,8 @@ export function createInitialState(now: number): GameState {
     pet: null,
     lastUpdated: now,
     cooldowns: {},
-    settings: { sound: false, notifications: false },
+    // Звук включён, но зазвучит только после первого касания (так требуют браузеры).
+    settings: { sound: true, notifications: false },
     graveyard: [],
   };
 }
