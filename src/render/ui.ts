@@ -341,7 +341,7 @@ export class UI {
 
     const device = el('div', { class: 'device' }, [
       el('header', { class: 'device-header' }, [this.petName, this.petStage]),
-      el('div', { class: 'lcd' }, [this.canvas, this.needs]),
+      el('div', { class: 'lcd-area' }, [el('div', { class: 'lcd' }, [this.canvas, this.needs])]),
       this.petMood,
     ]);
 
