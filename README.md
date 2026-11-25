@@ -27,6 +27,7 @@ npm run build
 npx cap add android        # один раз
 npm run android:icons
 npm run android:theme
+npm run android:gradle
 npx cap sync android
 cd android && ./gradlew assembleDebug
 ```

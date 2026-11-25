@@ -55,14 +55,10 @@ jobs:
 
 
       - name: Постоянный ключ подписи и номер версии
+        # Один и тот же ключ — чтобы новые версии ставились поверх старых.
         run: |
-          # Один и тот же ключ — чтобы новые версии ставились поверх старых.
-          mkdir -p ~/.android
-          cp android-signing/debug.keystore ~/.android/debug.keystore
-          # versionCode растёт с каждой сборкой, versionName — из package.json.
-          VERSION=$(node -p "require('./package.json').version")
-          sed -i -E "s/versionCode [0-9]+/versionCode ${GITHUB_RUN_NUMBER}/; s/versionName \"[^\"]*\"/versionName \"${VERSION}\"/" android/app/build.gradle
-          grep -E "versionCode|versionName" android/app/build.gradle
+          node scripts/android-gradle.mjs android/app/build.gradle "$GITHUB_RUN_NUMBER"
+          grep -nE "versionCode|versionName|debug.keystore" android/app/build.gradle
 
       - name: Сборка APK
         working-directory: android
