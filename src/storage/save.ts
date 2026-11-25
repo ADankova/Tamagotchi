@@ -7,9 +7,10 @@ import type {
   Species,
 } from '../core/types';
 import { SPECIES } from '../core/types';
+import { POOP_INTERVAL_MS } from '../core/config';
 
 export const SAVE_KEY = 'tamagotchi.save';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface Settings {
   sound: boolean;
@@ -77,6 +78,11 @@ export function serialize(state: GameState): string {
  * Пример на будущее: 1: (d) => ({ ...d, version: 2, newField: 0 }).
  */
 type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
+
+/** Чистота 100 → 0 какашек, 40 → 3, 0 → 5. */
+export function hygieneToPoops(hygiene: number): number {
+  return Math.max(0, Math.min(5, Math.round((100 - hygiene) / 20)));
+}
 const MIGRATIONS: Record<number, Migration> = {
   // v1 → v2: появился выбор животного; все прежние питомцы — «Пушистики».
   1: (data) => {
@@ -85,6 +91,16 @@ const MIGRATIONS: Record<number, Migration> = {
       ? data.graveyard.map((g) => (isRecord(g) ? { ...g, species: 'blob' } : g))
       : data.graveyard;
     return { ...data, version: 2, pet, graveyard };
+  },
+  // v2 → v3: шкала чистоты заменена какашками. Чем грязнее было, тем больше их на полу.
+  2: (data) => {
+    let pet = data.pet;
+    if (isRecord(pet) && isRecord(pet.stats)) {
+      const { hygiene, ...stats } = pet.stats;
+      const h = typeof hygiene === 'number' ? hygiene : 100;
+      pet = { ...pet, stats, poops: hygieneToPoops(h), poopTimerMs: POOP_INTERVAL_MS };
+    }
+    return { ...data, version: 3, pet };
   },
 };
 
@@ -148,7 +164,7 @@ export function clearState(storage: KeyValueStorage): void {
 const STAGES: readonly string[] = ['egg', 'baby', 'child', 'teen', 'adult', 'elder', 'dead'];
 const CAUSES: readonly string[] = ['hunger', 'sickness', 'neglect', 'oldAge'];
 const FORMS: readonly string[] = ['good', 'normal', 'naughty'];
-const STAT_KEYS = ['hunger', 'happiness', 'energy', 'hygiene', 'health'] as const;
+const STAT_KEYS = ['hunger', 'happiness', 'energy', 'health'] as const;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -174,6 +190,9 @@ export function isPet(v: unknown): v is Pet {
     STAGES.includes(v.stage) &&
     isRecord(stats) &&
     STAT_KEYS.every((k) => isNum(stats[k])) &&
+    isNum(v.poops) &&
+    v.poops >= 0 &&
+    isNum(v.poopTimerMs) &&
     isNum(v.bornAt) &&
     isNum(v.ageMs) &&
     isNum(v.lifespanMs) &&

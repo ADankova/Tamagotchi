@@ -533,6 +533,13 @@ const poop = sprite([
   '#######',
 ]);
 
+const poopSmall = sprite([
+  '..#..',
+  '.#+#.',
+  '#+++#',
+  '#####',
+]);
+
 const zed = sprite([
   '####',
   '..#.',
@@ -665,6 +672,7 @@ export const SPRITES = {
   candy,
   ball,
   poop,
+  poopSmall,
   zed,
   skull,
   heart,

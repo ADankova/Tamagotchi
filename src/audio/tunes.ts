@@ -1,4 +1,4 @@
-import type { ActionType, GameEvent, StatKey } from '../core/types';
+import type { ActionType, GameEvent, Need } from '../core/types';
 
 // Мелодии и правила «какое событие что звучит» — без Web Audio, чтобы проверять тестами.
 
@@ -19,7 +19,8 @@ export type SoundName =
   | 'alert'
   | 'death'
   | 'blocked'
-  | 'toggle';
+  | 'toggle'
+  | 'poop';
 
 export const TUNES: Readonly<Record<SoundName, readonly Note[]>> = {
   feed: [[523, 70], [659, 70]],
@@ -36,6 +37,7 @@ export const TUNES: Readonly<Record<SoundName, readonly Note[]>> = {
   death: [[523, 200], [466, 200], [440, 200], [349, 420]],
   blocked: [[196, 90]],
   toggle: [[880, 50]],
+  poop: [[220, 60], [0, 30], [175, 90]],
 };
 
 export function tuneDuration(name: SoundName): number {
@@ -65,6 +67,8 @@ export function soundForEvent(event: GameEvent): SoundName | null {
       return event.stage === 'baby' || event.stage === 'egg' ? null : 'evolve';
     case 'gotSick':
       return 'sick';
+    case 'pooped':
+      return 'poop';
     case 'died':
       return 'death';
     default:
@@ -73,6 +77,6 @@ export function soundForEvent(event: GameEvent): SoundName | null {
 }
 
 /** Новая потребность (которой не было в прошлый раз) — повод пискнуть. */
-export function hasNewNeed(before: readonly StatKey[], after: readonly StatKey[]): boolean {
+export function hasNewNeed(before: readonly Need[], after: readonly Need[]): boolean {
   return after.some((k) => !before.includes(k));
 }

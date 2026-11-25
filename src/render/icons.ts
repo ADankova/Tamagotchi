@@ -1,4 +1,4 @@
-import type { ActionType, StatKey } from '../core/types';
+import type { ActionType, Need, StatKey } from '../core/types';
 import { drawSprite, LCD, type Palette } from './canvas';
 import { SPRITES, type SpriteName } from './sprites';
 
@@ -6,8 +6,16 @@ export const STAT_ICONS: Readonly<Record<StatKey, SpriteName>> = {
   hunger: 'iconHunger',
   happiness: 'heart',
   energy: 'iconBolt',
-  hygiene: 'iconDrop',
   health: 'iconCross',
+};
+
+/** Иконки потребностей над экраном питомца. */
+export const NEED_ICONS: Readonly<Record<Need, SpriteName>> = {
+  hunger: 'iconHunger',
+  happiness: 'heart',
+  energy: 'iconBolt',
+  health: 'iconCross',
+  poop: 'poop',
 };
 
 export const ACTION_ICONS: Readonly<Record<ActionType, SpriteName>> = {

@@ -15,7 +15,6 @@ import {
   SNACK_HUNGER,
   SNACK_LIMIT_PER_HOUR,
   SNACK_OVERLIMIT_HEALTH_PENALTY,
-  STAT_MAX,
 } from './config';
 import { clampStat, clonePet } from './pet';
 import type { ActionType, Cooldowns, GameEvent, Pet, StatKey } from './types';
@@ -101,7 +100,7 @@ export function performAction(
       break;
 
     case 'clean':
-      p.stats.hygiene = STAT_MAX;
+      p.poops = 0;
       break;
 
     case 'medicine':

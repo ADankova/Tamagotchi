@@ -48,7 +48,8 @@ describe('спрайты', () => {
   });
 
   it.each(CREATURES)('%s: помещается на экран при ходьбе', (name: SpriteName) => {
-    expect(SPRITES[name].w + 24).toBeLessThanOrEqual(SCREEN_W);
+    // ширина + ход ±8 + хвост (4) + поля
+    expect(SPRITES[name].w + 16 + 4 + 2).toBeLessThanOrEqual(SCREEN_W);
     expect(SPRITES[name].h).toBeLessThanOrEqual(20);
   });
 

@@ -8,7 +8,11 @@ import {
   MINUTE,
   SICK_CHANCE_PER_HOUR,
   SICK_HEALTH_LOSS_PER_HOUR,
-  SICK_HYGIENE_THRESHOLD,
+  MAX_POOPS,
+  POOP_HEALTH_LOSS_PER_HOUR,
+  POOP_HEALTH_THRESHOLD,
+  POOP_SICK_THRESHOLD,
+  SLEEP_POOP_MULTIPLIER,
   SIM_STEP_MS,
   SLEEP_ENERGY_GAIN_PER_HOUR,
   SLEEP_NEEDS_DECAY_MULTIPLIER,
@@ -16,6 +20,7 @@ import {
 } from './config';
 import { computeCareScore, formForCareScore, stageForAge } from './lifecycle';
 import { clampStat, clonePet, criticalStatCount, shouldAutoSleep } from './pet';
+import { poopInterval } from './poop';
 import { nextRandom } from './rng';
 import type { CauseOfDeath, GameEvent, Pet } from './types';
 
@@ -59,7 +64,6 @@ function advance(p: Pet, dt: number, events: GameEvent[]): void {
     (STAGE_DECAY_MULTIPLIER[p.stage] ?? 1) * (p.isSleeping ? SLEEP_NEEDS_DECAY_MULTIPLIER : 1);
   s.hunger = clampStat(s.hunger - DECAY_PER_HOUR.hunger * mult * hours);
   s.happiness = clampStat(s.happiness - DECAY_PER_HOUR.happiness * mult * hours);
-  s.hygiene = clampStat(s.hygiene - DECAY_PER_HOUR.hygiene * mult * hours);
 
   if (p.isSleeping) {
     s.energy = clampStat(s.energy + SLEEP_ENERGY_GAIN_PER_HOUR * hours);
@@ -68,12 +72,25 @@ function advance(p: Pet, dt: number, events: GameEvent[]): void {
     s.energy = clampStat(s.energy - DECAY_PER_HOUR.energy * energyMult * hours);
   }
 
+  // Какашки: таймер идёт вдвое медленнее во сне.
+  p.poopTimerMs -= dt * (p.isSleeping ? SLEEP_POOP_MULTIPLIER : 1);
+  if (p.poopTimerMs <= 0) {
+    const [roll, rngState] = nextRandom(p.rngState);
+    p.rngState = rngState;
+    p.poopTimerMs += poopInterval(p.stage, roll);
+    if (p.poops < MAX_POOPS) {
+      p.poops += 1;
+      events.push({ type: 'pooped', poops: p.poops });
+    }
+  }
+
   const healthLoss =
     criticalStatCount(p) * HEALTH_LOSS_PER_CRITICAL_PER_HOUR * hours +
-    (p.isSick ? SICK_HEALTH_LOSS_PER_HOUR * hours : 0);
+    (p.isSick ? SICK_HEALTH_LOSS_PER_HOUR * hours : 0) +
+    (p.poops > POOP_HEALTH_THRESHOLD ? POOP_HEALTH_LOSS_PER_HOUR * hours : 0);
   s.health = clampStat(s.health - healthLoss);
 
-  if (!p.isSick && s.hygiene < SICK_HYGIENE_THRESHOLD) {
+  if (!p.isSick && p.poops >= POOP_SICK_THRESHOLD) {
     const [roll, rngState] = nextRandom(p.rngState);
     p.rngState = rngState;
     if (roll < SICK_CHANCE_PER_HOUR * hours) {

@@ -1,4 +1,3 @@
-import { NEED_ALERT_THRESHOLD } from '../core/config';
 import { getMood } from '../core/pet';
 import type { ActionType, AdultForm, LifeStage, Pet, Species } from '../core/types';
 import { bodyStage, SPECIES_LOOKS, TAIL_OVERLAP } from './species';
@@ -7,8 +6,9 @@ import { SPRITES, type SpriteName } from './sprites';
 // Чистая функция «что нарисовать в момент t»: без DOM и без часов,
 // поэтому анимации можно проверять тестами. Координаты — в логических пикселях экрана.
 
-export const SCREEN_W = 48;
-export const SCREEN_H = 36;
+// Сетка экрана: чем она меньше, тем крупнее питомец на том же LCD.
+export const SCREEN_W = 40;
+export const SCREEN_H = 30;
 export const GROUND_Y = SCREEN_H - 2;
 
 /** Сколько длится анимация действия. У сна своей анимации нет — он состояние. */
@@ -22,12 +22,14 @@ export const ACTION_ANIM_MS: Readonly<Record<ActionType, number>> = {
 };
 
 const WALK_PERIOD_MS = 9600;
-const WALK_RANGE = 12;
+const WALK_RANGE = 8;
 const STEP_MS = 400;
 const BOB_MS = 500;
 const BLINK_EVERY_MS = 4000;
 const BLINK_MS = 160;
 const EGG_WOBBLE = [0, 1, 0, -1] as const;
+/** Места какашек на полу: сначала по краям, потом ближе к центру. */
+export const POOP_SLOTS = [1, 34, 7, 28, 13, 22] as const;
 
 export type AnimState =
   | 'egg'
@@ -230,10 +232,12 @@ export function composeScene(
     eyesClosed,
   });
 
-  // Грязь лежит на полу, пока не уберут.
+  // Какашки лежат на полу, пока их не уберут; питомец ходит перед ними.
   if (state !== 'dead' && state !== 'egg' && state !== 'cleaning') {
-    if (pet.stats.hygiene < NEED_ALERT_THRESHOLD) items.push({ sprite: 'poop', x: SCREEN_W - 9, y: onGround('poop') });
-    if (pet.stats.hygiene < NEED_ALERT_THRESHOLD / 2) items.push({ sprite: 'poop', x: 2, y: onGround('poop') });
+    const shown = Math.min(pet.poops, POOP_SLOTS.length);
+    for (let i = 0; i < shown; i++) {
+      items.push({ sprite: 'poopSmall', x: POOP_SLOTS.at(i) ?? 0, y: onGround('poopSmall') });
+    }
   }
 
   switch (state) {
@@ -305,8 +309,8 @@ export function composeScene(
       const hop = motion * -3 * (step(t, 300) % 2);
       items.push(petAt(mid - 11, hop));
       const phase = motion ? (elapsed % 1200) / 1200 : 0.5;
-      const bx = Math.round(mid - 1 + triangle(phase) * 15);
-      const by = Math.round(onGround('ball') - Math.sin(Math.PI * ((phase * 2) % 1)) * 10);
+      const bx = Math.round(mid - 1 + triangle(phase) * 12);
+      const by = Math.round(onGround('ball') - Math.sin(Math.PI * ((phase * 2) % 1)) * 9);
       items.push({ sprite: 'ball', x: bx, y: by });
       break;
     }

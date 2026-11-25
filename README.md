@@ -41,7 +41,7 @@ cd android && ./gradlew assembleDebug
 
 ## Как добавить животное
 
-1. Нарисовать спрайты в `src/render/sprites.ts`: тела для стадий `baby`, `child`, `teen`, `adultGood`, `adultNormal`, `adultNaughty`, `elder` (симметричные, не шире 24 и не выше 20 пикселей; глаза — символ `e`, чтобы питомец моргал и спал) и, если нужно, хвост в двух кадрах одного размера.
+1. Нарисовать спрайты в `src/render/sprites.ts`: тела для стадий `baby`, `child`, `teen`, `adultGood`, `adultNormal`, `adultNaughty`, `elder` (симметричные, не шире 18 и не выше 20 пикселей — экран 40×30; глаза — символ `e`, чтобы питомец моргал и спал) и, если нужно, хвост в двух кадрах одного размера.
 2. Добавить вид в `Species` и `SPECIES` в `src/core/types.ts`.
 3. Описать облик в `SPECIES_LOOKS` (`src/render/species.ts`) и подписать в `SPECIES_LABELS` (`src/strings.ts`).
 4. `npm test` — тесты проверят симметрию, размеры и что все сцены помещаются на экран.
