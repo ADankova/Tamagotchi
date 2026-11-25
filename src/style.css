@@ -523,7 +523,7 @@ summary:focus-visible {
 .stat {
   --stat: var(--mint);
   display: grid;
-  grid-template-columns: 24px 74px 1fr 30px;
+  grid-template-columns: 30px 74px 1fr 30px;
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
@@ -549,10 +549,11 @@ summary:focus-visible {
 .stat-icon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  background: var(--stat);
-  border: 2px solid var(--ink);
+  width: 34px;
+  height: 34px;
+  margin: -2px;
+  /* мягкое цветное пятно без обводки: края растворяются в фоне */
+  background: radial-gradient(circle closest-side, var(--stat) 50%, transparent 100%);
   border-radius: 50%;
 }
 
@@ -608,12 +609,18 @@ summary:focus-visible {
 }
 
 .stat-poop[data-level='warn'] .stat-icon {
-  background: var(--butter);
+  --stat: var(--butter);
 }
 
 .stat-poop[data-level='low'] .stat-icon {
-  background: var(--low);
-  animation: alarm 1s steps(2, jump-none) infinite;
+  --stat: var(--low);
+  animation: glow-alarm 1s steps(2, jump-none) infinite;
+}
+
+@keyframes glow-alarm {
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 .stat-value {
@@ -1399,7 +1406,7 @@ body.overlay-open {
 
 @media (max-width: 359px) {
   .stat {
-    grid-template-columns: 24px 1fr 30px;
+    grid-template-columns: 30px 1fr 30px;
   }
 
   .stat-label {
