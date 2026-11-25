@@ -34,7 +34,7 @@ import {
 } from '../strings';
 import { LCD, PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, spriteDataUrl, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, petSprite, POOP_SLOTS, stageSprite } from './scene';
+import { CUTSCENE_MS, POOP_SLOTS, stageSprite } from './scene';
 import { GamesOverlay } from './minigames';
 import { ART } from './artData';
 import { SPECIES_LOOKS } from './species';
@@ -544,7 +544,7 @@ export class UI {
     this.overlay = new GamesOverlay(
       {
         petName: pet.name,
-        petImage: spriteDataUrl(petSprite(pet), 6, LCD_TRANSPARENT),
+        petImage: ART[`face_${pet.species}`],
         playSound: (name) => this.services.playSound?.(name),
         stats: (size) => levelStats(this.game.state.gameStats, 'queens', size),
         onFinish: (won, reward, size) => this.game.finishMiniGame(won, reward, { game: 'queens', key: size }),
