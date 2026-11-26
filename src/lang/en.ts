@@ -1,4 +1,3 @@
-import { M3_MOVES } from '../core/match3';
 import { PET_PICTURE_NAMES } from '../core/mosaicPictures';
 import { DAY, HOUR, MINUTE } from '../core/config';
 import type { Dict } from './ru';
@@ -174,13 +173,15 @@ export const en: Dict = {
     harborTreats: (n: number) => `Treats: ${n}`,
     match3Title: 'Match Three',
     match3About:
-      'Swap neighbouring pets: three or more in a row or column vanish and the ones above fall down. Four in a row makes a line bonus that clears its row or column (tap it). A 2×2 square, or a T or L of five, makes a bomb that clears everything within 3 cells. Five in a row or a plus-shaped cross makes a rainbow: swap it with a neighbour to clear every pet of that kind. Reach the score before you run out of moves.',
-    match3Level: 'Limited moves',
-    match3Info: (reward: number) => `Score points in ${M3_MOVES} moves · +${reward} treat${reward === 1 ? '' : 's'}`,
-    match3Stats: (played: number, won: number, best: number) => `Played: ${played} · Won: ${won} · Best: ${best}`,
-    match3Moves: (n: number) => `Moves: ${n}`,
-    match3Score: (score: number, goal: number) => `Score: ${score} / ${goal}`,
+      'Swap neighbouring pets: three or more in a row or column vanish and the ones above fall down. The game is endless, with no moves or score, and the board is remembered when you leave. Now and then a treat appears among the falling pets: a normal match cannot get it, but a bomb or a row or column bonus will. Four in a row makes a line bonus (tap it), a 2×2 square or a T/L of five makes a bomb, and five in a row or a plus-shaped cross makes a rainbow.',
+    match3Level: 'Endless',
+    match3Info: 'Bombs and line bonuses collect the treats',
+    match3Stats: (treats: number) => `Treats collected: ${treats}`,
     match3Hint: 'Swap neighbouring pets or tap a bonus',
+    match3Treats: (n: number) => `Treats: ${n}`,
+    match3Restart: 'Start over',
+    match3RestartSure: 'Tap again to start over',
+    match3TreatLabel: 'Treat',
     match3Tile: 'Pet',
     match3Special: { row: 'Row bonus', col: 'Column bonus', bomb: 'Bomb', rainbow: 'Rainbow' } as Record<'row' | 'col' | 'bomb' | 'rainbow', string>,
     match3Legend: {
@@ -195,13 +196,11 @@ export const en: Dict = {
       bombText: 'bomb: clears everything within 3 cells',
       rainbowTitle: '5 in a row or a plus cross',
       rainbowText: 'rainbow: swap with a neighbour to clear every pet of its kind',
+      treatTitle: 'Treat',
+      treatText: 'only a bomb, row or column bonus collects it',
       tip: 'Just tap a row, column or bomb bonus. Two swapped rainbows clear the whole board. A bonus inside a matched line goes off by itself.',
     },
     match3Shuffle: 'No moves left — the pets were shuffled',
-    match3WinTitle: 'Goal reached!',
-    match3WinText: (name: string, score: number, reward: number) => `${name} scored ${score} and gets ${reward} treat${reward === 1 ? '' : 's'}!`,
-    match3LoseTitle: 'Out of moves',
-    match3LoseText: (name: string, score: number, goal: number) => `Scored ${score} of ${goal}. ${name} is sure you can do better!`,
     match3LeaveConfirm: 'Finish the game? The round will not be saved.',
     soon: 'More games coming soon',
     rules: {

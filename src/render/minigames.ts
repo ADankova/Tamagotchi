@@ -15,8 +15,7 @@ import { SLIDE_MODES, type SlideMode } from '../core/slide';
 import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
 import { MosaicGame } from './mosaic';
 import { HarborGame } from './harbor';
-import { Match3Game } from './match3';
-import { M3_REWARD } from '../core/match3';
+import { Match3Game, match3Collected } from './match3';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -47,10 +46,6 @@ export interface MiniGameHost {
   harborStats: () => LevelStats;
   /** Партия «Бухты питомцев» окончена. */
   finishHarbor: (won: boolean) => void;
-  /** «Три в ряд»: сыграно, выиграно, рекорд. */
-  match3Stats: () => LevelStats;
-  /** Партия «Трёх в ряд» окончена. */
-  finishMatch3: (won: boolean, score: number) => void;
   /** Картинка лакомства (data URL). */
   treatImage: string;
 }
@@ -161,11 +156,10 @@ export class GamesOverlay {
     ]);
     harborButton.addEventListener('click', () => this.startHarbor());
     const harborCard = this.gameCard('harbor', GAMES_TEXT.harborTitle, GAMES_TEXT.harborAbout, [harborButton]);
-    const m3 = this.host.match3Stats();
     const m3Button = el('button', { type: 'button', class: 'chunky level-button' }, [
       el('span', { class: 'level-name', text: GAMES_TEXT.match3Level }),
-      el('span', { class: 'level-info', text: GAMES_TEXT.match3Info(M3_REWARD) }),
-      el('span', { class: 'level-stats', text: GAMES_TEXT.match3Stats(m3.played, m3.won, m3.best ?? 0) }),
+      el('span', { class: 'level-info', text: GAMES_TEXT.match3Info }),
+      el('span', { class: 'level-stats', text: GAMES_TEXT.match3Stats(match3Collected()) }),
     ]);
     m3Button.addEventListener('click', () => this.startMatch3());
     const m3Card = this.gameCard('match3', GAMES_TEXT.match3Title, GAMES_TEXT.match3About, [m3Button]);

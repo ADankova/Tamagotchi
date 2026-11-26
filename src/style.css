@@ -2664,20 +2664,6 @@ button.m-jar:active {
   flex-direction: column;
   gap: 8px;
 }
-.m3-bar {
-  height: 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, #3b2a1e 14%, #fff6e4);
-  overflow: hidden;
-}
-.m3-bar-fill {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, #ffd25e, #ff9fc8);
-  border-radius: 6px;
-  transition: width 0.3s ease;
-}
 .m3-board {
   position: relative;
   width: 100%;
@@ -2909,4 +2895,38 @@ button.m-jar:active {
 }
 .m3-help .m3-legend-tip {
   font-size: 0.66rem;
+}
+
+.m3-tile.treat .m3-face {
+  background: radial-gradient(circle at 50% 40%, #fff6c8, #ffe08a);
+  border-color: #f4b73f;
+  box-shadow: 0 0 8px 2px #ffd25e;
+  animation: m3-bob 1s ease-in-out infinite alternate;
+}
+.m3-treat-img {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.m3-legend-icon img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.q-chip.bump {
+  animation: m3-bump 0.4s ease;
+}
+@keyframes m3-bump {
+  40% { transform: scale(1.2); }
+}
+.m3-help .m3-legend-tip {
+  font-size: 0.62rem;
+  line-height: 1.2;
+}
+.m3-help .m3-legend h3 {
+  font-size: 0.82rem;
 }

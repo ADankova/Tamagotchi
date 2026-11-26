@@ -1,7 +1,7 @@
 // Счётчики мини-игр: сколько партий сыграно и выиграно на каждом уровне.
 // Хранятся отдельно от питомца и не пропадают, когда он умирает.
 
-export type MiniGameId = 'queens' | 'slide' | 'mosaic' | 'harbor' | 'match3';
+export type MiniGameId = 'queens' | 'slide' | 'mosaic' | 'harbor';
 
 export interface LevelStats {
   played: number;
@@ -14,7 +14,7 @@ export interface LevelStats {
 export type GameStats = Record<MiniGameId, Record<string, LevelStats>>;
 
 export function emptyStats(): GameStats {
-  return { queens: {}, slide: {}, mosaic: {}, harbor: {}, match3: {} };
+  return { queens: {}, slide: {}, mosaic: {}, harbor: {} };
 }
 
 export function levelStats(stats: GameStats, game: MiniGameId, level: string | number): LevelStats {

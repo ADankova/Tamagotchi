@@ -1,4 +1,3 @@
-import { M3_MOVES } from '../core/match3';
 import { PET_PICTURE_NAMES } from '../core/mosaicPictures';
 import type { AbsenceNote } from '../core/absence';
 import type { ActionBlockReason } from '../core/actions';
@@ -165,13 +164,15 @@ const GAMES_TEXT = {
   harborTreats: (n: number) => `Лакомств: ${n}`,
   match3Title: 'Три в ряд',
   match3About:
-    'Меняй местами соседних питомцев: три и больше в ряд или в столбце исчезают, а верхние падают вниз. Четыре в ряд дают бонус-линию: он сносит свою строку или столбец (нажми на него). Квадрат 2×2, а также уголок или «Т» из пяти дают бомбу, которая сносит всё вокруг на 3 клетки. Пять в ряд или крест «плюсом» дают радугу: поменяй её с соседом — исчезнут все питомцы его вида. Набери очки, пока не кончились ходы.',
-  match3Level: 'Игра на ходы',
-  match3Info: (reward: number) => `Набери очки за ${M3_MOVES} ходов · +${reward} ${treatWord(reward)}`,
-  match3Stats: (played: number, won: number, best: number) => `Сыграно: ${played} · Побед: ${won} · Рекорд: ${best}`,
-  match3Moves: (n: number) => `Ходов: ${n}`,
-  match3Score: (score: number, goal: number) => `Очки: ${score} / ${goal}`,
+    'Меняй местами соседних питомцев: три и больше в ряд или в столбце исчезают, а верхние падают вниз. Игра бесконечная, ходов и очков нет, а поле запоминается, когда ты выходишь. Время от времени среди упавших питомцев появляется лакомство: обычным рядом его не достать, но его заберёт бомба или бонус-строка и бонус-столбец. Четыре в ряд дают бонус-линию (нажми на него), квадрат 2×2 или «Т»/«Г» из пяти — бомбу, пять в ряд или крест-плюс — радугу.',
+  match3Level: 'Без конца',
+  match3Info: 'Лакомства достаются бомбой и бонус-линиями',
+  match3Stats: (treats: number) => `Собрано лакомств: ${treats}`,
   match3Hint: 'Меняй соседних питомцев или нажми на бонус',
+  match3Treats: (n: number) => `Лакомств: ${n}`,
+  match3Restart: 'Начать заново',
+  match3RestartSure: 'Нажми ещё раз, чтобы начать заново',
+  match3TreatLabel: 'Лакомство',
   match3Tile: 'Питомец',
   match3Special: { row: 'Бонус: строка', col: 'Бонус: столбец', bomb: 'Бомба', rainbow: 'Радуга' } as Record<'row' | 'col' | 'bomb' | 'rainbow', string>,
   match3Legend: {
@@ -186,13 +187,11 @@ const GAMES_TEXT = {
     bombText: 'бомба: сносит всё вокруг на 3 клетки',
     rainbowTitle: '5 в ряд или крест-плюс',
     rainbowText: 'радуга: поменяй с соседом — исчезнут все питомцы его вида',
+    treatTitle: 'Лакомство',
+    treatText: 'достанут только бомба, строка или столбец',
     tip: 'Бонус-строку, столбец и бомбу достаточно нажать. Две радуги, поменянные местами, убирают всё поле. Бонус внутри сложенного ряда срабатывает сам.',
   },
   match3Shuffle: 'Ходов не осталось — питомцы перемешались',
-  match3WinTitle: 'Цель достигнута!',
-  match3WinText: (name: string, score: number, reward: number) => `${name} набрал ${score} очков и получает ${reward} ${treatWord(reward)}!`,
-  match3LoseTitle: 'Ходы кончились',
-  match3LoseText: (name: string, score: number, goal: number) => `Набрано ${score} из ${goal}. ${name} уверен, что получится лучше!`,
   match3LeaveConfirm: 'Закончить игру? Партия не сохранится.',
   soon: 'Скоро здесь появятся новые игры',
   rules: {
