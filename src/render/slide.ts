@@ -69,7 +69,8 @@ export class SlideGame implements GameScreen {
     private readonly mode: SlideMode,
     private readonly cb: SlideCallbacks,
   ) {
-    this.state = newSlideGame(randomSeed(), mode);
+    const saved = loadSaved(mode);
+    this.state = saved ?? newSlideGame(randomSeed(), mode);
     this.board.classList.add(mode);
     const nextWrap = el('div', { class: 's-next-wrap' }, [el('span', { class: 's-next-label', text: GAMES_TEXT.slideNext[mode] }), this.preview]);
     this.root = el('div', { class: 'q-game s-game' }, [
@@ -91,6 +92,12 @@ export class SlideGame implements GameScreen {
     this.renderPreview(this.state.next);
     this.renderScore();
     this.bindDrag();
+    if (saved) this.status.textContent = GAMES_TEXT.slideResumed;
+  }
+
+  private saveGame(): void {
+    if (this.state.over) clearSaved(this.mode);
+    else storeSaved(this.mode, this.state);
   }
 
   private bonusButton(kind: 'freeze' | 'crumbs', label: string, onClick: () => void): HTMLButtonElement {
@@ -103,15 +110,9 @@ export class SlideGame implements GameScreen {
     return button;
   }
 
+  /** Выход посреди партии ничего не теряет: игра сохранена и продолжится при следующем входе. */
   hasProgress(): boolean {
-    return this.state.moves > 0 && !this.finished;
-  }
-
-  /** Вышли посреди партии: партия засчитывается, лакомства уже начислены. */
-  leave(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.host.finishSlide(this.mode, this.state.lines, this.state.treats);
+    return false;
   }
 
   // --- Отрисовка ---
@@ -207,6 +208,7 @@ export class SlideGame implements GameScreen {
     this.host.playSound('place');
     this.status.textContent = GAMES_TEXT.slideFrozen(next.frozen);
     this.renderScore();
+    this.saveGame();
   }
 
   private async crumble(): Promise<void> {
@@ -226,11 +228,14 @@ export class SlideGame implements GameScreen {
     this.board.append(zone);
     this.host.playSound('place');
     await wait(480);
-    this.state = result.state;
-    this.sync(this.state.blocks, [], [], [], true);
-    this.renderScore();
+    this.sync(result.frames[0]!.blocks, [], [], [], true);
     await wait(420);
     zone.remove();
+    await this.play(result.frames.slice(1));
+    this.state = result.state;
+    this.sync(this.state.blocks);
+    this.renderScore();
+    this.saveGame();
     this.busy = false;
   }
 
@@ -302,6 +307,7 @@ export class SlideGame implements GameScreen {
     this.sync(this.state.blocks);
     this.renderPreview(this.state.next);
     this.renderScore();
+    this.saveGame();
     if (this.state.frozen > 0 && this.status.textContent === '') this.status.textContent = GAMES_TEXT.slideFrozen(this.state.frozen);
     this.busy = false;
     if (this.state.over) this.gameOver();
@@ -336,6 +342,7 @@ export class SlideGame implements GameScreen {
 
   private gameOver(): void {
     this.finished = true;
+    clearSaved(this.mode);
     const before = this.host.slideStats(this.mode).best ?? 0;
     const { lines, treats } = this.state;
     this.host.finishSlide(this.mode, lines, treats);
@@ -353,6 +360,47 @@ export class SlideGame implements GameScreen {
     card.append(el('div', { class: 'q-result-buttons' }, [retry, finish]));
     this.root.append(card);
     finish.focus();
+  }
+}
+
+const SAVE_KEY = (mode: SlideMode) => `tamagotchi.slide.${mode}`;
+
+function storeSaved(mode: SlideMode, state: SlideState): void {
+  try {
+    localStorage.setItem(SAVE_KEY(mode), JSON.stringify(state));
+  } catch {
+    // нет места или хранилище закрыто — игра просто не сохранится
+  }
+}
+
+function clearSaved(mode: SlideMode): void {
+  try {
+    localStorage.removeItem(SAVE_KEY(mode));
+  } catch {
+    // ignore
+  }
+}
+
+/** Сохранённая партия этого режима, если она читается и не закончена. */
+function loadSaved(mode: SlideMode): SlideState | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY(mode));
+    if (!raw) return null;
+    const s = JSON.parse(raw) as SlideState;
+    const ok =
+      s.mode === mode &&
+      !s.over &&
+      Array.isArray(s.blocks) &&
+      Array.isArray(s.next) &&
+      s.blocks.length > 0 &&
+      s.blocks.every(
+        (b) => Number.isInteger(b.row) && b.row >= 0 && b.row < SLIDE_ROWS && Number.isInteger(b.col) && b.col >= 0 && b.col + b.len <= SLIDE_COLS && b.len >= 1,
+      ) &&
+      typeof s.rng === 'number' &&
+      typeof s.nextId === 'number';
+    return ok ? s : null;
+  } catch {
+    return null;
   }
 }
 

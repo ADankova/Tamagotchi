@@ -19,11 +19,11 @@ export const SLIDE_MODES: readonly SlideMode[] = ['fall', 'rise'];
 /** Ключ рекордов в статистике: у «Лавины» прежний (10), чтобы не потерять старые рекорды. */
 export const slideStatsKey = (mode: SlideMode): number => (mode === 'fall' ? 10 : 11);
 export const SLIDE_START_ROWS = 3;
-export const TREAT_EVERY_MIN = 10;
-export const TREAT_EVERY_MAX = 15;
+export const TREAT_EVERY_MIN = 15;
+export const TREAT_EVERY_MAX = 20;
 export const BLOCK_COLORS = 6;
-export const BONUS_EVERY_MIN = 3;
-export const BONUS_EVERY_MAX = 5;
+export const BONUS_EVERY_MIN = 4;
+export const BONUS_EVERY_MAX = 7;
 /** Сколько ходов не падают новые полосы после заморозки. */
 export const FREEZE_MOVES = 3;
 /** Сторона поля, которое разбивают крошки. */
@@ -396,5 +396,8 @@ export function useCrumbs(prev: SlideState): { state: SlideState; frames: SlideF
     });
   }
   state.blocks = out;
-  return { state, frames: [{ ...frame(state), crumbArea: area }] };
+  const frames: SlideFrame[] = [{ ...frame(state), crumbArea: area }];
+  // Осколки падают на свободные места, полные полосы исчезают.
+  resolve(state, frames);
+  return { state, frames };
 }
