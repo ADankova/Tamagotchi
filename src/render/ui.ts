@@ -34,7 +34,7 @@ import {
 } from '../strings';
 import { PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, POOP_SLOTS, setAnimPreview, type AnimRow } from './scene';
+import { CUTSCENE_MS, POOP_SLOTS, setAnimPreview, setPreviewSpecies, type AnimRow } from './scene';
 import { GamesOverlay } from './minigames';
 import { ART } from './artData';
 import { bodyStage } from './species';
@@ -606,17 +606,28 @@ export class UI {
   private buildAnimPicker(): void {
     const toggle = el('button', { type: 'button', class: 'anim-toggle', text: `🎞 ${DEV_TEXT.animButton}` });
     const list = el('div', { class: 'anim-list', hidden: '' });
-    const choose = (row: AnimRow | null) => {
+    let row: AnimRow | null = null;
+    let species: Species | null = null;
+    const refresh = () => {
       setAnimPreview(row);
-      list.hidden = true;
-      toggle.textContent = `🎞 ${row ? DEV_TEXT.animRows[row] ?? row : DEV_TEXT.animButton}`;
+      setPreviewSpecies(species);
+      const parts = [species ? DEV_TEXT.animSpecies[species] : '', row ? DEV_TEXT.animRows[row] ?? row : ''].filter(Boolean);
+      toggle.textContent = `🎞 ${parts.length ? parts.join(' · ') : DEV_TEXT.animButton}`;
     };
-    const items: (AnimRow | null)[] = [null, ...(Object.keys(DEV_TEXT.animRows) as AnimRow[])];
-    for (const row of items) {
-      const b = el('button', { type: 'button', class: 'anim-item', text: row ? DEV_TEXT.animRows[row] ?? row : DEV_TEXT.animOff });
-      b.addEventListener('click', () => choose(row));
+    const addItem = (text: string, onPick: () => void, close: boolean) => {
+      const b = el('button', { type: 'button', class: 'anim-item', text });
+      b.addEventListener('click', () => {
+        onPick();
+        refresh();
+        if (close) list.hidden = true;
+      });
       list.append(b);
-    }
+    };
+    // Вид питомца для просмотра: свой, кошечка, собачка или пушистик (список остаётся открытым).
+    addItem(DEV_TEXT.animSpeciesOwn, () => (species = null), false);
+    for (const sp of ['cat', 'dog', 'blob'] as const) addItem(DEV_TEXT.animSpecies[sp] ?? sp, () => (species = sp), false);
+    addItem(DEV_TEXT.animOff, () => ((row = null), (species = null)), true);
+    for (const r of Object.keys(DEV_TEXT.animRows) as AnimRow[]) addItem(DEV_TEXT.animRows[r] ?? r, () => (row = r), true);
     toggle.addEventListener('click', () => {
       list.hidden = !list.hidden;
     });
@@ -627,6 +638,7 @@ export class UI {
   private disableDevMode(): void {
     writeDevFlag(false);
     setAnimPreview(null);
+    setPreviewSpecies(null);
     this.animPicker.hidden = true;
     this.devPanel?.remove();
     this.devPanel = null;

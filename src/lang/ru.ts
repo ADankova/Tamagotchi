@@ -164,6 +164,8 @@ const DEV_TEXT = {
   tapsLeft: (n: number) => `Ещё ${n} — и откроется режим тестирования`,
   animButton: 'Анимации',
   animOff: 'Обычное поведение',
+  animSpeciesOwn: 'Мой питомец',
+  animSpecies: { cat: 'Кошечка', dog: 'Собачка', blob: 'Пушистик' } as Record<string, string>,
   animRows: {
     idle: 'Покой (старая)', sleep: 'Сон (старая)', eat: 'Еда (старая)', sick: 'Болезнь', hungry: 'Голод', tired: 'Усталость',
     idle_smooth: 'Покой', catch: 'Ловит лакомство', walk: 'Ходьба', eat_side: 'Еда боком', lie_wag: 'Лежит', roll: 'Кувырок', sleep_twitch: 'Сон',
