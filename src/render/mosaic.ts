@@ -176,15 +176,19 @@ export class MosaicGame implements GameScreen {
     const hy = to.top - stage.top + to.height / 2;
     const w = this.state.w;
     const h = this.state.h;
-    const goalCol = Math.min(w, Math.max(-1, Math.round((hx - ox) / pitchX)));
+    const slotEl = this.slotRow.children[c.slot] as HTMLElement | undefined;
+    const sr = (slotEl ?? this.hole).getBoundingClientRect();
+    const sx = sr.left - stage.left + sr.width / 2;
+    const sy = sr.top - stage.top + sr.height / 2;
+    const goalCol = Math.min(w, Math.max(-1, Math.round((sx - ox) / pitchX)));
     const gridPath = this.freePath(c.cell % w, Math.floor(c.cell / w), goalCol, h);
-    const pts: Array<[number, number]> = gridPath.map(([gx, gy]) => [ox + gx * pitchX, oy + gy * pitchY]);
+    const grid: Array<[number, number]> = gridPath.map(([gx, gy]) => [ox + gx * pitchX, oy + gy * pitchY]);
     const rowY = oy + h * pitchY;
-    pts.push([hx, rowY], [hx, hy]);
-    // Сначала питомец бежит из норки к своему кубику, потом несёт его обратно тем же путём.
-    const back = pts.slice().reverse();
-    const route = back.concat(pts.slice(1));
-    const turn = back.length - 1;
+    // Питомец выбегает из своей баночки, без груза бежит к кубику по свободным местам, берёт его и несёт в норку.
+    const out: Array<[number, number]> = [[sx, sy], [sx, rowY], ...grid.slice().reverse()];
+    const home: Array<[number, number]> = [...grid, [hx, rowY], [hx, hy]];
+    const route = out.concat(home.slice(1));
+    const turn = out.length - 1;
     let total = 0;
     const lens = route.slice(1).map((p, i) => {
       const q = route[i]!;
