@@ -17,7 +17,7 @@ import type { GameScreen, MiniGameHost } from './minigames';
 
 // Экран «Мозаики»: картинка из кубиков, норка, ячейки и очереди баночек.
 
-const STEP_MS = 260;
+const STEP_MS = 520;
 /** Скорость бега питомца, пикселей в миллисекунду. */
 const RUN_PX_PER_MS = 0.11;
 /** Доступные скорости: множитель бега питомцев и темпа игры. */
@@ -114,7 +114,7 @@ export class MosaicGame implements GameScreen {
     window.clearInterval(this.timer);
   }
 
-  private jarNode(jar: Jar, front: boolean, hidden: boolean): HTMLElement {
+  private jarNode(jar: Jar, front: boolean, hidden: boolean, partnerHidden = false): HTMLElement {
     const node = el(front ? 'button' : 'div', { class: 'm-jar', 'aria-label': GAMES_TEXT.mosaicJar(jar.n), 'data-jar': String(jar.id) }, [
       el('span', { class: 'm-jar-lid' }),
       el('span', { class: 'm-jar-n', text: jar.n <= 0 ? '' : hidden ? '?' : String(jar.n) }),
@@ -124,6 +124,11 @@ export class MosaicGame implements GameScreen {
     node.classList.toggle('hidden-n', hidden);
     node.classList.toggle('spent', jar.n <= 0);
     node.classList.toggle('linked', jar.pair !== undefined);
+    if (partnerHidden) {
+      // Пара лежит глубже видимых рядов: значок показывает, что баночка связана, и цвет пары.
+      node.classList.add('pair-hidden');
+      node.style.setProperty('--mate', COLOR_CSS[this.mateColor(jar)] ?? '#ccc');
+    }
     return node;
   }
 
@@ -142,20 +147,6 @@ export class MosaicGame implements GameScreen {
       const b = nodes.get(String(jar.pair));
       const mate = jars.find((j) => j.id === jar.pair);
       if (!mate) return;
-      if (a && !b) {
-        // Пара лежит глубже видимых рядов очереди: короткая труба уходит вниз, чтобы связь была видна заранее.
-        const ra = a.getBoundingClientRect();
-        const x = ra.left + ra.width / 2 - box.left;
-        const y1 = ra.top + ra.height / 2 - box.top;
-        const y2 = ra.bottom - box.top + 12;
-        const gid = `ls${i}`;
-        parts.push(
-          `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"><stop offset="0.5" stop-color="${COLOR_CSS[jar.color]}"/><stop offset="1" stop-color="${COLOR_CSS[mate.color]}"/></linearGradient>` +
-            `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#3b2a1e" stroke-width="16" stroke-linecap="round"/>` +
-            `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="url(#${gid})" stroke-width="10" stroke-linecap="round"/>`,
-        );
-        return;
-      }
       if (!a || !b || jar.id > jar.pair) return;
       const ra = a.getBoundingClientRect();
       const rb = b.getBoundingClientRect();
@@ -175,6 +166,10 @@ export class MosaicGame implements GameScreen {
       this.linksHtml = html;
       this.links.innerHTML = html;
     }
+  }
+
+  private mateColor(jar: Jar): number {
+    return [...this.state.slots, ...this.state.columns.flat()].find((j) => j?.id === jar.pair)?.color ?? jar.color;
   }
 
   private renderJars(): void {
@@ -218,11 +213,13 @@ export class MosaicGame implements GameScreen {
         return slot;
       }),
     );
+    const shown = new Set<number>(this.state.slots.flatMap((j) => (j ? [j.id] : [])));
+    this.state.columns.forEach((q) => q.slice(0, VISIBLE_IN_QUEUE).forEach((j) => shown.add(j.id)));
     this.queues.replaceChildren(
       ...this.state.columns.map((queue, col) => {
         const column = el('div', { class: 'm-queue' });
         queue.slice(0, VISIBLE_IN_QUEUE).forEach((jar, i) => {
-          const node = this.jarNode(jar, i === 0, i >= 2);
+          const node = this.jarNode(jar, i === 0, i >= 2, jar.pair !== undefined && !shown.has(jar.pair));
           if (i === 0) node.addEventListener('click', () => this.tap(col));
           column.append(node);
         });

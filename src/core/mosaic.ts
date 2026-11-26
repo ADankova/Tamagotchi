@@ -272,7 +272,7 @@ export function tapJar(state: MosaicState, col: number): MosaicState | null {
 
 /** Один шаг: каждая баночка в ячейке посылает питомца за открытым кубиком своего цвета. Кубик пропадёт, когда питомец его возьмёт (pickCell). */
 /** Сколько питомцев выбегает из одной баночки за шаг. */
-export const RUNNERS_PER_STEP = 2;
+export const RUNNERS_PER_STEP = 1;
 
 /** `canTake` — может ли питомец прямо сейчас выбежать к этому кубику (иначе число на баночке не трогаем). */
 export function stepMosaic(state: MosaicState, canTake: (cell: number) => boolean = () => true): { state: MosaicState; carries: Carry[] } {
