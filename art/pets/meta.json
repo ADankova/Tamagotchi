@@ -688,29 +688,115 @@
  },
  "dog_adultNaughty": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 64,
   "left": 2,
   "right": 62,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 64,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 64,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 60,
+    "left": 4,
+    "right": 58,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 60,
+    "left": 4,
+    "right": 59,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 56,
+    "left": 4,
+    "right": 63,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 54,
+    "left": 4,
+    "right": 58,
+    "frames": 17
+   }
+  }
  },
  "dog_elder": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 64,
   "left": 2,
   "right": 62,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 64,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 64,
+    "left": 1,
+    "right": 63,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 58,
+    "left": 4,
+    "right": 60,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 58,
+    "left": 8,
+    "right": 60,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 57,
+    "left": 6,
+    "right": 60,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 51,
+    "left": 7,
+    "right": 57,
+    "frames": 17
+   }
+  }
  },
  "dog_adultNormal": {
   "cell": 64,
