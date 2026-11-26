@@ -4,7 +4,7 @@ import { nextRandom } from './rng';
 // вида, а если такого корабля нет — ждёт на пристани. На корабль нужно собрать трёх одинаковых.
 
 /** Видов питомцев в партии. */
-export const HARBOR_KINDS = 9;
+export const HARBOR_KINDS = 7;
 /** Сколько троек каждого вида нужно собрать. */
 export const HARBOR_TRIPLES = 3;
 export const HARBOR_SHIPS = 3;
@@ -12,7 +12,7 @@ export const HARBOR_PIER = 5;
 export const HARBOR_NEED = 3;
 /** Поле: ширина 1, высота HARBOR_H. Острова — круги, радиус зависит от числа питомцев на острове. */
 export const HARBOR_H = 1.25;
-export const HARBOR_RADIUS = [0.115, 0.16, 0.19, 0.215] as const;
+export const HARBOR_RADIUS = [0.1, 0.14, 0.17, 0.195] as const;
 /** На сколько остров поднимается за один шаг воды. */
 export const HARBOR_RISE = 0.06;
 const GAP = 0.002;
@@ -21,14 +21,27 @@ export const HARBOR_REWARD = 3;
 /** Шансы острова на 1, 2, 3 и 4 питомцев, в процентах. */
 export const HARBOR_ISLAND_WEIGHTS = [5, 40, 40, 15] as const;
 
+export type HarborBonus = 'net' | 'clear' | 'shuffle';
+export const HARBOR_BONUSES: readonly HarborBonus[] = ['net', 'clear', 'shuffle'];
+/** Шанс острова нести бонус, в процентах. */
+export const HARBOR_BONUS_CHANCE = 14;
+/** Мест в общем блоке рядом с пристанью (куда «Удаление» складывает питомцев). */
+export const HARBOR_STASH = 5;
+
 export interface HarborPet {
   id: number;
   kind: number;
+  /** Место питомца на острове: не меняется, пока остров не перемешают. */
+  spot: number;
 }
 
 export interface HarborIsland {
   id: number;
   pets: HarborPet[];
+  /** Сколько питомцев было на острове вначале: от этого зависит размер, и он не уменьшается. */
+  size: number;
+  /** Бонус, который достанется, когда остров опустеет. */
+  bonus: HarborBonus | null;
   /** Центр острова-пузыря. */
   x: number;
   y: number;
@@ -47,6 +60,10 @@ export interface HarborState {
   deck: HarborIsland[];
   ships: (HarborShip | null)[];
   pier: HarborPet[];
+  /** Общий блок рядом с пристанью. */
+  stash: HarborPet[];
+  /** Сколько бонусов собрано. */
+  bonuses: Record<HarborBonus, number>;
   delivered: number;
   total: number;
   /** Доставлено питомцев каждого вида. */
@@ -77,7 +94,7 @@ export function newHarbor(seed: number): HarborState {
   const pets: HarborPet[] = [];
   let id = 1;
   for (let kind = 0; kind < HARBOR_KINDS; kind++) {
-    for (let i = 0; i < HARBOR_TRIPLES * HARBOR_NEED; i++) pets.push({ id: id++, kind });
+    for (let i = 0; i < HARBOR_TRIPLES * HARBOR_NEED; i++) pets.push({ id: id++, kind, spot: 0 });
   }
   for (let i = pets.length - 1; i > 0; i--) {
     const [j, next] = pick(rng, i + 1);
@@ -89,7 +106,18 @@ export function newHarbor(seed: number): HarborState {
   while (at < pets.length) {
     const [size, next] = islandSize(rng);
     rng = next;
-    islands.push({ id: islands.length + 1, pets: pets.slice(at, at + size), x: 0, y: 0 });
+    const group = pets.slice(at, at + size).map((p, spot) => ({ ...p, spot }));
+    const [chance, afterChance] = nextRandom(rng);
+    const [which, afterWhich] = pick(afterChance, HARBOR_BONUSES.length);
+    rng = afterWhich;
+    islands.push({
+      id: islands.length + 1,
+      pets: group,
+      size: group.length,
+      bonus: chance * 100 < HARBOR_BONUS_CHANCE ? HARBOR_BONUSES[which]! : null,
+      x: 0,
+      y: 0,
+    });
     at += size;
   }
   const state: HarborState = {
@@ -98,6 +126,8 @@ export function newHarbor(seed: number): HarborState {
     deck: islands,
     ships: Array.from({ length: HARBOR_SHIPS }, () => null),
     pier: [],
+    stash: [],
+    bonuses: { net: 0, clear: 0, shuffle: 0 },
     delivered: 0,
     total: pets.length,
     deliveredByKind: Array.from({ length: HARBOR_KINDS }, () => 0),
@@ -113,8 +143,8 @@ export function newHarbor(seed: number): HarborState {
   return settle(water);
 }
 
-export function islandRadius(island: { pets: unknown[] }): number {
-  return HARBOR_RADIUS[Math.min(island.pets.length, 4) - 1] ?? HARBOR_RADIUS[0];
+export function islandRadius(island: { size: number }): number {
+  return HARBOR_RADIUS[Math.min(Math.max(island.size, 1), 4) - 1] ?? HARBOR_RADIUS[0];
 }
 
 function fits(field: HarborIsland[], x: number, y: number, r: number, skip?: number): boolean {
@@ -141,6 +171,8 @@ function settle(input: HarborState): HarborState {
     ...input,
     ships: input.ships.slice(),
     pier: input.pier.slice(),
+    stash: input.stash.slice(),
+    bonuses: { ...input.bonuses },
     deliveredByKind: input.deliveredByKind.slice(),
   };
   for (let guard = 0; guard < 40; guard++) {
@@ -174,8 +206,9 @@ function settle(input: HarborState): HarborState {
       state.rng = rng;
       if (best < 0) continue;
       taken.add(best);
-      const waiting = state.pier.filter((p) => p.kind === best).slice(0, HARBOR_NEED);
+      const waiting = [...state.pier, ...state.stash].filter((p) => p.kind === best).slice(0, HARBOR_NEED);
       state.pier = state.pier.filter((p) => !waiting.includes(p));
+      state.stash = state.stash.filter((p) => !waiting.includes(p));
       state.ships[i] = { kind: best, count: waiting.length };
       changed = true;
     }
@@ -183,6 +216,24 @@ function settle(input: HarborState): HarborState {
   }
   state.won = state.delivered >= state.total;
   return state;
+}
+
+/** Отправить питомца с острова: на корабль своего вида (если ему есть место) или на пристань. */
+function sendPet(state: HarborState, island: HarborIsland, pet: HarborPet, toShip: number): HarborState {
+  const rest = island.pets.filter((p) => p.id !== pet.id);
+  const field = state.field.flatMap((i) => (i.id !== island.id ? [i] : rest.length > 0 ? [{ ...i, pets: rest }] : []));
+  const ships = state.ships.slice();
+  let pier = state.pier;
+  if (toShip >= 0) {
+    const s = ships[toShip]!;
+    ships[toShip] = { ...s, count: s.count + 1 };
+  } else {
+    pier = [...state.pier, pet];
+  }
+  const bonuses = { ...state.bonuses };
+  // Опустевший остров отдаёт свой бонус.
+  if (rest.length === 0 && island.bonus) bonuses[island.bonus]++;
+  return settle({ ...state, field, ships, pier, bonuses, stuck: false, moves: state.moves + 1 });
 }
 
 /** Нажать питомца. null — нельзя: пристань полна, а корабля для него нет. */
@@ -194,18 +245,70 @@ export function tapHarborPet(state: HarborState, islandId: number, petId: number
   if (!pet) return null;
   const ship = state.ships.findIndex((s) => s !== null && s.kind === pet.kind && s.count < HARBOR_NEED);
   if (ship < 0 && state.pier.length >= HARBOR_PIER) return null;
-  const rest = island.pets.filter((p) => p.id !== petId);
-  // Остров уменьшается вместе с числом питомцев, поэтому он остаётся на месте и просто становится меньше.
-  const field = state.field.flatMap((i) => (i.id !== islandId ? [i] : rest.length > 0 ? [{ ...i, pets: rest }] : []));
-  const ships = state.ships.slice();
-  let pier = state.pier;
-  if (ship >= 0) {
-    const s = ships[ship]!;
-    ships[ship] = { ...s, count: s.count + 1 };
-  } else {
-    pier = [...state.pier, pet];
+  return sendPet(state, island, pet, ship);
+}
+
+export interface NetCatch {
+  state: HarborState;
+  islandId: number;
+  petId: number;
+}
+
+/**
+ * «Сачок»: выуживает питомца того вида, которого на кораблях уже больше всего,
+ * и отправляет его на корабль. null — бонуса нет или такого питомца на воде нет.
+ */
+export function useNet(state: HarborState): NetCatch | null {
+  if (state.won || state.stuck || state.bonuses.net <= 0) return null;
+  const onField = new Set<number>();
+  state.field.forEach((i) => i.pets.forEach((p) => onField.add(p.kind)));
+  const ships = state.ships
+    .map((ship, index) => ({ ship, index }))
+    .filter((x): x is { ship: HarborShip; index: number } => x.ship !== null && x.ship.count < HARBOR_NEED && onField.has(x.ship.kind));
+  if (ships.length === 0) return null;
+  const top = Math.max(...ships.map((x) => x.ship.count));
+  const best = ships.filter((x) => x.ship.count === top);
+  const [pickIndex, rng] = pick(state.rng, best.length);
+  const target = best[pickIndex]!;
+  const island = state.field.find((i) => i.pets.some((p) => p.kind === target.ship.kind))!;
+  const pet = island.pets.find((p) => p.kind === target.ship.kind)!;
+  const next = sendPet({ ...state, rng, bonuses: { ...state.bonuses, net: state.bonuses.net - 1 } }, island, pet, target.index);
+  return { state: next, islandId: island.id, petId: pet.id };
+}
+
+/** «Удаление»: питомцы с пристани уходят в общий блок рядом. null — нечего убирать или блок полон. */
+export function useClear(state: HarborState): HarborState | null {
+  if (state.won || state.stuck || state.bonuses.clear <= 0) return null;
+  const room = HARBOR_STASH - state.stash.length;
+  if (state.pier.length === 0 || room <= 0) return null;
+  const moved = state.pier.slice(0, room);
+  return settle({
+    ...state,
+    pier: state.pier.slice(moved.length),
+    stash: [...state.stash, ...moved],
+    bonuses: { ...state.bonuses, clear: state.bonuses.clear - 1 },
+    moves: state.moves + 1,
+  });
+}
+
+/** «Обновление»: питомцы на островах перемешиваются и садятся по-новому. */
+export function useShuffle(state: HarborState): HarborState | null {
+  if (state.won || state.stuck || state.bonuses.shuffle <= 0) return null;
+  let rng = state.rng;
+  const pets = state.field.flatMap((i) => i.pets);
+  if (pets.length < 2) return null;
+  const kinds = pets.map((p) => p.kind);
+  for (let i = kinds.length - 1; i > 0; i--) {
+    const [j, next] = pick(rng, i + 1);
+    rng = next;
+    [kinds[i], kinds[j]] = [kinds[j]!, kinds[i]!];
   }
-  return settle({ ...state, field, ships, pier, stuck: false, moves: state.moves + 1 });
+  let at = 0;
+  const field = state.field.map((island) => ({
+    ...island,
+    pets: island.pets.map((p) => ({ ...p, kind: kinds[at++]! })),
+  }));
+  return settle({ ...state, rng, field, bonuses: { ...state.bonuses, shuffle: state.bonuses.shuffle - 1 }, moves: state.moves + 1 });
 }
 
 /** Вода движется: острова поднимаются, снизу всплывает новый. Возвращает то же состояние, если ничего не изменилось. */
@@ -225,6 +328,8 @@ function moveWater(state: HarborState): HarborState {
       [0.06, HARBOR_RISE * 0.6],
       [-0.1, HARBOR_RISE * 0.4],
       [0.1, HARBOR_RISE * 0.4],
+      [-0.16, HARBOR_RISE * 0.25],
+      [0.16, HARBOR_RISE * 0.25],
     ];
     let done = false;
     for (const [dx, dy] of tries) {
@@ -282,6 +387,8 @@ export function advanceHarbor(state: HarborState): HarborState {
   if (state.won || state.stuck) return state;
   const next = moveWater(state);
   if (next !== state) return settle(next);
-  const lost = state.pier.length >= HARBOR_PIER && !hasMatchOnField(state);
+  // Спасти может «Обновление» или «Удаление» (если в общем блоке есть место).
+  const rescue = state.bonuses.shuffle > 0 || (state.bonuses.clear > 0 && state.stash.length < HARBOR_STASH);
+  const lost = state.pier.length >= HARBOR_PIER && !hasMatchOnField(state) && !rescue;
   return lost ? { ...state, stuck: true } : state;
 }

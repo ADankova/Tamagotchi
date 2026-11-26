@@ -11,6 +11,10 @@ import {
   HARBOR_TRIPLES,
   newHarbor,
   tapHarborPet,
+  useClear,
+  useNet,
+  useShuffle,
+  HARBOR_STASH,
   type HarborState,
 } from '../src/core/harbor';
 
@@ -66,9 +70,9 @@ describe('бухта питомцев', () => {
   });
 
   it('размер острова зависит от числа питомцев', () => {
-    expect(islandRadius({ pets: [1] }) < islandRadius({ pets: [1, 2] })).toBe(true);
-    expect(islandRadius({ pets: [1, 2] }) < islandRadius({ pets: [1, 2, 3] })).toBe(true);
-    expect(islandRadius({ pets: [1, 2, 3] }) < islandRadius({ pets: [1, 2, 3, 4] })).toBe(true);
+    expect(islandRadius({ size: 1 }) < islandRadius({ size: 2 })).toBe(true);
+    expect(islandRadius({ size: 2 }) < islandRadius({ size: 3 })).toBe(true);
+    expect(islandRadius({ size: 3 }) < islandRadius({ size: 4 })).toBe(true);
     expect(HARBOR_RADIUS.length).toBe(4);
   });
 
@@ -191,5 +195,87 @@ describe('бухта питомцев', () => {
       }
     }
     expect(wins >= 32).toBe(true);
+  });
+
+  it('остров не уменьшается, когда с него убирают питомцев', () => {
+    let s = newHarbor(8);
+    const island = s.field[0]!;
+    const r = islandRadius(island);
+    const pet = island.pets[0]!;
+    s = tapHarborPet(s, island.id, pet.id) ?? s;
+    const after = s.field.find((i) => i.id === island.id);
+    if (after) {
+      expect(islandRadius(after)).toBe(r);
+      expect(after.size).toBe(island.size);
+    }
+  });
+
+  it('бонус достаётся, когда остров полностью опустел', () => {
+    let found = 0;
+    for (let seed = 1; seed <= 40 && found < 3; seed++) {
+      let s = newHarbor(seed);
+      const island = s.field.find((i) => i.bonus);
+      if (!island) continue;
+      found++;
+      const before = s.bonuses[island.bonus!];
+      for (const p of island.pets) s = tapHarborPet(s, island.id, p.id) ?? s;
+      if (!s.field.some((i) => i.id === island.id)) expect(s.bonuses[island.bonus!]).toBe(before + 1);
+    }
+    expect(found > 0).toBe(true);
+  });
+
+  it('«Сачок» выуживает питомца вида, которого на кораблях больше всего', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      let s = newHarbor(seed);
+      // Добавим одному кораблю питомца, чтобы счёт различался.
+      const open = new Set(s.ships.map((x) => x!.kind));
+      const first = s.field.flatMap((i) => i.pets.map((p) => [i.id, p] as const)).find(([, p]) => open.has(p.kind));
+      if (!first) continue;
+      s = tapHarborPet(s, first[0], first[1].id)!;
+      s = { ...s, bonuses: { ...s.bonuses, net: 1 } };
+      const topShip = s.ships.filter((x) => x !== null).sort((a, b) => b!.count - a!.count)[0]!;
+      const caught = useNet(s);
+      if (!caught) continue;
+      expect(caught.state.bonuses.net).toBe(0);
+      const after = caught.state.ships.find((x) => x?.kind === topShip.kind);
+      expect(!after || after.count > topShip.count || caught.state.delivered > s.delivered).toBe(true);
+      return;
+    }
+  });
+
+  it('«Сачок» без бонуса не работает', () => {
+    expect(useNet(newHarbor(1))).toBe(null);
+  });
+
+  it('«Удаление» переносит пристань в общий блок, оттуда питомцы пересаживаются на новые корабли', () => {
+    let s = newHarbor(12);
+    const open = new Set(s.ships.map((x) => x!.kind));
+    for (const island of s.field) {
+      for (const p of island.pets) {
+        if (!open.has(p.kind) && s.pier.length < 3) s = tapHarborPet(s, island.id, p.id) ?? s;
+      }
+    }
+    const waiting = s.pier.length;
+    s = { ...s, bonuses: { ...s.bonuses, clear: 1 } };
+    const next = useClear(s);
+    expect(waiting > 0).toBe(true);
+    expect(next !== null).toBe(true);
+    expect(next!.pier.length).toBe(0);
+    expect(next!.stash.length).toBe(waiting);
+    expect(next!.stash.length <= HARBOR_STASH).toBe(true);
+    expect(next!.bonuses.clear).toBe(0);
+  });
+
+  it('«Обновление» перемешивает питомцев на островах: число питомцев каждого вида то же', () => {
+    let s = newHarbor(5);
+    s = { ...s, bonuses: { ...s.bonuses, shuffle: 1 } };
+    const before = fieldCounts(s);
+    const sizes = s.field.map((i) => i.pets.length);
+    const next = useShuffle(s)!;
+    expect(fieldCounts(next)).toEqual(before);
+    expect(next.field.map((i) => i.pets.length)).toEqual(sizes);
+    expect(next.bonuses.shuffle).toBe(0);
+    const changed = next.field.some((i, n) => i.pets.some((p, k) => p.kind !== s.field[n]!.pets[k]!.kind));
+    expect(changed).toBe(true);
   });
 });

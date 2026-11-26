@@ -5,11 +5,15 @@ import {
   islandRadius,
   HARBOR_NEED,
   HARBOR_PIER,
+  HARBOR_STASH,
   HARBOR_REWARD,
   newHarbor,
   tapHarborPet,
+  useClear,
+  useNet,
+  useShuffle,
+  type HarborBonus,
   type HarborIsland,
-  type HarborPet,
   type HarborShip,
   type HarborState,
 } from '../core/harbor';
@@ -34,7 +38,7 @@ interface Kind {
   ring: string;
 }
 
-/** Девять видов: три зверя в трёх возрастах (взрослый выглядит как подросток, его не берём). */
+/** Восемь видов: три зверя в трёх возрастах (взрослый выглядит как подросток, его не берём). */
 const KINDS: readonly Kind[] = [
   { species: 'cat', body: 'teen', ring: '#5aaef0' },
   { species: 'dog', body: 'teen', ring: '#e8505b' },
@@ -44,7 +48,6 @@ const KINDS: readonly Kind[] = [
   { species: 'blob', body: 'baby', ring: '#a98af0' },
   { species: 'cat', body: 'child', ring: '#ff9a52' },
   { species: 'dog', body: 'child', ring: '#43cfc4' },
-  { species: 'blob', body: 'child', ring: '#b5d94a' },
 ];
 
 /** Где стоят питомцы в пузыре (в процентах пузыря) и какой доли пузыря размером питомец, по числу питомцев. */
@@ -67,6 +70,8 @@ const SPOTS: readonly (readonly [number, number][])[] = [
   ],
 ];
 const PET_SIZE = [58, 44, 40, 38] as const;
+/** Остров рисуется чуть больше расчётного круга. */
+const ISLAND_VISUAL = 1.06;
 
 interface HarborCallbacks {
   header: (title: string) => HTMLElement;
@@ -82,6 +87,14 @@ function petFace(kind: number, label: string): HTMLElement {
   return face;
 }
 
+const INK = '#3b2a1e';
+const BONUS_SVG: Record<HarborBonus, string> = {
+  net: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="#cfeefd" stroke="${INK}" stroke-width="2.5"/><path d="M6 13h14M13 6v14M7.5 8l11 10M18.5 8l-11 10" stroke="${INK}" stroke-width="1.2" fill="none"/><path d="M20 20l9 9" stroke="#b87a45" stroke-width="4.5" stroke-linecap="round"/></svg>`,
+  clear: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 10h16l-1.8 18H9.8z" fill="#9fd0f0" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M6 10h20M12 10V6h8v4" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 15v9M19 15v9" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  shuffle: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 15a9 9 0 0 1 16-5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M25 17a9 9 0 0 1-16 5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M26 4v8h-8z" fill="${INK}"/><path d="M6 28v-8h8z" fill="${INK}"/></svg>`,
+};
+const BONUS_ORDER: readonly HarborBonus[] = ['net', 'clear', 'shuffle'];
+
 const HULL_SVG =
   '<svg viewBox="0 0 80 40" aria-hidden="true"><path d="M5 12 H75 L65 36 H15 Z" fill="#b87a45" stroke="#3b2a1e" stroke-width="3" stroke-linejoin="round"/><path d="M12 19 H68" stroke="#e0b07a" stroke-width="3" stroke-linecap="round"/></svg>';
 
@@ -91,6 +104,9 @@ export class HarborGame implements GameScreen {
   private state: HarborState;
   private readonly shipRow = el('div', { class: 'h-ships' });
   private readonly pierRow = el('div', { class: 'h-pier' });
+  private readonly stashBox = el('div', { class: 'h-stash' });
+  private readonly bonusRow = el('div', { class: 'h-bonuses' });
+  private popNew = false;
   private readonly field = el('div', { class: 'h-field' });
   private readonly left = el('span', {});
   private readonly islandNodes = new Map<number, HTMLElement>();
@@ -107,13 +123,14 @@ export class HarborGame implements GameScreen {
       cb.header(GAMES_TEXT.harborTitle),
       el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.left])]),
       this.shipRow,
-      this.pierRow,
+      el('div', { class: 'h-dock' }, [this.pierRow, this.stashBox]),
       this.field,
-      el('p', { class: 'q-hint', text: GAMES_TEXT.harborHint }),
+      this.bonusRow,
     ]);
     this.field.style.aspectRatio = `1 / ${HARBOR_H}`;
     this.renderShips();
     this.renderPier();
+    this.renderBonuses();
     this.renderField();
     this.renderLeft();
     this.timer = window.setInterval(() => this.tick(), WATER_STEP_MS);
@@ -160,28 +177,59 @@ export class HarborGame implements GameScreen {
       slots.push(slot);
     }
     this.pierRow.replaceChildren(...slots);
+    const stash: HTMLElement[] = [];
+    for (let i = 0; i < HARBOR_STASH; i++) {
+      const pet = this.state.stash[i];
+      const slot = el('div', { class: 'h-pier-slot', 'data-pet': pet ? String(pet.id) : '' });
+      if (pet) slot.append(petFace(pet.kind, this.label()));
+      stash.push(slot);
+    }
+    this.stashBox.replaceChildren(...stash);
+  }
+
+  private renderBonuses(): void {
+    this.bonusRow.replaceChildren(
+      ...BONUS_ORDER.map((kind) => {
+        const count = this.state.bonuses[kind];
+        const btn = el('button', { type: 'button', class: count > 0 ? 'h-bonus' : 'h-bonus off', 'data-bonus': kind, 'aria-label': GAMES_TEXT.harborBonusName[kind] }, [
+          el('span', { class: 'h-bonus-icon' }),
+          el('span', { class: 'h-bonus-name', text: GAMES_TEXT.harborBonusName[kind] }),
+          el('span', { class: 'h-bonus-n', text: String(count) }),
+        ]);
+        (btn.querySelector('.h-bonus-icon') as HTMLElement).innerHTML = BONUS_SVG[kind];
+        btn.addEventListener('click', () => this.useBonus(kind));
+        return btn;
+      }),
+    );
   }
 
   private placeIsland(node: HTMLElement, island: HarborIsland): void {
-    const r = islandRadius(island);
+    // Рисуем чуть крупнее, чем считает вода, чтобы острова касались краями, а не стояли с щелями.
+    const r = islandRadius(island) * ISLAND_VISUAL;
     node.style.width = `${r * 200}%`;
     node.style.left = `${(island.x - r) * 100}%`;
     node.style.top = `${((island.y - r) / HARBOR_H) * 100}%`;
   }
 
   private islandNode(island: HarborIsland): HTMLElement {
-    const node = el('div', { class: 'h-island' });
-    const spots = SPOTS[island.pets.length - 1] ?? SPOTS[0]!;
-    const size = PET_SIZE[island.pets.length - 1] ?? PET_SIZE[0];
-    island.pets.forEach((pet, i) => {
+    const node = el('div', { class: this.popNew ? 'h-island pop' : 'h-island' });
+    const spots = SPOTS[island.size - 1] ?? SPOTS[0]!;
+    const size = PET_SIZE[island.size - 1] ?? PET_SIZE[0];
+    island.pets.forEach((pet) => {
+      const spot = spots[pet.spot] ?? spots[0]!;
       const btn = el('button', { type: 'button', class: 'h-pet', 'data-pet': String(pet.id), 'aria-label': this.label() });
-      btn.style.left = `${spots[i]![0]}%`;
-      btn.style.top = `${spots[i]![1]}%`;
+      btn.style.left = `${spot[0]}%`;
+      btn.style.top = `${spot[1]}%`;
       btn.style.width = `${size}%`;
       btn.append(petFace(pet.kind, this.label()));
-      btn.addEventListener('click', () => this.tap(island.id, pet, btn));
+      btn.addEventListener('click', () => this.tap(island.id, pet.id, btn));
       node.append(btn);
     });
+    if (island.bonus) {
+      const badge = el('span', { class: 'h-island-bonus' });
+      badge.innerHTML = BONUS_SVG[island.bonus];
+      node.append(badge);
+    }
     return node;
   }
 
@@ -196,22 +244,10 @@ export class HarborGame implements GameScreen {
         this.field.append(node);
       }
       this.placeIsland(node, island);
-      // Пузырь с меньшим числом питомцев сжимается: расставляем оставшихся по-новому.
-      const alive = island.pets.map((p) => String(p.id));
-      const buttons = [...node.querySelectorAll<HTMLElement>('.h-pet')];
-      buttons.forEach((btn) => {
-        if (!alive.includes(btn.dataset.pet ?? '')) btn.remove();
+      const alive = new Set(island.pets.map((p) => String(p.id)));
+      node.querySelectorAll<HTMLElement>('.h-pet').forEach((btn) => {
+        if (!alive.has(btn.dataset.pet ?? '')) btn.remove();
       });
-      const left = [...node.querySelectorAll<HTMLElement>('.h-pet')];
-      const spots = SPOTS[left.length - 1];
-      const size = PET_SIZE[left.length - 1];
-      if (spots && size !== undefined) {
-        left.forEach((btn, i) => {
-          btn.style.left = `${spots[i]![0]}%`;
-          btn.style.top = `${spots[i]![1]}%`;
-          btn.style.width = `${size}%`;
-        });
-      }
     });
     for (const [id, node] of [...this.islandNodes]) {
       if (present.has(id)) continue;
@@ -248,25 +284,63 @@ export class HarborGame implements GameScreen {
     window.setTimeout(() => node.remove(), FLY_MS + 200);
   }
 
-  private tap(islandId: number, pet: HarborPet, btn: HTMLElement): void {
+  private blocked(): void {
+    this.host.playSound('blocked');
+    this.pierRow.classList.remove('shake');
+    void this.pierRow.offsetWidth;
+    this.pierRow.classList.add('shake');
+  }
+
+  private tap(islandId: number, petId: number, btn: HTMLElement): void {
     if (this.finished) return;
-    const before = this.state;
-    const next = tapHarborPet(before, islandId, pet.id);
-    if (!next) {
-      this.host.playSound('blocked');
-      this.pierRow.classList.remove('shake');
-      void this.pierRow.offsetWidth;
-      this.pierRow.classList.add('shake');
+    const pet = this.state.field.find((i) => i.id === islandId)?.pets.find((p) => p.id === petId);
+    const next = pet ? tapHarborPet(this.state, islandId, petId) : null;
+    if (!next || !pet) {
+      this.blocked();
       return;
     }
     this.host.playSound('place');
-    const from = btn.getBoundingClientRect();
-    const oldPierRects = new Map<number, DOMRect>();
-    this.pierRow.querySelectorAll<HTMLElement>('.h-pier-slot').forEach((slot) => {
-      if (slot.dataset.pet) oldPierRects.set(Number(slot.dataset.pet), slot.getBoundingClientRect());
+    this.apply(next, { kind: pet.kind, id: pet.id, from: btn.getBoundingClientRect(), islandId });
+  }
+
+  private useBonus(kind: HarborBonus): void {
+    if (this.finished) return;
+    if (kind === 'net') {
+      const caught = useNet(this.state);
+      if (!caught) return this.blocked();
+      const island = this.state.field.find((i) => i.id === caught.islandId);
+      const pet = island?.pets.find((p) => p.id === caught.petId);
+      const btn = this.field.querySelector<HTMLElement>(`.h-pet[data-pet="${caught.petId}"]`);
+      this.host.playSound('place');
+      this.apply(caught.state, pet && btn ? { kind: pet.kind, id: pet.id, from: btn.getBoundingClientRect(), islandId: caught.islandId } : undefined);
+    } else if (kind === 'clear') {
+      const next = useClear(this.state);
+      if (!next) return this.blocked();
+      this.host.playSound('place');
+      this.apply(next);
+    } else {
+      const next = useShuffle(this.state);
+      if (!next) return this.blocked();
+      this.host.playSound('place');
+      // Острова собираются заново: старые лопаются, новые появляются с питомцами в другом порядке.
+      this.islandNodes.forEach((node) => node.remove());
+      this.islandNodes.clear();
+      this.popNew = true;
+      this.apply(next);
+      this.popNew = false;
+    }
+  }
+
+  /** Применить новое состояние и показать, что куда переехало. */
+  private apply(next: HarborState, mover?: { kind: number; id: number; from: DOMRect; islandId: number }): void {
+    const before = this.state;
+    const oldPetRects = new Map<number, DOMRect>();
+    this.root.querySelectorAll<HTMLElement>('.h-pier-slot').forEach((slot) => {
+      if (slot.dataset.pet) oldPetRects.set(Number(slot.dataset.pet), slot.getBoundingClientRect());
     });
     const oldShipNodes = [...this.shipRow.children] as HTMLElement[];
     const oldShipRects = oldShipNodes.map((n) => n.getBoundingClientRect());
+    const islandRect = mover ? this.islandNodes.get(mover.islandId)?.getBoundingClientRect() : undefined;
     this.state = next;
     // Корабли, которые отплыли: прежний корабль в этом месте исчез или сменился.
     const sailing: Array<{ node: HTMLElement; rect: DOMRect; slot: number }> = [];
@@ -278,32 +352,71 @@ export class HarborGame implements GameScreen {
     this.renderShips();
     sailing.forEach(({ slot }) => (this.shipRow.children[slot] as HTMLElement | undefined)?.classList.add('late'));
     this.renderPier();
+    this.renderBonuses();
     this.renderField();
     this.renderLeft();
-    // Куда летит нажатый питомец: на пристань или на корабль его вида.
-    const pierAt = next.pier.findIndex((p) => p.id === pet.id);
-    if (pierAt >= 0) {
-      const slot = this.pierRow.children[pierAt] as HTMLElement;
-      slot.classList.add('arrive');
-      this.fly(pet.kind, from, slot.getBoundingClientRect());
-    } else {
-      const shipAt = oldShipNodes.findIndex((n) => n.dataset.kind === String(pet.kind));
-      if (shipAt >= 0) this.fly(pet.kind, from, oldShipRects[shipAt]!);
+    // Куда летит питомец с острова: на пристань или на корабль его вида.
+    if (mover) {
+      const pierAt = next.pier.findIndex((p) => p.id === mover.id);
+      if (pierAt >= 0) {
+        const slot = this.pierRow.children[pierAt] as HTMLElement;
+        slot.classList.add('arrive');
+        this.fly(mover.kind, mover.from, slot.getBoundingClientRect());
+      } else {
+        const shipAt = oldShipNodes.findIndex((n) => n.dataset.kind === String(mover.kind));
+        if (shipAt >= 0) this.fly(mover.kind, mover.from, oldShipRects[shipAt]!);
+      }
     }
-    // Питомцы с пристани пересаживаются на новые корабли.
-    for (const old of before.pier) {
-      if (next.pier.some((p) => p.id === old.id)) continue;
-      const rect = oldPierRects.get(old.id);
+    // Питомцы с пристани и из общего блока пересаживаются на новые корабли или переезжают в блок.
+    for (const old of [...before.pier, ...before.stash]) {
+      const rect = oldPetRects.get(old.id);
+      if (!rect) continue;
+      const stashAt = next.stash.findIndex((p) => p.id === old.id);
+      if (stashAt >= 0 && !before.stash.some((p) => p.id === old.id)) {
+        this.fly(old.kind, rect, (this.stashBox.children[stashAt] as HTMLElement).getBoundingClientRect());
+        continue;
+      }
+      if (next.pier.some((p) => p.id === old.id) || next.stash.some((p) => p.id === old.id)) continue;
       const target = [...this.shipRow.children].find((n) => (n as HTMLElement).dataset.kind === String(old.kind));
       const to = (target ?? this.shipRow).getBoundingClientRect();
-      if (!rect) continue;
       const slot = target ? [...this.shipRow.children].indexOf(target) : -1;
       // На корабль, который появляется после отплытия прежнего, питомец пересаживается тогда же.
       if (sailing.some((x) => x.slot === slot)) window.setTimeout(() => this.fly(old.kind, rect, to), SAIL_MS);
       else this.fly(old.kind, rect, to);
     }
+    // Бонус с опустевшего острова улетает к своей кнопке.
+    for (const kind of BONUS_ORDER) {
+      if (next.bonuses[kind] <= before.bonuses[kind] || !islandRect) continue;
+      const button = this.bonusRow.querySelector<HTMLElement>(`[data-bonus="${kind}"]`);
+      if (!button) continue;
+      button.classList.add('gain');
+      this.flyIcon(kind, islandRect, button.getBoundingClientRect());
+    }
     sailing.forEach(({ node, rect }) => this.sail(node, rect));
     this.checkEnd();
+  }
+
+  private flyIcon(kind: HarborBonus, from: DOMRect, to: DOMRect): void {
+    const a = this.rel(from);
+    const b = this.rel(to);
+    const node = el('div', { class: 'h-fly h-fly-bonus' });
+    node.innerHTML = BONUS_SVG[kind];
+    const size = 40;
+    node.style.width = `${size}px`;
+    node.style.height = `${size}px`;
+    this.root.append(node);
+    const x0 = a.x + from.width / 2 - size / 2;
+    const y0 = a.y + from.height / 2 - size / 2;
+    const anim = node.animate(
+      [
+        { transform: `translate(${x0}px, ${y0}px) scale(0.6)`, opacity: 0.2 },
+        { transform: `translate(${x0}px, ${y0 - 24}px) scale(1.3)`, opacity: 1, offset: 0.3 },
+        { transform: `translate(${b.x + to.width / 2 - size / 2}px, ${b.y + to.height / 2 - size / 2}px) scale(0.8)`, opacity: 1 },
+      ],
+      { duration: 700, easing: 'ease-in-out', fill: 'forwards' },
+    );
+    anim.onfinish = () => node.remove();
+    window.setTimeout(() => node.remove(), 900);
   }
 
   /** Полный корабль уплывает. */
