@@ -124,15 +124,49 @@ export function isExposed(state: MosaicState, index: number): boolean {
   return empty(x - 1, y) || empty(x + 1, y) || empty(x, y - 1) || empty(x, y + 1);
 }
 
-/** Открытые кубики цвета; ближе к норке (низ по центру) — раньше. */
-export function exposedCells(state: MosaicState, color: number): number[] {
+/** Колонка картинки (или соседняя с ней), над которой стоит ячейка slot. */
+function slotColumn(state: MosaicState, slot: number): number {
+  return Math.min(state.w - 1, Math.max(0, Math.round(((slot + 0.5) * state.w) / MOSAIC_SLOTS - 0.5)));
+}
+
+/** Длина пути питомца из ячейки slot до каждой клетки: по пустым местам и вокруг картинки, чужие кубики обходит. */
+function runDistances(state: MosaicState, slot: number): Map<number, number> {
+  const { w, h, cells } = state;
+  const key = (x: number, y: number): number => (y + 1) * (w + 2) + (x + 1);
+  const dist = new Map<number, number>();
+  const start: [number, number] = [slotColumn(state, slot), h];
+  const queue: Array<[number, number]> = [start];
+  dist.set(key(start[0], start[1]), 0);
+  for (let at = 0; at < queue.length; at++) {
+    const [x, y] = queue[at]!;
+    const d = dist.get(key(x, y))!;
+    for (const [dx, dy] of [[0, -1], [1, 0], [-1, 0], [0, 1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < -1 || ny < -1 || nx > w || ny > h || dist.has(key(nx, ny))) continue;
+      const inside = nx >= 0 && ny >= 0 && nx < w && ny < h;
+      dist.set(key(nx, ny), d + 1);
+      // Сквозь кубик не идём: в него только входят (это и есть цель), дальше путь не продолжается.
+      if (!inside || cells[ny * w + nx]! < 0) queue.push([nx, ny]);
+    }
+  }
+  const out = new Map<number, number>();
+  cells.forEach((c, i) => {
+    if (c >= 0) out.set(i, dist.get(key(i % w, Math.floor(i / w))) ?? Infinity);
+  });
+  return out;
+}
+
+/** Открытые кубики цвета: сначала ближайшие к питомцу в ячейке slot (по пути), при равенстве — ближе к норке. */
+export function exposedCells(state: MosaicState, color: number, slot = 1): number[] {
   const { w, h, cells } = state;
   const out: number[] = [];
   cells.forEach((c, i) => {
     if (c === color && isExposed(state, i)) out.push(i);
   });
-  const dist = (i: number): number => Math.abs((i % w) - (w - 1) / 2) + (h - 1 - Math.floor(i / w));
-  return out.sort((a, b) => dist(a) - dist(b) || a - b);
+  const way = runDistances(state, slot);
+  const hole = (i: number): number => Math.abs((i % w) - (w - 1) / 2) + (h - 1 - Math.floor(i / w));
+  return out.sort((a, b) => (way.get(a) ?? Infinity) - (way.get(b) ?? Infinity) || hole(a) - hole(b) || a - b);
 }
 
 /** Тап по баночке в очереди col: она встаёт в свободную ячейку. null — нельзя. */
@@ -155,7 +189,7 @@ export function stepMosaic(state: MosaicState): { state: MosaicState; carries: C
   let work: MosaicState = { ...state, cells, slots };
   state.slots.forEach((jar, slot) => {
     if (!jar) return;
-    const cell = exposedCells(work, jar.color)[0];
+    const cell = exposedCells(work, jar.color, slot)[0];
     if (cell === undefined) return;
     cells[cell] = -1;
     const n = jar.n - 1;

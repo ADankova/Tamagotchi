@@ -76,4 +76,14 @@ describe('мозаика', () => {
     }
     expect(Math.max(...names.map((n) => MOSAIC_PICTURES[n as keyof typeof MOSAIC_PICTURES][0]!.length)) >= 14).toBe(true);
   });
+
+  it('питомец уносит ближайший к его ячейке кубик нужного цвета', () => {
+    const base = newMosaic(1);
+    const cells = Array.from({ length: 16 }, () => -1);
+    cells[0] = 3;
+    cells[7] = 3;
+    const s = { ...base, w: 8, h: 2, cells, left: 2 };
+    expect(exposedCells(s, 3, 0)[0]).toBe(0);
+    expect(exposedCells(s, 3, 3)[0]).toBe(7);
+  });
 });
