@@ -153,7 +153,6 @@ export class MosaicGame implements GameScreen {
     const cube = this.cubes[c.cell];
     if (!cube) return;
     const stage = this.stage.getBoundingClientRect();
-    const boardBox = this.board.getBoundingClientRect();
     const from = cube.getBoundingClientRect();
     const to = this.hole.getBoundingClientRect();
     const size = from.width;
@@ -167,32 +166,21 @@ export class MosaicGame implements GameScreen {
     (runner.querySelector('.m-runner-cube') as HTMLElement).style.background = COLOR_CSS[c.color] ?? '#ccc';
     this.stage.append(runner);
 
-    // Путь только по прямым: вперёд, вправо, влево, назад (без наискосок). Точки — центры питомца.
-    const gap = rs * 1.1;
-    const L = boardBox.left - stage.left - gap;
-    const R = boardBox.right - stage.left + gap;
-    const T = boardBox.top - stage.top - gap;
-    const B = boardBox.bottom - stage.top + gap * 0.5;
-    const cx = from.left - stage.left + size / 2;
-    const cy = from.top - stage.top + size / 2;
+    // Путь только по прямым и только по свободным местам: клетки мозаики питомец обходит.
+    const c0 = this.cubes[0]!.getBoundingClientRect();
+    const pitchX = this.state.w > 1 ? this.cubes[1]!.getBoundingClientRect().left - c0.left : size;
+    const pitchY = this.state.h > 1 ? this.cubes[this.state.w]!.getBoundingClientRect().top - c0.top : size;
+    const ox = c0.left - stage.left + c0.width / 2;
+    const oy = c0.top - stage.top + c0.height / 2;
     const hx = to.left - stage.left + to.width / 2;
     const hy = to.top - stage.top + to.height / 2;
-    const dl = cx - L;
-    const dr = R - cx;
-    const dt = cy - T;
-    const db = B - cy;
-    const nearest = Math.min(dl, dr, dt, db);
-    const pts: Array<[number, number]> = [[cx, cy]];
-    if (nearest === db) {
-      pts.push([cx, B]);
-    } else if (nearest === dt) {
-      const side = dl < dr ? L : R;
-      pts.push([cx, T], [side, T], [side, B]);
-    } else {
-      const side = nearest === dl ? L : R;
-      pts.push([side, cy], [side, B]);
-    }
-    pts.push([hx, B], [hx, hy]);
+    const w = this.state.w;
+    const h = this.state.h;
+    const goalCol = Math.min(w, Math.max(-1, Math.round((hx - ox) / pitchX)));
+    const gridPath = this.freePath(c.cell % w, Math.floor(c.cell / w), goalCol, h);
+    const pts: Array<[number, number]> = gridPath.map(([gx, gy]) => [ox + gx * pitchX, oy + gy * pitchY]);
+    const rowY = oy + h * pitchY;
+    pts.push([hx, rowY], [hx, hy]);
     const route = pts;
     let total = 0;
     const lens = route.slice(1).map((p, i) => {
@@ -215,6 +203,70 @@ export class MosaicGame implements GameScreen {
     const anim = runner.animate(frames, { duration, easing: 'linear', fill: 'forwards' });
     anim.onfinish = () => runner.remove();
     window.setTimeout(() => runner.remove(), duration + 200);
+  }
+
+  /** Кратчайший путь по пустым клеткам (с запасом в одну клетку вокруг доски и рядом внизу) с минимумом поворотов. */
+  private freePath(sx: number, sy: number, gx: number, gy: number): Array<[number, number]> {
+    const { w, h, cells } = this.state;
+    const X0 = -1;
+    const Y0 = -1;
+    const W = w + 2;
+    const H = h + 3;
+    const free = (x: number, y: number): boolean => {
+      if (x < X0 || y < Y0 || x >= X0 + W || y >= Y0 + H) return false;
+      if (x < 0 || y < 0 || x >= w || y >= h) return true;
+      return (cells[y * w + x] ?? -1) < 0 || (x === sx && y === sy);
+    };
+    const dirs: Array<[number, number]> = [[0, 1], [1, 0], [-1, 0], [0, -1]];
+    const key = (x: number, y: number, d: number): number => ((y - Y0) * W + (x - X0)) * 4 + d;
+    const dist = new Map<number, number>();
+    const prev = new Map<number, number>();
+    const open: Array<[number, number, number, number]> = [];
+    for (let d = 0; d < 4; d++) {
+      dist.set(key(sx, sy, d), 0);
+      open.push([0, sx, sy, d]);
+    }
+    let end = -1;
+    while (open.length) {
+      let bi = 0;
+      for (let i = 1; i < open.length; i++) if (open[i]![0] < open[bi]![0]) bi = i;
+      const [cost, x, y, d] = open.splice(bi, 1)[0]!;
+      const k = key(x, y, d);
+      if (cost > (dist.get(k) ?? Infinity)) continue;
+      if (x === gx && y === gy) {
+        end = k;
+        break;
+      }
+      dirs.forEach(([dx, dy], nd) => {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!free(nx, ny)) return;
+        const nc = cost + 1 + (nd === d ? 0 : 0.6);
+        const nk = key(nx, ny, nd);
+        if (nc < (dist.get(nk) ?? Infinity)) {
+          dist.set(nk, nc);
+          prev.set(nk, k);
+          open.push([nc, nx, ny, nd]);
+        }
+      });
+    }
+    if (end < 0) return [[sx, sy], [sx, gy], [gx, gy]];
+    const out: Array<[number, number]> = [];
+    let k: number | undefined = end;
+    while (k !== undefined) {
+      const d = k % 4;
+      const cell = (k - d) / 4;
+      out.push([(cell % W) + X0, Math.floor(cell / W) + Y0]);
+      k = prev.get(k);
+    }
+    out.reverse();
+    // оставляем только углы
+    return out.filter((p, i) => {
+      if (i === 0 || i === out.length - 1) return true;
+      const a = out[i - 1]!;
+      const b = out[i + 1]!;
+      return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1]));
+    });
   }
 
   private checkEnd(): void {
