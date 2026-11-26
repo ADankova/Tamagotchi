@@ -172,3 +172,31 @@ describe('outcome', () => {
     expect(newM3(5).cells.map((p) => p?.kind)).toEqual(newM3(5).cells.map((p) => p?.kind));
   });
 });
+
+describe('combination table', () => {
+  const H = (r: number, c: number, n: number): [number, number][] => Array.from({ length: n }, (_, i) => [r, c + i]);
+  const V = (r: number, c: number, n: number): [number, number][] => Array.from({ length: n }, (_, i) => [r + i, c]);
+  /** Готовая комбинация уже стоит на поле; обмен двух дальних клеток запускает разбор. */
+  function made(points: [number, number][]): string {
+    const s = board([]);
+    points.forEach(([r, c], i) => (s.cells[m3Index(r, c)] = { id: 500 + i, kind: 1 }));
+    const res = m3Swap(s, m3Index(0, 0), m3Index(0, 1));
+    const found = res?.steps[0]?.afterClear.find((p) => p && p.id >= 500 && p.special);
+    return found?.special ?? 'none';
+  }
+  it.each([
+    ['3 horizontal', H(4, 2, 3), 'none'],
+    ['3 vertical', V(3, 2, 3), 'none'],
+    ['4 horizontal', H(4, 1, 4), 'row'],
+    ['4 vertical', V(2, 2, 4), 'col'],
+    ['5 horizontal', H(4, 1, 5), 'rainbow'],
+    ['5 vertical', V(1, 2, 5), 'rainbow'],
+    ['6 in a row', H(4, 0, 6), 'rainbow'],
+    ['square', [[3, 2], [3, 3], [4, 2], [4, 3]], 'bomb'],
+    ['T', [...H(3, 1, 3), [4, 2], [5, 2]], 'bomb'],
+    ['L', [...V(3, 1, 3), [5, 2], [5, 3]], 'bomb'],
+    ['plus', [...H(4, 1, 3), [3, 2], [5, 2]], 'rainbow'],
+  ] as [string, [number, number][], string][])('%s makes %s', (_name, points, expected) => {
+    expect(made(points)).toBe(expected);
+  });
+});
