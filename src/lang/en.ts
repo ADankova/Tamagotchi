@@ -171,7 +171,7 @@ export const en: Dict = {
     harborStuckText: (name: string) => `The pier is full and ${name} has nobody to send. Try again?`,
     harborLeaveConfirm: 'Finish the game? The round will not be saved.',
     harborTreats: (n: number) => `Treats: ${n}`,
-    match3Title: 'Match Three',
+    match3Title: 'Three Pets in a Row',
     match3About:
       'Swap neighbouring pets: three or more in a row or column vanish and the ones above fall down. The game is endless, with no moves or score, and the board is remembered when you leave. Now and then a treat appears among the falling pets: a normal match cannot get it, but a bomb or a row or column bonus will. Four in a row makes a line bonus (tap it), a 2×2 square or a T/L of five makes a bomb, and five in a row or a plus-shaped cross makes a rainbow.',
     match3Level: 'Endless',
