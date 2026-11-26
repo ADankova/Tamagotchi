@@ -5,8 +5,8 @@ import {
   islandRadius,
   HARBOR_NEED,
   HARBOR_PIER,
-  HARBOR_REWARD,
   newHarbor,
+  restoreHarbor,
   tapHarborPet,
   useClear,
   useNet,
@@ -101,11 +101,10 @@ function petFace(kind: number, label: string): HTMLElement {
   return face;
 }
 
-const INK = '#3b2a1e';
 const BONUS_SVG: Record<HarborBonus, string> = {
-  net: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 7 Q5 22 14 22 Q23 22 24 7 Z" fill="#d8f1ff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 Q9.5 18 12.5 21.5M14 9 V22M19 8 Q18.5 18 15.5 21.5M5 13 Q14 16.5 23 13M7 17.5 Q14 21 21 17.5" stroke="${INK}" stroke-width="1" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="7" rx="10" ry="3.6" fill="none" stroke="${INK}" stroke-width="2.6"/><path d="M23.5 8.5L29.5 29" stroke="#b87a45" stroke-width="3.6" stroke-linecap="round"/><path d="M23.5 8.5L29.5 29" stroke="${INK}" stroke-width="1" stroke-linecap="round" opacity="0.5"/></svg>`,
-  clear: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 10h16l-1.8 18H9.8z" fill="#9fd0f0" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M6 10h20M12 10V6h8v4" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 15v9M19 15v9" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-  shuffle: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 15a9 9 0 0 1 16-5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M25 17a9 9 0 0 1-16 5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M26 4v8h-8z" fill="${INK}"/><path d="M6 28v-8h8z" fill="${INK}"/></svg>`,
+  net: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M11 34 Q6 54 17 58 Q30 62 36 38 Z" fill="#f3fbff" fill-opacity="0.85" stroke="#8fb4d8" stroke-width="1.6" stroke-linejoin="round"/><circle cx="26" cy="24" r="15" fill="#eaf6ff" fill-opacity="0.8"/><path d="M11 24H41M26 9V39M15.5 13.5L36.5 34.5M36.5 13.5L15.5 34.5M12.5 17.5Q26 22 39.5 17.5M12.5 30.5Q26 26 39.5 30.5M14 38Q18 50 17 58M22 39Q24 50 22 60M30 38Q30 48 28 58" stroke="#8fb4d8" stroke-width="1.5" fill="none" stroke-linecap="round"/><circle cx="26" cy="24" r="15" fill="none" stroke="#e04a3a" stroke-width="5.5"/><path d="M14.5 15Q18 10 24 9.5" stroke="#ff9d8e" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M37.5 36L53 54" stroke="#2f6fd6" stroke-width="7" stroke-linecap="round"/><path d="M48.5 49L56 58" stroke="#1d4fb0" stroke-width="9" stroke-linecap="round"/></svg>',
+  clear: '<svg viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(38 32 34)"><rect x="25" y="4" width="14" height="24" rx="6" fill="#e04a3a"/><rect x="28" y="6" width="3.5" height="16" rx="1.7" fill="#ff9d8e"/><circle cx="32" cy="8" r="7" fill="#2f6fd6"/><circle cx="30" cy="6" r="2" fill="#8fb8ff"/><rect x="22" y="26" width="20" height="8" rx="3" fill="#2f6fd6"/><rect x="18" y="33" width="28" height="22" rx="4" fill="#f6e3b5" stroke="#c9a35b" stroke-width="1.5"/><path d="M24 35V53M30 35V53M36 35V53M42 35V53" stroke="#d9b970" stroke-width="1.6" stroke-linecap="round"/><rect x="17" y="31" width="30" height="6" rx="3" fill="#3a78d8"/></g></svg>',
+  shuffle: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="33" r="25" fill="#2f6fd6"/><circle cx="32" cy="33" r="25" fill="none" stroke="#1d4fb0" stroke-width="2.5"/><g transform="translate(32 32)"><path d="M0 0C-16-4-17-27-2-30C10-32 14-15 0 0Z" fill="#e04a3a" stroke="#a8281f" stroke-width="2"/><path d="M0 0C-16-4-17-27-2-30C10-32 14-15 0 0Z" fill="#e04a3a" stroke="#a8281f" stroke-width="2" transform="rotate(120)"/><path d="M0 0C-16-4-17-27-2-30C10-32 14-15 0 0Z" fill="#e04a3a" stroke="#a8281f" stroke-width="2" transform="rotate(240)"/><path d="M-6-21C-4-26 2-27 5-24" stroke="#ff9d8e" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle r="7.5" fill="#f6c431" stroke="#e08a1e" stroke-width="2.5"/><circle r="3" fill="#fff0a0"/></g></svg>',
 };
 const BONUS_ORDER: readonly HarborBonus[] = ['net', 'clear', 'shuffle'];
 
@@ -123,6 +122,8 @@ export class HarborGame implements GameScreen {
   private popNew = false;
   private readonly field = el('div', { class: 'h-field' });
   private readonly left = el('span', {});
+  private readonly treatCount = el('span', {});
+  private earned = 0;
   private readonly islandNodes = new Map<number, HTMLElement>();
   private timer = 0;
   private seen = false;
@@ -132,10 +133,14 @@ export class HarborGame implements GameScreen {
     private readonly host: MiniGameHost,
     private readonly cb: HarborCallbacks,
   ) {
-    this.state = newHarbor(randomSeed());
+    const saved = loadSaved();
+    this.state = saved ?? newHarbor(randomSeed());
     this.root = el('div', { class: 'q-game h-game' }, [
       cb.header(GAMES_TEXT.harborTitle),
-      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.left])]),
+      el('div', { class: 'q-top' }, [
+        el('span', { class: 'q-chip' }, [this.left]),
+        el('span', { class: 'q-chip h-treat-chip' }, [el('img', { class: 'q-chip-pet', src: host.treatImage, alt: '' }), this.treatCount]),
+      ]),
       this.shipRow,
       el('div', { class: 'h-dock' }, [this.pierRow, this.stashBox]),
       this.field,
@@ -147,15 +152,18 @@ export class HarborGame implements GameScreen {
     this.renderBonuses();
     this.renderField();
     this.renderLeft();
+    this.treatCount.textContent = '0';
     this.timer = window.setInterval(() => this.tick(), WATER_STEP_MS);
   }
 
+  /** Выход посреди партии ничего не теряет: игра сохранена и продолжится при следующем входе. */
   hasProgress(): boolean {
-    return !this.finished && this.state.moves > 0;
+    return false;
   }
 
   leave(): void {
     window.clearInterval(this.timer);
+    if (!this.finished) storeSaved(this.state);
   }
 
   private label(): string {
@@ -246,6 +254,8 @@ export class HarborGame implements GameScreen {
       const badge = el('span', { class: 'h-island-bonus' });
       badge.innerHTML = BONUS_SVG[island.bonus];
       node.append(badge);
+    } else if (island.treat) {
+      node.append(el('img', { class: 'h-island-bonus h-island-treat', src: this.host.treatImage, alt: '' }));
     }
     return node;
   }
@@ -411,8 +421,40 @@ export class HarborGame implements GameScreen {
       button.classList.add('gain');
       this.flyIcon(kind, islandRect, button.getBoundingClientRect());
     }
+    // Лакомство с опустевшего острова сразу достаётся питомцу.
+    if (next.treats > before.treats) {
+      const n = next.treats - before.treats;
+      this.earned += n;
+      this.treatCount.textContent = String(this.earned);
+      this.host.earnTreats(n);
+      const chip = this.root.querySelector<HTMLElement>('.h-treat-chip');
+      if (islandRect && chip) this.flyTreat(islandRect, chip.getBoundingClientRect());
+    }
     sailing.forEach(({ node, rect }) => this.sail(node, rect));
+    if (!this.state.won && !this.state.stuck) storeSaved(this.state);
     this.checkEnd();
+  }
+
+  private flyTreat(from: DOMRect, to: DOMRect): void {
+    const a = this.rel(from);
+    const b = this.rel(to);
+    const node = el('img', { class: 'h-fly h-fly-bonus', src: this.host.treatImage, alt: '' });
+    const size = 36;
+    node.style.width = `${size}px`;
+    node.style.height = `${size}px`;
+    this.root.append(node);
+    const x0 = a.x + from.width / 2 - size / 2;
+    const y0 = a.y + from.height / 2 - size / 2;
+    const anim = node.animate(
+      [
+        { transform: `translate(${x0}px, ${y0}px) scale(0.6)`, opacity: 0.2 },
+        { transform: `translate(${x0}px, ${y0 - 24}px) scale(1.3)`, opacity: 1, offset: 0.3 },
+        { transform: `translate(${b.x + to.width / 2 - size / 2}px, ${b.y + to.height / 2 - size / 2}px) scale(0.7)`, opacity: 1 },
+      ],
+      { duration: 700, easing: 'ease-in-out', fill: 'forwards' },
+    );
+    anim.onfinish = () => node.remove();
+    window.setTimeout(() => node.remove(), 900);
   }
 
   private flyIcon(kind: HarborBonus, from: DOMRect, to: DOMRect): void {
@@ -482,6 +524,7 @@ export class HarborGame implements GameScreen {
     if (this.finished || (!this.state.won && !this.state.stuck)) return;
     this.finished = true;
     window.clearInterval(this.timer);
+    clearSaved();
     const won = this.state.won;
     this.host.finishHarbor(won);
     this.host.playSound(won ? 'win' : 'lose');
@@ -492,10 +535,37 @@ export class HarborGame implements GameScreen {
     const card = el('div', { class: won ? 'q-result won' : 'q-result' }, [
       el('img', { class: 'q-result-pet', src: this.host.petImage, alt: '' }),
       el('h2', { text: won ? GAMES_TEXT.harborWinTitle : GAMES_TEXT.harborStuckTitle }),
-      el('p', { text: won ? GAMES_TEXT.harborWinText(this.host.petName, HARBOR_REWARD) : GAMES_TEXT.harborStuckText(this.host.petName) }),
+      el('p', { text: won ? GAMES_TEXT.harborWinText(this.host.petName) : GAMES_TEXT.harborStuckText(this.host.petName) }),
       el('div', { class: 'q-result-buttons' }, [retry, finish]),
     ]);
     window.setTimeout(() => this.root.append(card), won ? FLY_MS + 400 : 300);
     finish.focus();
+  }
+}
+
+const SAVE_KEY = 'tamagotchi.harbor';
+
+function storeSaved(state: HarborState): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch {
+    // нет места или хранилище закрыто — игра просто не сохранится
+  }
+}
+
+function clearSaved(): void {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function loadSaved(): HarborState | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? restoreHarbor(JSON.parse(raw)) : null;
+  } catch {
+    return null;
   }
 }

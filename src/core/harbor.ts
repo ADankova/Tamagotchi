@@ -16,15 +16,14 @@ export const HARBOR_RADIUS = [0.11, 0.15, 0.18, 0.205] as const;
 /** На сколько остров поднимается за один шаг воды. */
 export const HARBOR_RISE = 0.06;
 const GAP = 0.002;
-/** Награда за победу, лакомств. */
-export const HARBOR_REWARD = 3;
 /** Шансы острова на 1, 2, 3 и 4 питомцев, в процентах. */
 export const HARBOR_ISLAND_WEIGHTS = [5, 40, 40, 15] as const;
 
 export type HarborBonus = 'net' | 'clear' | 'shuffle';
 export const HARBOR_BONUSES: readonly HarborBonus[] = ['net', 'clear', 'shuffle'];
-/** Шанс острова нести бонус, в процентах. */
+/** Шансы острова нести бонус или лакомство, в процентах (остров несёт что-то одно). */
 export const HARBOR_BONUS_CHANCE = 14;
+export const HARBOR_TREAT_CHANCE = 12;
 
 export interface HarborPet {
   id: number;
@@ -40,6 +39,8 @@ export interface HarborIsland {
   size: number;
   /** Бонус, который достанется, когда остров опустеет. */
   bonus: HarborBonus | null;
+  /** Лакомство, которое достанется, когда остров опустеет. */
+  treat: boolean;
   /** Центр острова-пузыря. */
   x: number;
   y: number;
@@ -62,6 +63,8 @@ export interface HarborState {
   stash: HarborPet[];
   /** Сколько бонусов собрано. */
   bonuses: Record<HarborBonus, number>;
+  /** Лакомств добыто с островов (они сразу отдаются питомцу). */
+  treats: number;
   delivered: number;
   total: number;
   /** Доставлено питомцев каждого вида. */
@@ -113,6 +116,7 @@ export function newHarbor(seed: number): HarborState {
       pets: group,
       size: group.length,
       bonus: chance * 100 < HARBOR_BONUS_CHANCE ? HARBOR_BONUSES[which]! : null,
+      treat: chance * 100 >= HARBOR_BONUS_CHANCE && chance * 100 < HARBOR_BONUS_CHANCE + HARBOR_TREAT_CHANCE,
       x: 0,
       y: 0,
     });
@@ -126,6 +130,7 @@ export function newHarbor(seed: number): HarborState {
     pier: [],
     stash: [],
     bonuses: { net: 0, clear: 0, shuffle: 0 },
+    treats: 0,
     delivered: 0,
     total: pets.length,
     deliveredByKind: Array.from({ length: HARBOR_KINDS }, () => 0),
@@ -231,7 +236,8 @@ function sendPet(state: HarborState, island: HarborIsland, pet: HarborPet, toShi
   const bonuses = { ...state.bonuses };
   // Опустевший остров отдаёт свой бонус.
   if (rest.length === 0 && island.bonus) bonuses[island.bonus]++;
-  return settle({ ...state, field, ships, pier, bonuses, stuck: false, moves: state.moves + 1 });
+  const treats = state.treats + (rest.length === 0 && island.treat ? 1 : 0);
+  return settle({ ...state, field, ships, pier, bonuses, treats, stuck: false, moves: state.moves + 1 });
 }
 
 /** Нажать питомца. null — нельзя: пристань полна, а корабля для него нет. */
@@ -309,6 +315,35 @@ export function useShuffle(state: HarborState): HarborState | null {
 }
 
 /** Вода движется: острова поднимаются, снизу всплывает новый. Возвращает то же состояние, если ничего не изменилось. */
+/** Как высоко можно подняться из точки (x, y0) строго вверх. */
+function ceilingAt(field: HarborIsland[], x: number, y0: number, r: number, skip: number): number {
+  let y = y0;
+  while (y - 0.02 - r >= 0 && fits(field, x, y - 0.02, r, skip)) y -= 0.02;
+  return y;
+}
+
+/**
+ * Остров упёрся в соседей сверху. Если сбоку (путь свободен) есть место, где можно подняться выше,
+ * возвращает шаг в ту сторону, иначе 0.
+ */
+function seekCeiling(field: HarborIsland[], cur: HarborIsland, r: number): number {
+  const here = ceilingAt(field, cur.x, cur.y, r, cur.id);
+  let best = 0;
+  let bestY = here - 0.04;
+  for (const dir of [-1, 1]) {
+    for (let k = 1; k <= 14; k++) {
+      const nx = cur.x + dir * 0.03 * k;
+      if (!fits(field, nx, cur.y, r, cur.id)) break;
+      const top = ceilingAt(field, nx, cur.y, r, cur.id);
+      if (top < bestY) {
+        bestY = top;
+        best = dir * Math.min(0.03, 0.03 * k);
+      }
+    }
+  }
+  return best;
+}
+
 function moveWater(state: HarborState): HarborState {
   let field = state.field.slice();
   let moved = false;
@@ -337,6 +372,15 @@ function moveWater(state: HarborState): HarborState {
           }
         }
         if (done) break;
+      }
+      if (!done) {
+        // Вверх не пускают: ищем сбоку место, где потолок выше (свободнее), и идём к нему.
+        const sidestep = seekCeiling(field, cur, r);
+        if (sidestep !== 0) {
+          field = field.map((i) => (i.id === cur.id ? { ...i, x: cur.x + sidestep } : i));
+          moved = true;
+          done = true;
+        }
       }
       if (!done) {
         // Подняться нельзя: прижимаемся вбок к ближайшему препятствию (стенке или соседу), чтобы не оставалось щелей.
@@ -388,4 +432,55 @@ export function advanceHarbor(state: HarborState): HarborState {
   const rescue = state.bonuses.shuffle > 0 || state.bonuses.clear > 0;
   const lost = state.pier.length >= HARBOR_PIER && !hasMatchOnField(state) && !rescue;
   return lost ? { ...state, stuck: true } : state;
+}
+
+function isPet(v: unknown): boolean {
+  const p = v as HarborPet;
+  return !!p && Number.isInteger(p.id) && Number.isInteger(p.kind) && p.kind >= 0 && p.kind < HARBOR_KINDS && Number.isInteger(p.spot) && p.spot >= 0 && p.spot < 4;
+}
+
+function isIsland(v: unknown): boolean {
+  const i = v as HarborIsland;
+  return (
+    !!i &&
+    Number.isInteger(i.id) &&
+    Number.isFinite(i.x) &&
+    Number.isFinite(i.y) &&
+    Number.isInteger(i.size) &&
+    i.size >= 1 &&
+    i.size <= 4 &&
+    Array.isArray(i.pets) &&
+    i.pets.length <= 4 &&
+    i.pets.every(isPet) &&
+    (i.bonus === null || HARBOR_BONUSES.includes(i.bonus)) &&
+    typeof i.treat === 'boolean'
+  );
+}
+
+/** Сохранённая партия читается и не закончена. Лакомства, добытые до выхода, уже отданы питомцу — счёт с нуля. */
+export function restoreHarbor(raw: unknown): HarborState | null {
+  const s = raw as HarborState;
+  if (!s || typeof s !== 'object' || s.won || s.stuck) return null;
+  const ok =
+    typeof s.rng === 'number' &&
+    Array.isArray(s.field) &&
+    s.field.every(isIsland) &&
+    Array.isArray(s.deck) &&
+    s.deck.every(isIsland) &&
+    Array.isArray(s.ships) &&
+    s.ships.length === HARBOR_SHIPS &&
+    s.ships.every((x) => x === null || (Number.isInteger(x.kind) && x.kind >= 0 && x.kind < HARBOR_KINDS && Number.isInteger(x.count) && x.count >= 0 && x.count < HARBOR_NEED)) &&
+    Array.isArray(s.pier) &&
+    s.pier.length <= HARBOR_PIER &&
+    s.pier.every(isPet) &&
+    Array.isArray(s.stash) &&
+    s.stash.every(isPet) &&
+    !!s.bonuses &&
+    HARBOR_BONUSES.every((b) => Number.isInteger(s.bonuses[b]) && s.bonuses[b] >= 0) &&
+    Number.isInteger(s.delivered) &&
+    Number.isInteger(s.total) &&
+    s.total === HARBOR_KINDS * HARBOR_TRIPLES * HARBOR_NEED &&
+    Array.isArray(s.deliveredByKind) &&
+    s.deliveredByKind.length === HARBOR_KINDS;
+  return ok ? { ...s, treats: 0 } : null;
 }
