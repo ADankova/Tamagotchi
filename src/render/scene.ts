@@ -83,9 +83,6 @@ let animPreview: AnimRow | null = null;
 export function setAnimPreview(row: AnimRow | null): void {
   animPreview = row;
 }
-export function getAnimPreview(): AnimRow | null {
-  return animPreview;
-}
 let previewSpecies: Species | null = null;
 /** В режиме просмотра анимаций показывать этот вид вместо вида питомца (null — свой). */
 export function setPreviewSpecies(species: Species | null): void {
