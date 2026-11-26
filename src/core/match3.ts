@@ -137,13 +137,13 @@ function makers(cells: M3Cells, matches: ReturnType<typeof findMatches>, hint: n
   for (const run of runs) {
     if (run.cells.length >= 5) list.push({ prio: 3, cells: run.cells, at: pick(run.cells), special: 'rainbow' });
   }
-  // Крест, «Т» и «Г»: горизонтальный и вертикальный ряд делят клетку.
+  // Два ряда делят клетку: крест (клетка внутри обоих рядов) — радуга, «Т» и «Г» — бомба.
   for (const h of runs.filter((x) => x.dir === 'h')) {
     for (const v of runs.filter((x) => x.dir === 'v')) {
       const shared = h.cells.find((i) => v.cells.includes(i));
-      if (shared !== undefined && cells[shared]?.kind === cells[h.cells[0]!]?.kind) {
-        list.push({ prio: 3, cells: [...new Set([...h.cells, ...v.cells])], at: shared, special: 'rainbow' });
-      }
+      if (shared === undefined || cells[shared]?.kind !== cells[h.cells[0]!]?.kind) continue;
+      const inside = (run: Run): boolean => shared !== run.cells[0] && shared !== run.cells[run.cells.length - 1];
+      list.push({ prio: inside(h) && inside(v) ? 3 : 2, cells: [...new Set([...h.cells, ...v.cells])], at: shared, special: inside(h) && inside(v) ? 'rainbow' : 'bomb' });
     }
   }
   for (const sq of squares) list.push({ prio: 2, cells: sq, at: pick(sq), special: 'bomb' });
