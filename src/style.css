@@ -2537,9 +2537,17 @@ button.m-jar:active {
   width: min(100%, 46dvh);
   margin: 0 auto;
 }
-.m-bottom .m-slots,
-.m-bottom .m-queues {
+.m-bottom .m-slots {
   width: 100%;
+}
+.m-bottom .m-queues {
+  /* Баночки в очереди того же размера, что и в активной зоне (80% ячейки из пяти), поэтому полоса уже. */
+  width: calc((100% - 24px) * 0.64 + 11.2px);
+}
+.m-queue .m-jar,
+.m-queue .m-jar.back {
+  min-height: 44px;
+  font-size: 1.3rem;
 }
 .m-bottom .m-jar {
   position: relative;
