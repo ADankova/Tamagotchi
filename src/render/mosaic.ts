@@ -16,7 +16,8 @@ import type { GameScreen, MiniGameHost } from './minigames';
 // Экран «Мозаики»: картинка из кубиков, норка, ячейки и очереди баночек.
 
 const STEP_MS = 340;
-const FLY_MS = 650;
+/** Скорость бега питомца, пикселей в миллисекунду. */
+const RUN_PX_PER_MS = 0.32;
 /** Цвета кубиков и баночек: тот же порядок, что в MOSAIC_COLORS (B, R, P, W). */
 const COLOR_CSS = ['#5aaef0', '#e8505b', '#ffa6c9', '#fff6e6'] as const;
 const VISIBLE_IN_QUEUE = 3;
@@ -41,6 +42,8 @@ export class MosaicGame implements GameScreen {
   private timer = 0;
   private seen = false;
   private finished = false;
+  /** Самая долгая пробежка: итог показывается, когда последний питомец добежит. */
+  private lastRunMs = 0;
 
   constructor(
     private readonly host: MiniGameHost,
@@ -145,34 +148,72 @@ export class MosaicGame implements GameScreen {
     this.checkEnd();
   }
 
-  /** Питомец уносит кубик из картинки в норку. */
+  /** Питомец уносит кубик: выбегает из картинки к ближайшему краю, обегает её снаружи и скрывается в норке. */
   private carry(c: Carry): void {
     const cube = this.cubes[c.cell];
     if (!cube) return;
     cube.classList.add('gone');
     const stage = this.stage.getBoundingClientRect();
+    const boardBox = this.board.getBoundingClientRect();
     const from = cube.getBoundingClientRect();
     const to = this.hole.getBoundingClientRect();
     const size = from.width;
+    const rs = size * 1.6;
     const runner = el('div', { class: 'm-runner' }, [
       el('img', { class: 'm-runner-pet', src: this.host.petImage, alt: '' }),
       el('span', { class: 'm-runner-cube' }),
     ]);
-    runner.style.width = `${size * 1.6}px`;
-    runner.style.height = `${size * 1.6}px`;
-    const x0 = from.left - stage.left + size / 2 - (size * 1.6) / 2;
-    const y0 = from.top - stage.top + size / 2 - (size * 1.6) / 2;
-    runner.style.transform = `translate(${x0}px, ${y0}px)`;
+    runner.style.width = `${rs}px`;
+    runner.style.height = `${rs}px`;
     (runner.querySelector('.m-runner-cube') as HTMLElement).style.background = COLOR_CSS[c.color] ?? '#ccc';
     this.stage.append(runner);
-    const x1 = to.left - stage.left + to.width / 2 - (size * 1.6) / 2;
-    const y1 = to.top - stage.top + to.height / 2 - (size * 1.6) / 2;
-    window.requestAnimationFrame(() => {
-      runner.style.transition = `transform ${FLY_MS}ms ease-in, opacity ${FLY_MS}ms ease-in`;
-      runner.style.transform = `translate(${x1}px, ${y1}px) scale(0.5)`;
-      runner.style.opacity = '0.2';
+
+    // Путь только по прямым: вперёд, вправо, влево, назад (без наискосок). Точки — центры питомца.
+    const gap = rs * 0.7;
+    const L = boardBox.left - stage.left - gap;
+    const R = boardBox.right - stage.left + gap;
+    const T = boardBox.top - stage.top - gap;
+    const B = boardBox.bottom - stage.top + gap * 0.6;
+    const cx = from.left - stage.left + size / 2;
+    const cy = from.top - stage.top + size / 2;
+    const hx = to.left - stage.left + to.width / 2;
+    const hy = to.top - stage.top + to.height / 2;
+    const dl = cx - L;
+    const dr = R - cx;
+    const dt = cy - T;
+    const db = B - cy;
+    const nearest = Math.min(dl, dr, dt, db);
+    const pts: Array<[number, number]> = [[cx, cy]];
+    if (nearest === db) {
+      pts.push([cx, B]);
+    } else if (nearest === dt) {
+      const side = dl < dr ? L : R;
+      pts.push([cx, T], [side, T], [side, B]);
+    } else {
+      const side = nearest === dl ? L : R;
+      pts.push([side, cy], [side, B]);
+    }
+    pts.push([hx, B], [hx, hy]);
+
+    let total = 0;
+    const lens = pts.slice(1).map((p, i) => {
+      const q = pts[i]!;
+      const len = Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]);
+      total += len;
+      return len;
     });
-    window.setTimeout(() => runner.remove(), FLY_MS + 60);
+    const duration = Math.max(500, total / RUN_PX_PER_MS);
+    this.lastRunMs = Math.max(this.lastRunMs, duration);
+    let acc = 0;
+    const at = (p: [number, number]): string => `translate(${p[0] - rs / 2}px, ${p[1] - rs / 2}px)`;
+    const frames: Keyframe[] = [{ offset: 0, transform: at(pts[0]!), opacity: 1 }];
+    pts.slice(1).forEach((p, i) => {
+      acc += lens[i]!;
+      frames.push({ offset: acc / total, transform: at(p), opacity: i === pts.length - 2 ? 0.2 : 1 });
+    });
+    const anim = runner.animate(frames, { duration, easing: 'linear', fill: 'forwards' });
+    anim.onfinish = () => runner.remove();
+    window.setTimeout(() => runner.remove(), duration + 200);
   }
 
   private checkEnd(): void {
@@ -193,7 +234,7 @@ export class MosaicGame implements GameScreen {
       el('div', { class: 'q-result-buttons' }, [retry, finish]),
     ]);
     // Победа ждёт, пока улетят последние кубики.
-    window.setTimeout(() => this.root.append(card), won ? FLY_MS : 0);
+    window.setTimeout(() => this.root.append(card), won ? this.lastRunMs : 0);
     finish.focus();
   }
 }
