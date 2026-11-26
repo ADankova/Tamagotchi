@@ -42,11 +42,13 @@ const KINDS: readonly Kind[] = [
   { species: 'blob', body: 'baby', color: '#a98af0' },
 ];
 
-const BADGES: Record<M3Special, string> = {
-  row: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M7 7l-5 5 5 5M17 7l5 5-5 5" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12h18M7 7l-5 5 5 5M17 7l5 5-5 5" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  col: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 7l5-5 5 5M7 17l5 5 5-5" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3v18M7 7l5-5 5 5M7 17l5 5 5-5" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  bomb: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="14" r="8" fill="#3b2a1e"/><circle cx="8" cy="11" r="2.2" fill="#8a7a6a"/><path d="M15 6l3-3" stroke="#3b2a1e" stroke-width="2.4" stroke-linecap="round"/><path d="M19 1v4M17 3h4" stroke="#ffd25e" stroke-width="2" stroke-linecap="round"/></svg>',
-  rainbow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z" fill="#fff" stroke="#3b2a1e" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+const T = 'style="fill:var(--tile,#5aaef0)"';
+/** Бонусы — отдельные предметы, а не значки на питомце. */
+const BONUS_ART: Record<M3Special, string> = {
+  row: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="20" width="52" height="24" rx="8" fill="#fff6e4" stroke="#3b2a1e" stroke-width="3"/><rect x="6" y="20" width="14" height="24" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><rect x="44" y="20" width="14" height="24" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><path d="M24 32h16M28 27l-5 5 5 5M36 27l5 5-5 5" fill="none" stroke="#3b2a1e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 25v4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></svg>`,
+  col: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="8" fill="#fff6e4" stroke="#3b2a1e" stroke-width="3"/><rect x="20" y="6" width="24" height="14" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><rect x="20" y="44" width="24" height="14" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><path d="M32 24v16M27 28l5-5 5 5M27 36l5 5 5-5" fill="none" stroke="#3b2a1e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M25 11h4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></svg>`,
+  bomb: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4c-3 5-1 8 3 10" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round"/><circle cx="38" cy="8" r="3.5" fill="#ffd25e" stroke="#e8505b" stroke-width="1.6"/><path d="M14 20q18-8 36 0l3 28q-21 11-42 0z" fill="#b8733a" stroke="#3b2a1e" stroke-width="3" stroke-linejoin="round"/><path d="M12 28q20 7 40 0M11 42q21 8 42 0" fill="none" stroke="#3b2a1e" stroke-width="3"/><path d="M12 28q20 7 40 0v4q-20 7-40 0zM11 42q21 8 42 0v4q-21 8-42 0z" fill="#e8c24a" opacity=".75"/><rect x="20" y="29" width="24" height="13" rx="3" fill="#fff6e4" stroke="#3b2a1e" stroke-width="2"/><text x="32" y="39.5" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="10" fill="#d83a2e">TNT</text></svg>',
+  rainbow: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="#3b3550" stroke="#3b2a1e" stroke-width="3"/><path d="M6 31q26 10 52 0" fill="none" stroke="#ffd25e" stroke-width="3"/><circle cx="32" cy="12" r="4.5" fill="#ff6b6b"/><circle cx="16" cy="20" r="4.5" fill="#7bc67e"/><circle cx="48" cy="20" r="4.5" fill="#5aaef0"/><circle cx="12" cy="36" r="4.5" fill="#ffd25e"/><circle cx="52" cy="36" r="4.5" fill="#ff9fc8"/><circle cx="32" cy="32" r="4.5" fill="#a98af0"/><circle cx="22" cy="48" r="4.5" fill="#5aaef0"/><circle cx="42" cy="48" r="4.5" fill="#ff6b6b"/><circle cx="32" cy="55" r="3.5" fill="#7bc67e"/><path d="M17 14q6-7 15-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/></svg>',
 };
 
 interface Callbacks {
@@ -124,15 +126,13 @@ export class Match3Game implements GameScreen {
     tile.classList.toggle('bomb', piece.special === 'bomb');
     tile.classList.toggle('line', piece.special === 'row' || piece.special === 'col');
     tile.setAttribute('aria-label', piece.special ? GAMES_TEXT.match3Special[piece.special] : GAMES_TEXT.match3Tile);
-    if (piece.kind >= 0) {
+    if (piece.special) {
+      if (piece.kind >= 0) tile.style.setProperty('--tile', KINDS[piece.kind % KINDS.length]!.color);
+      face.innerHTML = BONUS_ART[piece.special];
+    } else if (piece.kind >= 0) {
       const kind = KINDS[piece.kind % KINDS.length]!;
       tile.style.setProperty('--tile', kind.color);
       face.append(portrait(kind.species, kind.body, 'm3-face-img'));
-    }
-    if (piece.special) {
-      const badge = el('span', { class: `m3-badge ${piece.special}` });
-      badge.innerHTML = BADGES[piece.special];
-      face.append(badge);
     }
   }
 
