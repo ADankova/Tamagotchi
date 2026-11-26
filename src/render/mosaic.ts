@@ -193,11 +193,7 @@ export class MosaicGame implements GameScreen {
       pts.push([side, cy], [side, B]);
     }
     pts.push([hx, B], [hx, hy]);
-    // Сначала питомец бежит из норки к своему кубику, потом несёт его обратно тем же путём.
-    const back = pts.slice().reverse();
-    const route = back.concat(pts.slice(1));
-    const turn = back.length - 1;
-
+    const route = pts;
     let total = 0;
     const lens = route.slice(1).map((p, i) => {
       const q = route[i]!;
@@ -208,21 +204,14 @@ export class MosaicGame implements GameScreen {
     const duration = Math.max(900, total / RUN_PX_PER_MS);
     this.lastRunMs = Math.max(this.lastRunMs, duration);
     let acc = 0;
-    let turnOffset = 0.5;
     const at = (p: [number, number]): string => `translate(${p[0] - rs / 2}px, ${p[1] - rs / 2}px)`;
-    const frames: Keyframe[] = [{ offset: 0, transform: at(route[0]!), opacity: 0.2 }];
+    const frames: Keyframe[] = [{ offset: 0, transform: at(route[0]!), opacity: 1 }];
     route.slice(1).forEach((p, i) => {
       acc += lens[i]!;
-      if (i + 1 === turn) turnOffset = acc / total;
       const last = i === route.length - 2;
       frames.push({ offset: acc / total, transform: at(p), opacity: last ? 0.2 : 1 });
     });
-    const cubeBadge = runner.querySelector('.m-runner-cube') as HTMLElement;
-    cubeBadge.style.visibility = 'hidden';
-    window.setTimeout(() => {
-      cube.classList.add('gone');
-      cubeBadge.style.visibility = 'visible';
-    }, duration * turnOffset);
+    cube.classList.add('gone');
     const anim = runner.animate(frames, { duration, easing: 'linear', fill: 'forwards' });
     anim.onfinish = () => runner.remove();
     window.setTimeout(() => runner.remove(), duration + 200);
