@@ -1,6 +1,6 @@
 import { getMood, getNeeds } from '../core/pet';
 import type { ActionType, AdultForm, LifeStage, Pet, Species } from '../core/types';
-import { bodyStage, SPECIES_LOOKS, TAIL_OVERLAP } from './species';
+import { bodyStage, SPECIES_LOOKS, type BodyStage, TAIL_OVERLAP } from './species';
 import { SPRITES, type SpriteName } from './sprites';
 
 // Чистая функция «что нарисовать в момент t»: без DOM и без часов,
@@ -90,6 +90,11 @@ let previewSpecies: Species | null = null;
 /** В режиме просмотра анимаций показывать этот вид вместо вида питомца (null — свой). */
 export function setPreviewSpecies(species: Species | null): void {
   previewSpecies = species;
+}
+let previewBody: BodyStage | null = null;
+/** В режиме просмотра анимаций показывать эту стадию вместо стадии питомца (null — своя). */
+export function setPreviewBody(body: BodyStage | null): void {
+  previewBody = body;
 }
 /** Кадров в новых (плавных) строках. */
 export const SMOOTH_FRAMES = 17;
@@ -453,6 +458,11 @@ export function composeScene(
   const motion = reducedMotion ? 0 : 1;
   if (isCutscenePlaying(cutscene, t)) return composeCutscene(cutscene, t, motion);
   if (animPreview && previewSpecies && pet.species !== previewSpecies) pet = { ...pet, species: previewSpecies };
+  if (animPreview && previewBody && pet.stage !== 'egg' && pet.stage !== 'dead') {
+    const adult = previewBody.startsWith('adult');
+    const form = previewBody === 'adultGood' ? 'good' : previewBody === 'adultNaughty' ? 'naughty' : 'normal';
+    pet = { ...pet, stage: adult ? 'adult' : (previewBody as LifeStage), form: adult ? form : pet.form };
+  }
   const state = animState(pet, active, t);
   const elapsed = active ? Math.max(0, t - active.startedAt) : 0;
   const name = petSprite(pet);

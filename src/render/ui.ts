@@ -34,7 +34,8 @@ import {
 } from '../strings';
 import { PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, POOP_SLOTS, setAnimPreview, setPreviewSpecies, type AnimRow } from './scene';
+import type { BodyStage } from './species';
+import { CUTSCENE_MS, POOP_SLOTS, setAnimPreview, setPreviewBody, setPreviewSpecies, type AnimRow } from './scene';
 import { GamesOverlay } from './minigames';
 import { ART } from './artData';
 import { bodyStage } from './species';
@@ -608,10 +609,12 @@ export class UI {
     const list = el('div', { class: 'anim-list', hidden: '' });
     let row: AnimRow | null = null;
     let species: Species | null = null;
+    let body: BodyStage | null = null;
     const refresh = () => {
       setAnimPreview(row);
       setPreviewSpecies(species);
-      const parts = [species ? DEV_TEXT.animSpecies[species] : '', row ? DEV_TEXT.animRows[row] ?? row : ''].filter(Boolean);
+      setPreviewBody(body);
+      const parts = [species ? DEV_TEXT.animSpecies[species] : '', body ? DEV_TEXT.animStages[body] : '', row ? DEV_TEXT.animRows[row] ?? row : ''].filter(Boolean);
       toggle.textContent = `🎞 ${parts.length ? parts.join(' · ') : DEV_TEXT.animButton}`;
     };
     const addItem = (text: string, onPick: () => void, close: boolean) => {
@@ -626,7 +629,9 @@ export class UI {
     // Вид питомца для просмотра: свой, кошечка, собачка или пушистик (список остаётся открытым).
     addItem(DEV_TEXT.animSpeciesOwn, () => (species = null), false);
     for (const sp of ['cat', 'dog', 'blob'] as const) addItem(DEV_TEXT.animSpecies[sp] ?? sp, () => (species = sp), false);
-    addItem(DEV_TEXT.animOff, () => ((row = null), (species = null)), true);
+    addItem(DEV_TEXT.animStageOwn, () => (body = null), false);
+    for (const st of ['baby', 'child', 'teen', 'adultGood', 'adultNormal', 'adultNaughty', 'elder'] as const) addItem(DEV_TEXT.animStages[st] ?? st, () => (body = st), false);
+    addItem(DEV_TEXT.animOff, () => ((row = null), (species = null), (body = null)), true);
     for (const r of Object.keys(DEV_TEXT.animRows) as AnimRow[]) addItem(DEV_TEXT.animRows[r] ?? r, () => (row = r), true);
     toggle.addEventListener('click', () => {
       list.hidden = !list.hidden;
@@ -639,6 +644,7 @@ export class UI {
     writeDevFlag(false);
     setAnimPreview(null);
     setPreviewSpecies(null);
+    setPreviewBody(null);
     this.animPicker.hidden = true;
     this.devPanel?.remove();
     this.devPanel = null;

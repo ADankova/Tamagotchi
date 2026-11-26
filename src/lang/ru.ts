@@ -164,6 +164,8 @@ const DEV_TEXT = {
   tapsLeft: (n: number) => `Ещё ${n} — и откроется режим тестирования`,
   animButton: 'Анимации',
   animOff: 'Обычное поведение',
+  animStageOwn: 'Моя стадия',
+  animStages: { baby: 'Малыш', child: 'Ребёнок', teen: 'Подросток', adultGood: 'Взрослый хороший', adultNormal: 'Взрослый обычный', adultNaughty: 'Взрослый озорной', elder: 'Старичок' } as Record<string, string>,
   animSpeciesOwn: 'Мой питомец',
   animSpecies: { cat: 'Кошечка', dog: 'Собачка', blob: 'Пушистик' } as Record<string, string>,
   animRows: {
