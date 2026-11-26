@@ -572,7 +572,7 @@ export function composeScene(
       const mouth = { x: p.x + SPRITES[name].w / 2 - SPRITES.candy.w / 2, y: p.y + 4 };
       if (elapsed < TREAT_FLIGHT_MS) {
         const k = motion ? elapsed / TREAT_FLIGHT_MS : 1;
-        const x0 = mid + 16;
+        const x0 = Math.min(mid + 16, SCREEN_W - SPRITES.candy.w - 1);
         const y0 = GROUND_Y - 6;
         items.push({
           sprite: 'candy',
