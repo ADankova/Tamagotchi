@@ -46,6 +46,8 @@ export class MosaicGame implements GameScreen {
   private finished = false;
   /** Самая долгая пробежка: итог показывается, когда последний питомец добежит. */
   private lastRunMs = 0;
+  /** Питомцы, которые ждут, пока освободится путь к кубику. */
+  private waiting = 0;
 
   constructor(
     private readonly host: MiniGameHost,
@@ -154,7 +156,7 @@ export class MosaicGame implements GameScreen {
   }
 
   /** Питомец уносит кубик: выбегает из картинки к ближайшему краю, обегает её снаружи и скрывается в норке. */
-  private carry(c: Carry): void {
+  private carry(c: Carry, tries = 0): void {
     const cube = this.cubes[c.cell];
     if (!cube) return;
     const stage = this.stage.getBoundingClientRect();
@@ -162,6 +164,19 @@ export class MosaicGame implements GameScreen {
     const to = this.hole.getBoundingClientRect();
     const size = from.width;
     const rs = size * 0.8;
+    // Пока соседние кубики ещё видны на поле, свободного пути может не быть: питомец ждёт, а не бежит сквозь мозаику.
+    {
+      const cx = c.cell % this.state.w;
+      const cy = Math.floor(c.cell / this.state.w);
+      if (tries < 60 && !this.hasWay(cx, cy)) {
+        this.waiting++;
+        window.setTimeout(() => {
+          this.waiting--;
+          this.carry(c, tries + 1);
+        }, 150);
+        return;
+      }
+    }
     const runner = el('div', { class: 'm-runner' }, [
       el('img', { class: 'm-runner-pet', src: this.host.petImage, alt: '' }),
       el('span', { class: 'm-runner-cube' }),
@@ -192,8 +207,8 @@ export class MosaicGame implements GameScreen {
       path.map(([gx, gy]) => [ox + gx * pitchX, oy + gy * pitchY]);
     const rowY = oy + h * pitchY;
     // Туда: из баночки без груза к кубику. Обратно: с грузом от кубика сразу к норке, без боковых пробежек.
-    const goPath = toGrid(this.freePath(cellX, cellY, clampCol(sx), h));
-    const backPath = toGrid(this.freePath(cellX, cellY, clampCol(hx), h));
+    const goPath = toGrid(this.freePath(cellX, cellY, clampCol(sx), h) ?? [[cellX, cellY], [cellX, h], [clampCol(sx), h]]);
+    const backPath = toGrid(this.freePath(cellX, cellY, clampCol(hx), h) ?? [[cellX, cellY], [cellX, h], [clampCol(hx), h]]);
     const out: Array<[number, number]> = [[sx, sy], [sx, rowY], ...goPath.slice().reverse()];
     const home: Array<[number, number]> = [...backPath, [hx, rowY], [hx, hy]];
     const route = out.concat(home.slice(1));
@@ -230,7 +245,12 @@ export class MosaicGame implements GameScreen {
   }
 
   /** Кратчайший путь по пустым клеткам (с запасом в одну клетку вокруг доски и рядом внизу) с минимумом поворотов. */
-  private freePath(sx: number, sy: number, gx: number, gy: number): Array<[number, number]> {
+  /** Есть ли у кубика свободный путь вниз (на строку под картинкой). */
+  private hasWay(cx: number, cy: number): boolean {
+    return this.freePath(cx, cy, cx, this.state.h) !== null;
+  }
+
+  private freePath(sx: number, sy: number, gx: number, gy: number): Array<[number, number]> | null {
     const { w, h } = this.state;
     const solid = this.solid;
     const X0 = -1;
@@ -275,7 +295,7 @@ export class MosaicGame implements GameScreen {
         }
       });
     }
-    if (end < 0) return [[sx, sy], [sx, gy], [gx, gy]];
+    if (end < 0) return null;
     const out: Array<[number, number]> = [];
     let k: number | undefined = end;
     while (k !== undefined) {
@@ -312,7 +332,11 @@ export class MosaicGame implements GameScreen {
       el('div', { class: 'q-result-buttons' }, [retry, finish]),
     ]);
     // Победа ждёт, пока улетят последние кубики.
-    window.setTimeout(() => this.root.append(card), won ? this.lastRunMs : 0);
+    const show = (): void => {
+      if (this.waiting > 0) window.setTimeout(show, 150);
+      else window.setTimeout(() => this.root.append(card), won ? this.lastRunMs : 0);
+    };
+    show();
     finish.focus();
   }
 }
