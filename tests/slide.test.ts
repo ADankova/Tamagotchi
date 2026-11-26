@@ -126,7 +126,7 @@ describe('Питомцы-блоки', () => {
     expect(anyMove(r.state) === null || slide(r.state, ...anyMove(r.state)!) === null).toBe(true);
   });
 
-  it('лакомство появляется раз в 10–15 полос', () => {
+  it('лакомство появляется раз в 15–20 полос', () => {
     // Каждый ход очищаем поле до одного блока — партия не кончается, считаем полосы.
     let s = newSlideGame(99);
     const treatRows: number[] = [];
@@ -135,11 +135,11 @@ describe('Питомцы-блоки', () => {
       s = slide({ ...s, blocks: [bl(1, 9, 0, 1)], nextId: 1000 + i * 20 }, 1, 1)!.state;
     }
     expect(treatRows.length).toBeGreaterThanOrEqual(5);
-    expect(treatRows[0]!).toBeLessThanOrEqual(15);
+    expect(treatRows[0]!).toBeLessThanOrEqual(20);
     for (let i = 1; i < treatRows.length; i++) {
       const gap = treatRows[i]! - treatRows[i - 1]!;
-      expect(gap).toBeGreaterThanOrEqual(10);
-      expect(gap).toBeLessThanOrEqual(15);
+      expect(gap).toBeGreaterThanOrEqual(15);
+      expect(gap).toBeLessThanOrEqual(20);
     }
   });
 
@@ -175,14 +175,14 @@ describe('бонусы «Питомцев-блоков»', () => {
     return rows;
   }
 
-  it('бонус появляется раз в 3–5 полос, случайный, и не на блоке с лакомством', () => {
+  it('бонус появляется раз в 4–7 полос, случайный, и не на блоке с лакомством', () => {
     const rows = bonusRows(7, 200);
     expect(rows.length).toBeGreaterThan(20);
-    expect(rows[0]!.at).toBeLessThanOrEqual(6);
+    expect(rows[0]!.at).toBeLessThanOrEqual(8);
     for (let i = 1; i < rows.length; i++) {
       const gap = rows[i]!.at - rows[i - 1]!.at;
-      expect(gap).toBeGreaterThanOrEqual(3);
-      expect(gap).toBeLessThanOrEqual(5);
+      expect(gap).toBeGreaterThanOrEqual(4);
+      expect(gap).toBeLessThanOrEqual(7);
     }
     expect(new Set(rows.map((r) => r.bonus))).toEqual(new Set(['freeze', 'lightning', 'crumbs']));
     expect(rows.some((r) => r.sameTreat)).toBe(false);
@@ -263,19 +263,31 @@ describe('бонусы «Питомцев-блоков»', () => {
     const r = useCrumbs(s)!;
     expect(r.state.crumbs).toBe(0);
     expect(r.state.moves).toBe(s.moves);
-    expect(r.frames).toHaveLength(1);
     const area = r.frames[0]!.crumbArea!;
     noOverlap(r.state.blocks);
-    for (const b of r.state.blocks) {
+    for (const b of r.frames[0]!.blocks) {
       const inside = b.row >= area.row && b.row < area.row + CRUMB_SIZE && b.col >= area.col && b.col + b.len <= area.col + CRUMB_SIZE;
       if (inside) expect(b.len).toBe(1);
     }
     // Ни одна занятая клетка не пропала и не добавилась.
     const cells = (bs: readonly Block[]) => bs.flatMap((b) => Array.from({ length: b.len }, (_, i) => `${b.row},${b.col + i}`)).sort();
-    expect(cells(r.state.blocks)).toEqual(cells(blocks));
+    expect(cells(r.frames[0]!.blocks)).toEqual(cells(blocks));
     // Лакомство осталось на левом куске блока.
     expect(r.state.blocks.filter((b) => b.treat)).toHaveLength(1);
     expect(r.state.blocks.filter((b) => b.bonus === 'freeze')).toHaveLength(1);
+  });
+
+  it('крошки: осколки падают на свободные места', () => {
+    // Длинный блок лежит на двух одиночных опорах; осколок над пустотой должен упасть.
+    const blocks = [bl(1, 9, 0, 1), bl(2, 9, 4, 1), bl(3, 8, 0, 5)];
+    const s: SlideState = { ...newSlideGame(5), blocks, nextId: 10, crumbs: 1 };
+    const r = useCrumbs(s)!;
+    noOverlap(r.state.blocks);
+    for (const b of r.state.blocks) {
+      if (b.row === 9) continue;
+      const grid = new Set(r.state.blocks.flatMap((o) => Array.from({ length: o.len }, (_, i) => `${o.row},${o.col + i}`)));
+      expect(Array.from({ length: b.len }, (_, i) => grid.has(`${b.row + 1},${b.col + i}`)).some(Boolean)).toBe(true);
+    }
   });
 
   it('крошки: если длинных блоков нет — разбивать нечего', () => {

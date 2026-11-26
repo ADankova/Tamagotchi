@@ -126,6 +126,7 @@ export const en: Dict = {
         ? `${lines} ${plural(lines, 'row', 'rows')} cleared. ${name} gets ${treats} ${treatWord(treats)}!`
         : `${lines} ${plural(lines, 'row', 'rows')} cleared. ${name} had a great time.`,
     slideRecord: 'New record!',
+    slideResumed: 'Game resumed where you left off.',
     slideLeaveConfirm: 'Finish the game? The treats you collected are already yours.',
     slideFreeze: 'Freeze',
     slideFreezeEmpty: 'No freeze',

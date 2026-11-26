@@ -117,6 +117,7 @@ const GAMES_TEXT = {
       ? `Убрано ${lines} ${lineWord(lines)}. ${name} получает ${treats} ${treatWord(treats)}!`
       : `Убрано ${lines} ${lineWord(lines)}. ${name} отлично повеселился.`,
   slideRecord: 'Новый рекорд!',
+  slideResumed: 'Игра продолжена с того места, где ты остановилась.',
   slideLeaveConfirm: 'Закончить игру? Собранные лакомства уже твои.',
   slideFreeze: 'Заморозка',
   slideFreezeEmpty: 'Нет заморозки',
