@@ -86,6 +86,11 @@ export function setAnimPreview(row: AnimRow | null): void {
 export function getAnimPreview(): AnimRow | null {
   return animPreview;
 }
+let previewSpecies: Species | null = null;
+/** В режиме просмотра анимаций показывать этот вид вместо вида питомца (null — свой). */
+export function setPreviewSpecies(species: Species | null): void {
+  previewSpecies = species;
+}
 /** Кадров в новых (плавных) строках. */
 export const SMOOTH_FRAMES = 17;
 
@@ -447,6 +452,7 @@ export function composeScene(
 ): Scene {
   const motion = reducedMotion ? 0 : 1;
   if (isCutscenePlaying(cutscene, t)) return composeCutscene(cutscene, t, motion);
+  if (animPreview && previewSpecies && pet.species !== previewSpecies) pet = { ...pet, species: previewSpecies };
   const state = animState(pet, active, t);
   const elapsed = active ? Math.max(0, t - active.startedAt) : 0;
   const name = petSprite(pet);

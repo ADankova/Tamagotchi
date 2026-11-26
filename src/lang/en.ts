@@ -172,6 +172,8 @@ export const en: Dict = {
     tapsLeft: (n: number) => `${n} more to open test mode`,
     animButton: 'Animations',
     animOff: 'Normal behaviour',
+    animSpeciesOwn: 'My pet',
+    animSpecies: { cat: 'Cat', dog: 'Dog', blob: 'Fluffy' } as Record<string, string>,
     animRows: {
       idle: 'Idle (old)', sleep: 'Sleep (old)', eat: 'Eat (old)', sick: 'Sick', hungry: 'Hungry', tired: 'Tired',
       idle_smooth: 'Idle', catch: 'Catches treat', walk: 'Walk', eat_side: 'Eat (side)', lie_wag: 'Lying', roll: 'Roll', sleep_twitch: 'Sleep',
