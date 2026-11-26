@@ -87,6 +87,25 @@
      "lie_calm",
      "lie_sad"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721735421-oe7lhb-5e7971cc.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
+    ]
    }
   ]
  },
@@ -122,6 +141,25 @@
      "walk_calm",
      "lie_calm",
      "lie_sad"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721310437-xkyfjz-da93b9ea.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
     ]
    }
   ]
@@ -594,6 +632,25 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721949990-ngwkpo-d0bcb439.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
+    ]
    }
   ]
  },
@@ -672,6 +729,25 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721781118-jr659l-d04e0d2e.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
     ]
    }
   ]
@@ -844,6 +920,25 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721502679-kg72kg-f57708e6.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
+    ]
    }
   ]
  },
@@ -922,6 +1017,25 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721384411-su6ryk-5a834b69.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
     ]
    }
   ]
