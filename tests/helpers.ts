@@ -12,7 +12,7 @@ export function makePet(overrides: Partial<Pet> = {}): Pet {
     ...base,
     stage: 'child',
     ageMs: 2 * DAY,
-    lifespanMs: 18 * DAY,
+    lifespanMs: 31 * DAY,
     ...overrides,
     stats: { ...base.stats, ...overrides.stats },
   };

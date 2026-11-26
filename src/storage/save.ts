@@ -7,12 +7,12 @@ import type {
   Species,
 } from '../core/types';
 import { SPECIES } from '../core/types';
-import { POOP_INTERVAL_MS } from '../core/config';
+import { LIFESPAN_MAX_MS, POOP_INTERVAL_MS } from '../core/config';
 import { emptyStats, type GameStats } from '../core/stats';
 import { detectLanguage, isLanguage, type Language } from '../i18n';
 
 export const SAVE_KEY = 'tamagotchi.save';
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface Settings {
   sound: boolean;
@@ -118,6 +118,11 @@ const MIGRATIONS: Record<number, Migration> = {
   4: (data) => {
     const settings = isRecord(data.settings) ? { ...data.settings, language: 'ru' } : data.settings;
     return { ...data, version: 5, settings, gameStats: emptyStats() };
+  },
+  // v5 → v6: стадии пересчитаны (без подростка), жизнь стала длиннее — прежним питомцам тоже.
+  5: (data) => {
+    const pet = isRecord(data.pet) ? { ...data.pet, lifespanMs: LIFESPAN_MAX_MS } : data.pet;
+    return { ...data, version: 6, pet };
   },
 };
 

@@ -27,12 +27,12 @@ describe('выбор сценки', () => {
   });
 
   it('рост: взросление с учётом формы', () => {
-    expect(cutsceneFor(child, adult, 0)).toEqual({ kind: 'evolve', startedAt: 0, from: 'child', to: 'adultNaughty' });
+    expect(cutsceneFor(child, adult, 0)).toEqual({ kind: 'evolve', startedAt: 0, from: 'child', to: 'teen' });
   });
 
   it('смерть: от последнего облика', () => {
     expect(cutsceneFor(adult, dead, 0)?.kind).toBe('death');
-    expect(cutsceneFor(adult, dead, 0)?.from).toBe('adultNaughty');
+    expect(cutsceneFor(adult, dead, 0)?.from).toBe('teen');
   });
 
   it('нет сценки без смены стадии, для другого питомца и после смерти', () => {

@@ -32,9 +32,9 @@ describe('выбор спрайта', () => {
   it('по стадии и форме', () => {
     expect(petSprite(createPet('Я', T0, 1))).toBe('egg');
     expect(petSprite(makePet({ stage: 'baby' }))).toBe('baby');
-    expect(petSprite(makePet({ stage: 'adult', form: 'good' }))).toBe('adultGood');
-    expect(petSprite(makePet({ stage: 'adult', form: 'naughty' }))).toBe('adultNaughty');
-    expect(petSprite(makePet({ stage: 'adult' }))).toBe('adultNormal');
+    expect(petSprite(makePet({ stage: 'adult', form: 'good' }))).toBe('teen'); // взрослые рисуются как «подросток»
+    expect(petSprite(makePet({ stage: 'adult', form: 'naughty' }))).toBe('teen');
+    expect(petSprite(makePet({ stage: 'adult' }))).toBe('teen');
     expect(petSprite(makePet({ stage: 'dead' }))).toBe('grave');
   });
 });
@@ -156,7 +156,7 @@ describe('кошка и собака', () => {
 
   it('свой облик по стадии и форме', () => {
     expect(petSprite(cat)).toBe('catChild');
-    expect(petSprite(dog)).toBe('dogAdultNaughty');
+    expect(petSprite(dog)).toBe('dogTeen');
     expect(petSprite({ ...cat, stage: 'egg' })).toBe('egg');
     expect(petSprite({ ...dog, stage: 'dead' })).toBe('grave');
   });

@@ -634,7 +634,7 @@ export class UI {
     addItem(DEV_TEXT.animSpeciesOwn, () => (species = null), false);
     for (const sp of ['cat', 'dog', 'blob'] as const) addItem(DEV_TEXT.animSpecies[sp] ?? sp, () => (species = sp), false);
     addItem(DEV_TEXT.animStageOwn, () => (body = null), false);
-    for (const st of ['baby', 'child', 'teen', 'adultGood', 'adultNormal', 'adultNaughty', 'elder'] as const) addItem(DEV_TEXT.animStages[st] ?? st, () => (body = st), false);
+    for (const st of ['baby', 'child', 'adultGood', 'elder'] as const) addItem(DEV_TEXT.animStages[st] ?? st, () => (body = st), false);
     addItem(DEV_TEXT.animOff, () => ((row = null), (species = null), (body = null)), true);
     for (const r of Object.keys(DEV_TEXT.animRows) as AnimRow[]) addItem(DEV_TEXT.animRows[r] ?? r, () => (row = r), true);
     toggle.addEventListener('click', () => {
