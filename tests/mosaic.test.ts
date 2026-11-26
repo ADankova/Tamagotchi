@@ -32,6 +32,16 @@ describe('мозаика', () => {
     expect(r.state.slots[0]!.n).toBe(n);
   });
 
+  it('из баночки за шаг выбегает цепочка питомцев', () => {
+    let s = newMosaic(5);
+    s = tapJar(s, 0)!;
+    const jar = s.slots[0]!;
+    const r = stepMosaic(s);
+    const sent = jar.n - r.state.slots[0]!.n;
+    expect(sent === r.carries.filter((c) => c.slot === 0).length).toBe(true);
+    expect(sent <= 2).toBe(true);
+  });
+
   it('баночка встаёт в ячейку и уносит кубики по одному', () => {
     let s = newMosaic(5);
     const jar = s.columns[0]![0]!;

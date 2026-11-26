@@ -241,6 +241,9 @@ export function tapJar(state: MosaicState, col: number): MosaicState | null {
 }
 
 /** Один шаг: каждая баночка в ячейке посылает питомца за открытым кубиком своего цвета. Кубик пропадёт, когда питомец его возьмёт (pickCell). */
+/** Сколько питомцев выбегает из одной баночки за шаг. */
+export const RUNNERS_PER_STEP = 2;
+
 /** `canTake` — может ли питомец прямо сейчас выбежать к этому кубику (иначе число на баночке не трогаем). */
 export function stepMosaic(state: MosaicState, canTake: (cell: number) => boolean = () => true): { state: MosaicState; carries: Carry[] } {
   if (state.won || state.stuck) return { state, carries: [] };
@@ -249,12 +252,16 @@ export function stepMosaic(state: MosaicState, canTake: (cell: number) => boolea
   const carries: Carry[] = [];
   state.slots.forEach((jar, slot) => {
     if (!jar || jar.n <= 0) return;
-    const cell = exposedCells({ ...state, reserved }, jar.color, slot).find(canTake);
-    if (cell === undefined) return;
-    reserved.push(cell);
-    const n = jar.n - 1;
+    // Из баночки выбегает цепочка питомцев: за шаг — до RUNNERS_PER_STEP штук.
+    let n = jar.n;
+    for (let k = 0; k < RUNNERS_PER_STEP && n > 0; k++) {
+      const cell = exposedCells({ ...state, reserved }, jar.color, slot).find(canTake);
+      if (cell === undefined) break;
+      reserved.push(cell);
+      n--;
+      carries.push({ slot, cell, color: jar.color, jarId: jar.id, done: n === 0 });
+    }
     slots[slot] = { ...jar, n };
-    carries.push({ slot, cell, color: jar.color, jarId: jar.id, done: n === 0 });
   });
   // Опустевшая баночка уходит из ячейки; у связанной пары — только когда опустеют обе.
   const gone: number[] = [];
