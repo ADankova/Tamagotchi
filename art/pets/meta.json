@@ -6,62 +6,62 @@
    "idle",
    "sleep",
    "eat",
-   "catch",
-   "eat_side",
-   "roll",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad"
+   "idle_v3",
+   "catch_v3",
+   "walk_v3",
+   "eat_v3",
+   "lie_v3",
+   "roll_v3",
+   "sleep_v3",
+   "sad_v3"
   ],
   "feet": 62,
   "left": 2,
   "right": 60,
   "rowInfo": {
-   "catch": {
+   "idle_v3": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch_v3": {
     "feet": 62,
     "left": 2,
     "right": 60,
     "frames": 17
    },
-   "eat_side": {
+   "walk_v3": {
     "feet": 62,
     "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "eat_v3": {
+    "feet": 62,
+    "left": 0,
     "right": 64,
     "frames": 17
    },
-   "roll": {
+   "lie_v3": {
+    "feet": 58,
+    "left": 0,
+    "right": 62,
+    "frames": 17
+   },
+   "roll_v3": {
     "feet": 58,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "sleep_twitch": {
+   "sleep_v3": {
     "feet": 58,
     "left": 2,
     "right": 58,
     "frames": 17
    },
-   "idle_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 58,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_sad": {
+   "sad_v3": {
     "feet": 58,
     "left": 2,
     "right": 62,
@@ -426,64 +426,64 @@
    "idle",
    "sleep",
    "eat",
-   "catch",
-   "eat_side",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll"
+   "idle_v3",
+   "catch_v3",
+   "walk_v3",
+   "eat_v3",
+   "lie_v3",
+   "roll_v3",
+   "sleep_v3",
+   "sad_v3"
   ],
   "feet": 62,
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "catch": {
+   "idle_v3": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch_v3": {
     "feet": 62,
     "left": 2,
     "right": 60,
     "frames": 17
    },
-   "eat_side": {
+   "walk_v3": {
     "feet": 62,
     "left": 2,
     "right": 60,
     "frames": 17
    },
-   "sleep_twitch": {
+   "eat_v3": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "lie_v3": {
+    "feet": 56,
+    "left": 4,
+    "right": 62,
+    "frames": 17
+   },
+   "roll_v3": {
+    "feet": 56,
+    "left": 4,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_v3": {
     "feet": 58,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "idle_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 56,
-    "left": 4,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_sad": {
+   "sad_v3": {
     "feet": 56,
     "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 56,
-    "left": 4,
     "right": 64,
     "frames": 17
    }
@@ -566,65 +566,65 @@
    "idle",
    "sleep",
    "eat",
-   "catch",
-   "eat_side",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll"
+   "idle_v3",
+   "catch_v3",
+   "walk_v3",
+   "eat_v3",
+   "lie_v3",
+   "roll_v3",
+   "sleep_v3",
+   "sad_v3"
   ],
   "feet": 62,
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "catch": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "eat_side": {
+   "idle_v3": {
     "feet": 62,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "sleep_twitch": {
-    "feet": 54,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "idle_calm": {
+   "catch_v3": {
     "feet": 62,
-    "left": 2,
+    "left": 0,
     "right": 62,
     "frames": 17
    },
-   "walk_calm": {
+   "walk_v3": {
     "feet": 62,
     "left": 2,
     "right": 60,
     "frames": 17
    },
-   "lie_calm": {
+   "eat_v3": {
+    "feet": 62,
+    "left": 0,
+    "right": 64,
+    "frames": 17
+   },
+   "lie_v3": {
     "feet": 54,
     "left": 2,
     "right": 64,
     "frames": 17
    },
-   "lie_sad": {
+   "roll_v3": {
     "feet": 54,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "roll": {
+   "sleep_v3": {
     "feet": 54,
     "left": 2,
-    "right": 62,
+    "right": 60,
+    "frames": 17
+   },
+   "sad_v3": {
+    "feet": 54,
+    "left": 2,
+    "right": 64,
     "frames": 17
    }
   }
