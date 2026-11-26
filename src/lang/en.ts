@@ -153,7 +153,8 @@ export const en: Dict = {
     mosaicLeaveConfirm: 'Finish the game? The picture will not be saved.',
     harborTitle: 'Pet Bay',
     harborAbout:
-      'Islands with pets float up from below. Tap a pet and it sails to the ship of its kind. If there is no such ship yet, the pet waits on the pier and hops aboard when one arrives. Each ship needs three of the same kind. If the pier is full and nobody can be sent, you are stuck.',
+      'Islands with pets float up from below. Tap a pet and it sails to the ship of its kind. If there is no such ship yet, the pet waits on the pier and hops aboard when one arrives. Each ship needs three of the same kind. If the pier is full and nobody can be sent, you are stuck. Some islands carry bonuses: clear every pet off the island to get one. The net fishes out the pet kind that has the most on the ships. Clear moves the pier pets to the shared block beside it. Shuffle rearranges the pets on the islands.',
+    harborBonusName: { net: 'Net', clear: 'Clear', shuffle: 'Shuffle' } as Record<'net' | 'clear' | 'shuffle', string>,
     harborLevel: 'Quiet bay',
     harborInfo: (reward: number) => `Three ships · +${reward} ${plural(reward, 'treat', 'treats')}`,
     harborStats: (played: number, won: number) => `Played: ${played} · Won: ${won}`,

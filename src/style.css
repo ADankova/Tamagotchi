@@ -2295,3 +2295,125 @@ button.m-jar:active {
   width: min(100%, calc((100dvh - 420px) / 1.25));
   margin: 0 auto;
 }
+
+/* Бухта: пристань с общим блоком, бонусы */
+.h-dock {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+.h-dock .h-pier {
+  gap: 4px;
+  padding: 6px 6px 8px;
+}
+.h-stash {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background: linear-gradient(#b9a074, #94794f);
+  border: 2px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+}
+.h-bonuses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.h-bonus {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 4px 2px 3px;
+  border-radius: 14px;
+  border: 2px solid var(--ink);
+  background: linear-gradient(#7cc3e6, #4a9fd0);
+  box-shadow: 0 3px 0 var(--ink);
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+.h-bonus.off {
+  filter: grayscale(0.85);
+  opacity: 0.7;
+}
+.h-bonus-icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+.h-bonus-icon svg,
+.h-island-bonus svg,
+.h-fly-bonus svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.h-bonus-name {
+  text-shadow: 0 1px 0 var(--ink);
+}
+.h-bonus-n {
+  position: absolute;
+  right: -6px;
+  top: -8px;
+  min-width: 22px;
+  height: 22px;
+  line-height: 18px;
+  border-radius: 11px;
+  background: #e8505b;
+  border: 2px solid var(--ink);
+  font-size: 12px;
+  text-align: center;
+}
+.h-bonus.gain {
+  animation: h-gain 0.5s 0.65s;
+}
+.h-island-bonus {
+  position: absolute;
+  left: 50%;
+  bottom: -2%;
+  width: 24%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+  padding: 2px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.h-island.pop {
+  animation: h-pop 0.4s backwards;
+}
+.h-fly-bonus {
+  filter: drop-shadow(0 2px 0 rgba(59, 42, 30, 0.4));
+}
+@keyframes h-gain {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+@keyframes h-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.h-field {
+  width: min(100%, calc((100dvh - 430px) / 1.25));
+}
