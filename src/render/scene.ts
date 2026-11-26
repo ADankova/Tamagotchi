@@ -93,9 +93,10 @@ export const ROW_FRAMES: Readonly<Record<AnimRow, number>> = {
   idle: SHEET_FRAMES,
   sleep: SHEET_FRAMES,
   eat: SHEET_FRAMES,
-  sick: SHEET_FRAMES,
-  hungry: SHEET_FRAMES,
-  tired: SHEET_FRAMES,
+  // Больной, голодный и уставший лежат грустными (плавная строка lie_sad, 17 кадров).
+  sick: SMOOTH_FRAMES,
+  hungry: SMOOTH_FRAMES,
+  tired: SMOOTH_FRAMES,
   idle_smooth: SMOOTH_FRAMES,
   catch: SMOOTH_FRAMES,
   walk: SMOOTH_FRAMES,
@@ -109,9 +110,9 @@ const ANIM_FRAME_MS: Readonly<Record<AnimRow, number>> = {
   idle: 110,
   sleep: 200,
   eat: 130,
-  sick: 140,
+  sick: 170,
   hungry: 170,
-  tired: 200,
+  tired: 170,
   idle_smooth: 170,
   catch: 150,
   walk: 120,
@@ -346,6 +347,16 @@ export function isCutscenePlaying(c: Cutscene | null, t: number): c is Cutscene 
   return elapsed >= 0 && elapsed < CUTSCENE_MS[c.kind];
 }
 
+/** Крупные питомцы не должны выходить за экран: подпрыгивающий, летящее сердечко и искры остаются в кадре. */
+function keepOnScreen(items: Placed[]): Placed[] {
+  return items.map((i) => {
+    const s = SPRITES[i.sprite];
+    const x = Math.max(0, Math.min(SCREEN_W - s.w, i.x));
+    const y = Math.max(0, Math.min(SCREEN_H - s.h, i.y));
+    return x === i.x && y === i.y ? i : { ...i, x, y };
+  });
+}
+
 function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
   const e = t - c.startedAt;
   const mid = SCREEN_W / 2;
@@ -372,14 +383,14 @@ function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
         items.push({ sprite: c.to, x: center(c.to, mid), y: onGround(c.to), anim: 'idle', frame: animFrame('idle', t, motion) });
         sparkles(c.to, motion === 1);
       }
-      return { state: 'hatching', dim: false, items };
+      return { state: 'hatching', dim: false, items: keepOnScreen(items) };
 
     case 'evolve': {
       const swapping = e < 1800;
       const shown = swapping && motion === 1 && step(e, 200) % 2 === 0 ? c.from : c.to;
       items.push({ sprite: shown, x: center(shown, mid), y: onGround(shown), anim: 'idle', frame: animFrame('idle', t, motion) });
       sparkles(shown, motion === 1);
-      return { state: 'evolving', dim: false, items };
+      return { state: 'evolving', dim: false, items: keepOnScreen(items) };
     }
 
     case 'death':
@@ -389,7 +400,7 @@ function composeCutscene(c: Cutscene, t: number, motion: number): Scene {
         const rise = motion ? Math.round(((e - 800) / (CUTSCENE_MS.death - 800)) * 16) : 6;
         items.push({ sprite: 'ghost', x: center('ghost', mid), y: Math.max(0, onGround('ghost') - rise) });
       }
-      return { state: 'dying', dim: true, items };
+      return { state: 'dying', dim: true, items: keepOnScreen(items) };
   }
 }
 
@@ -459,7 +470,7 @@ export function composeScene(
   });
   if (animPreview && state !== 'egg' && state !== 'dead') {
     // Режим просмотра анимаций (кнопка в режиме тестирования): выбранная строка по кругу.
-    return { state, dim: false, items: [petAt(mid, 0, false, animPreview)] };
+    return { state, dim: false, items: keepOnScreen([petAt(mid, 0, false, animPreview)]) };
   }
   let butterfly: Butterfly | undefined;
   const puffs: Puff[] = [];
@@ -649,5 +660,5 @@ export function composeScene(
     items.splice(body, 0, tailItem);
   }
 
-  return { state, dim: state === 'sleeping', items, ...(butterfly ? { butterfly } : {}), ...(puffs.length > 0 ? { puffs } : {}) };
+  return { state, dim: state === 'sleeping', items: keepOnScreen(items), ...(butterfly ? { butterfly } : {}), ...(puffs.length > 0 ? { puffs } : {}) };
 }

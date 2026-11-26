@@ -398,7 +398,8 @@ function loadSaved(mode: SlideMode): SlideState | null {
       ) &&
       typeof s.rng === 'number' &&
       typeof s.nextId === 'number';
-    return ok ? s : null;
+    // Лакомства, добытые до выхода, уже отданы питомцу — в продолженной партии счёт с нуля.
+    return ok ? { ...s, treats: 0 } : null;
   } catch {
     return null;
   }

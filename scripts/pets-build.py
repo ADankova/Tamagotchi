@@ -42,26 +42,29 @@ for name, spec in MAP.items():
                 bottom = max(bottom, b[3]); left = min(left, b[0]); right = max(right, b[2])
     names = list(spec['names'])
     row_info = {}
-    extra = spec.get('extra')
-    if extra:
+    extras = list(spec.get('extras') or [])
+    if spec.get('extra'):
+        extras.insert(0, spec['extra'])
+    for extra in extras:
         # Плавные анимации приходят подряд по 9 в строке (по 17 кадров на анимацию);
         # раскладываем их в лист: одна анимация — одна строка из 17 кадров.
         n = len(extra['names'])
         total = n * EXTRA_COLS
         ex_cols = 9
         ex = clean(Image.open(os.path.join(SRC, extra['file'])), cell, -(-total // ex_cols), ex_cols)
-        full = Image.new('RGBA', (EXTRA_COLS * cell, (rows + n) * cell), (0, 0, 0, 0))
+        base_rows = len(names)
+        full = Image.new('RGBA', (EXTRA_COLS * cell, (base_rows + n) * cell), (0, 0, 0, 0))
         full.paste(im, (0, 0))
         for i, nm in enumerate(extra['names']):
             rb, rl, rr, cnt = 0, EXTRA_COLS * cell, 0, 0
             for c in range(EXTRA_COLS):
                 k = i * EXTRA_COLS + c
                 frame = ex.crop(((k % ex_cols) * cell, (k // ex_cols) * cell, (k % ex_cols + 1) * cell, (k // ex_cols + 1) * cell))
-                full.paste(frame, (c * cell, (rows + i) * cell))
-                b = frame.getbbox()
-                if b:
+                full.paste(frame, (c * cell, (base_rows + i) * cell))
+                bb = frame.getbbox()
+                if bb:
                     cnt += 1
-                    rb = max(rb, b[3]); rl = min(rl, b[0]); rr = max(rr, b[2])
+                    rb = max(rb, bb[3]); rl = min(rl, bb[0]); rr = max(rr, bb[2])
             row_info[nm] = {'feet': rb, 'left': rl, 'right': rr, 'frames': cnt}
             names.append(nm)
         im, cols = full, EXTRA_COLS
