@@ -192,11 +192,18 @@ export class HarborGame implements GameScreen {
   }
 
   private renderPier(): void {
+    // Лица тех, кто остался на месте, переносим как есть: заново созданная картинка на миг пустеет и мигает.
+    const kept = new Map<number, HTMLElement>();
+    this.root.querySelectorAll<HTMLElement>('.h-pier-slot, .h-pile-pet').forEach((slot) => {
+      const face = slot.querySelector<HTMLElement>('.h-face');
+      if (slot.dataset.pet && face) kept.set(Number(slot.dataset.pet), face);
+    });
+    const faceOf = (pet: { id: number; kind: number }): HTMLElement => kept.get(pet.id) ?? petFace(pet.kind, this.label());
     const slots: HTMLElement[] = [];
     for (let i = 0; i < HARBOR_PIER; i++) {
       const pet = this.state.pier[i];
       const slot = el('div', { class: 'h-pier-slot', 'data-pet': pet ? String(pet.id) : '' });
-      if (pet) slot.append(petFace(pet.kind, this.label()));
+      if (pet) slot.append(faceOf(pet));
       slots.push(slot);
     }
     this.pierRow.replaceChildren(...slots);
@@ -206,7 +213,7 @@ export class HarborGame implements GameScreen {
       const slot = el('div', { class: 'h-pile-pet', 'data-pet': String(pet.id) });
       slot.style.left = `${spot[0]}%`;
       slot.style.top = `${spot[1]}%`;
-      slot.append(petFace(pet.kind, this.label()));
+      slot.append(faceOf(pet));
       return slot;
     });
     const total = this.state.stash.length;
