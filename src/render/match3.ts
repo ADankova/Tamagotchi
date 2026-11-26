@@ -43,12 +43,18 @@ const KINDS: readonly Kind[] = [
 ];
 
 const T = 'style="fill:var(--tile,#5aaef0)"';
-/** Бонусы — отдельные предметы, а не значки на питомце. */
+const O = 'stroke="#3b2a1e" stroke-width="3" stroke-linejoin="round"';
+/** Мордочка бонуса: глазки с бликами, румянец и улыбка. */
+const face = (x: number, y: number, k = 1): string =>
+  `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cx="-7" cy="0" rx="3.2" ry="4" fill="#3b2a1e"/><ellipse cx="7" cy="0" rx="3.2" ry="4" fill="#3b2a1e"/><circle cx="-6" cy="-1.5" r="1.2" fill="#fff"/><circle cx="8" cy="-1.5" r="1.2" fill="#fff"/><ellipse cx="-12" cy="5" rx="3.2" ry="2" fill="#ff7a9c" opacity=".7"/><ellipse cx="12" cy="5" rx="3.2" ry="2" fill="#ff7a9c" opacity=".7"/><path d="M-3.5 5q3.5 4 7 0" fill="none" stroke="#3b2a1e" stroke-width="2.2" stroke-linecap="round"/></g>`;
+const sparkle = (x: number, y: number, r: number): string =>
+  `<path d="M${x} ${y - r}q1.2 ${r - 1.2} ${r} ${r}q-${r - 1.2} 1.2 -${r} ${r}q-1.2 -${r - 1.2} -${r} -${r}q${r - 1.2} -1.2 ${r} -${r}z" fill="#fff" stroke="#3b2a1e" stroke-width="1.2" stroke-linejoin="round"/>`;
+/** Бонусы — отдельные милые предметы, а не значки на питомце. */
 const BONUS_ART: Record<M3Special, string> = {
-  row: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="20" width="52" height="24" rx="8" fill="#fff6e4" stroke="#3b2a1e" stroke-width="3"/><rect x="6" y="20" width="14" height="24" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><rect x="44" y="20" width="14" height="24" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><path d="M24 32h16M28 27l-5 5 5 5M36 27l5 5-5 5" fill="none" stroke="#3b2a1e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 25v4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></svg>`,
-  col: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="8" fill="#fff6e4" stroke="#3b2a1e" stroke-width="3"/><rect x="20" y="6" width="24" height="14" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><rect x="20" y="44" width="24" height="14" rx="7" ${T} stroke="#3b2a1e" stroke-width="3"/><path d="M32 24v16M27 28l5-5 5 5M27 36l5 5 5-5" fill="none" stroke="#3b2a1e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M25 11h4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></svg>`,
-  bomb: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4c-3 5-1 8 3 10" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round"/><circle cx="38" cy="8" r="3.5" fill="#ffd25e" stroke="#e8505b" stroke-width="1.6"/><path d="M14 20q18-8 36 0l3 28q-21 11-42 0z" fill="#b8733a" stroke="#3b2a1e" stroke-width="3" stroke-linejoin="round"/><path d="M12 28q20 7 40 0M11 42q21 8 42 0" fill="none" stroke="#3b2a1e" stroke-width="3"/><path d="M12 28q20 7 40 0v4q-20 7-40 0zM11 42q21 8 42 0v4q-21 8-42 0z" fill="#e8c24a" opacity=".75"/><rect x="20" y="29" width="24" height="13" rx="3" fill="#fff6e4" stroke="#3b2a1e" stroke-width="2"/><text x="32" y="39.5" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="10" fill="#d83a2e">TNT</text></svg>',
-  rainbow: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="#3b3550" stroke="#3b2a1e" stroke-width="3"/><path d="M6 31q26 10 52 0" fill="none" stroke="#ffd25e" stroke-width="3"/><circle cx="32" cy="12" r="4.5" fill="#ff6b6b"/><circle cx="16" cy="20" r="4.5" fill="#7bc67e"/><circle cx="48" cy="20" r="4.5" fill="#5aaef0"/><circle cx="12" cy="36" r="4.5" fill="#ffd25e"/><circle cx="52" cy="36" r="4.5" fill="#ff9fc8"/><circle cx="32" cy="32" r="4.5" fill="#a98af0"/><circle cx="22" cy="48" r="4.5" fill="#5aaef0"/><circle cx="42" cy="48" r="4.5" fill="#ff6b6b"/><circle cx="32" cy="55" r="3.5" fill="#7bc67e"/><path d="M17 14q6-7 15-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/></svg>',
+  row: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="3" y="14" width="58" height="36" rx="18" ${T} ${O}/><rect x="9" y="18" width="46" height="9" rx="4.5" fill="#fff" opacity=".45"/>${face(32, 36, 0.95)}<path d="M13 32l-7 0M9 28l-4 4 4 4M51 32h7M55 28l4 4-4 4" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>${sparkle(52, 14, 6)}</svg>`,
+  col: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="14" y="3" width="36" height="58" rx="18" ${T} ${O}/><rect x="18" y="9" width="9" height="46" rx="4.5" fill="#fff" opacity=".45"/>${face(32, 33, 0.95)}<path d="M32 12v-6M28 9l4-4 4 4M32 52v6M28 55l4 4 4-4" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>${sparkle(52, 12, 6)}</svg>`,
+  bomb: `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M40 14q4-8 12-6" fill="none" stroke="#3b2a1e" stroke-width="3.5" stroke-linecap="round"/><path d="M54 3l1.8 4.4 4.4 1.8-4.4 1.8L54 15.4l-1.8-4.4-4.4-1.8 4.4-1.8z" fill="#ffd25e" stroke="#ff7a3a" stroke-width="1.6" stroke-linejoin="round"/><circle cx="31" cy="37" r="24" fill="#ff7a3a" ${O}/><rect x="24" y="10" width="16" height="9" rx="3" fill="#ffc94d" ${O}/><ellipse cx="20" cy="26" rx="7" ry="4.5" fill="#fff" opacity=".55" transform="rotate(-35 20 26)"/>${face(31, 40, 1.05)}</svg>`,
+  rainbow: `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="33" r="27" fill="#fff6e4"/><g stroke="#3b2a1e" stroke-width="1.5"><path d="M32 33V6a27 27 0 0 1 23.4 13.5z" fill="#ff6b6b"/><path d="M32 33l23.4-13.5a27 27 0 0 1 0 27z" fill="#ffc94d"/><path d="M32 33l23.4 13.5A27 27 0 0 1 32 60z" fill="#7bc67e"/><path d="M32 33V60a27 27 0 0 1-23.4-13.5z" fill="#5aaef0"/><path d="M32 33L8.6 46.5a27 27 0 0 1 0-27z" fill="#a98af0"/><path d="M32 33L8.6 19.5A27 27 0 0 1 32 6z" fill="#ff9fc8"/></g><circle cx="32" cy="33" r="27" fill="none" ${O}/><circle cx="32" cy="33" r="16" fill="#fff6e4" stroke="#3b2a1e" stroke-width="2.4"/>${face(32, 33, 0.85)}<path d="M15 14q6-6 14-7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>${sparkle(56, 8, 6)}${sparkle(7, 54, 4.5)}</svg>`,
 };
 
 interface Callbacks {
@@ -87,6 +93,7 @@ export class Match3Game implements GameScreen {
       el('div', { class: 'm3-bar' }, [this.bar]),
       this.board,
       this.note,
+      this.legend(),
     ]);
     this.board.addEventListener('pointerdown', (e) => this.down(e));
     this.board.addEventListener('pointermove', (e) => this.move(e));
@@ -94,6 +101,21 @@ export class Match3Game implements GameScreen {
     this.board.addEventListener('pointercancel', () => (this.drag = null));
     this.show(this.state.cells, false);
     this.renderStats();
+  }
+
+  /** Памятка под полем: из чего собирается каждый бонус. */
+  private legend(): HTMLElement {
+    const item = (art: string[], title: string, text: string): HTMLElement => {
+      const icons = el('span', { class: 'm3-legend-icons' });
+      icons.innerHTML = art.map((a) => `<span class="m3-legend-icon">${a}</span>`).join('');
+      return el('div', { class: 'm3-legend-item' }, [icons, el('b', { text: title }), el('span', { text: text })]);
+    };
+    const L = GAMES_TEXT.match3Legend;
+    return el('div', { class: 'm3-legend' }, [
+      item([BONUS_ART.row, BONUS_ART.col], L.lineTitle, L.lineText),
+      item([BONUS_ART.bomb], L.bombTitle, L.bombText),
+      item([BONUS_ART.rainbow], L.rainbowTitle, L.rainbowText),
+    ]);
   }
 
   hasProgress(): boolean {
