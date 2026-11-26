@@ -2563,3 +2563,20 @@ button.m-jar:active {
 .m-links {
   transition: opacity 0.12s;
 }
+
+.m-speed {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 4px 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.m-speed:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}

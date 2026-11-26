@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exposedCells, isExposed, MOSAIC_COLORS, MOSAIC_PICTURES, newMosaic, stepMosaic, tapJar } from '../src/core/mosaic';
+import { exposedCells, isExposed, pickCell, MOSAIC_COLORS, MOSAIC_PICTURES, newMosaic, stepMosaic, tapJar } from '../src/core/mosaic';
 
 describe('мозаика', () => {
   it('числа на баночках каждого цвета в сумме равны числу кубиков', () => {
@@ -32,7 +32,11 @@ describe('мозаика', () => {
     const before = s.left;
     const r = stepMosaic(s);
     expect(r.carries.length).toBeLessThanOrEqual(2);
-    expect(r.state.left).toBe(before - r.carries.length);
+    // Кубик пропадает, когда питомец его взял.
+    expect(r.state.left).toBe(before);
+    expect(r.state.reserved.length).toBe(r.carries.length);
+    const taken = r.carries.reduce((st, c) => pickCell(st, c.cell), r.state);
+    expect(taken.left).toBe(before - r.carries.length);
   });
 
   it('нельзя взять баночку, когда все ячейки заняты', () => {
@@ -83,7 +87,8 @@ describe('мозаика', () => {
     for (let i = 0; i < 2000 && !s.won && !s.stuck; i++) {
       const col = s.columns.findIndex((c) => c.length > 0);
       if (col >= 0 && s.slots.includes(null)) s = tapJar(s, col) ?? s;
-      s = stepMosaic(s).state;
+      const step = stepMosaic(s);
+      s = step.carries.reduce((st, c) => pickCell(st, c.cell), step.state);
     }
     expect(s.won || s.stuck).toBe(true);
     if (s.won) expect(s.left).toBe(0);
@@ -118,7 +123,7 @@ describe('мозаика', () => {
     const cells = Array.from({ length: 16 }, () => -1);
     cells[0] = 3;
     cells[7] = 3;
-    const s = { ...base, w: 8, h: 2, cells, left: 2 };
+    const s = { ...base, w: 8, h: 2, cells, left: 2, reserved: [] };
     expect(exposedCells(s, 3, 0)[0]).toBe(0);
     expect(exposedCells(s, 3, 3)[0]).toBe(7);
   });
@@ -130,8 +135,20 @@ describe('мозаика', () => {
     const a = { id: 1, color: 3, n: 1 };
     const b = { id: 2, color: 3, n: 4 };
     const c = { id: 3, color: 3, n: 4 };
-    const state = { ...s, cells, left: 1, columns: [[], [], [], []], slots: [a, b, c, null, null] };
+    const state = { ...s, cells, left: 1, reserved: [], columns: [[], [], [], []], slots: [a, b, c, null, null] };
     const next = stepMosaic(state).state;
     expect(next.slots.map((j) => j?.id ?? 0)).toEqual([2, 3, 0, 0, 0]);
+  });
+
+  it('кубик открывает соседей, только когда питомец его взял, а не когда за ним побежали', () => {
+    const base = newMosaic(5);
+    const cells = Array.from({ length: 9 }, () => 2);
+    cells[4] = 5;
+    const brown = { id: 1, color: 5, n: 1 };
+    const state = { ...base, w: 3, h: 3, cells, left: 9, reserved: [7], columns: [[], [], [], []], slots: [brown, null, null, null, null] };
+    // За нижним розовым уже бегут, но он ещё на месте: коричневый под ним закрыт.
+    expect(exposedCells(state, 5, 0)).toEqual([]);
+    // Питомец взял розовый — коричневый открылся.
+    expect(exposedCells(pickCell(state, 7), 5, 0)).toEqual([4]);
   });
 });

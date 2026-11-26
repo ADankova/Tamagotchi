@@ -60,6 +60,8 @@ export interface MosaicState {
   /** Очереди баночек: тапнуть можно только первую в очереди. */
   columns: Jar[][];
   slots: (Jar | null)[];
+  /** Кубики, за которыми питомцы уже побежали, но ещё не взяли: пока они на месте, их нельзя брать и они закрывают соседей. */
+  reserved: number[];
   left: number;
   moves: number;
   won: boolean;
@@ -138,6 +140,7 @@ export function newMosaic(seed: number, picture: MosaicPicture = 'heart'): Mosai
     cells,
     columns,
     slots: Array.from({ length: MOSAIC_SLOTS }, () => null),
+    reserved: [],
     left: cells.filter((c) => c >= 0).length,
     moves: 0,
     won: false,
@@ -193,10 +196,11 @@ function runDistances(state: MosaicState, slot: number): Map<number, number> {
 export function exposedCells(state: MosaicState, color: number, slot = 1): number[] {
   const { w, h, cells } = state;
   const out: number[] = [];
-  cells.forEach((c, i) => {
-    if (c === color && isExposed(state, i)) out.push(i);
-  });
   const way = runDistances(state, slot);
+  cells.forEach((c, i) => {
+    // Брать можно открытый кубик, которого ещё никто не ждёт и до которого есть свободный путь.
+    if (c === color && isExposed(state, i) && !state.reserved.includes(i) && (way.get(i) ?? Infinity) < Infinity) out.push(i);
+  });
   const hole = (i: number): number => Math.abs((i % w) - (w - 1) / 2) + (h - 1 - Math.floor(i / w));
   return out.sort((a, b) => (way.get(a) ?? Infinity) - (way.get(b) ?? Infinity) || hole(a) - hole(b) || a - b);
 }
@@ -236,22 +240,20 @@ export function tapJar(state: MosaicState, col: number): MosaicState | null {
   return settle({ ...state, columns, slots, moves: state.moves + 1 });
 }
 
-/** Один шаг: каждая баночка в ячейке уносит один открытый кубик своего цвета. */
+/** Один шаг: каждая баночка в ячейке посылает питомца за открытым кубиком своего цвета. Кубик пропадёт, когда питомец его возьмёт (pickCell). */
 export function stepMosaic(state: MosaicState): { state: MosaicState; carries: Carry[] } {
   if (state.won || state.stuck) return { state, carries: [] };
-  const cells = state.cells.slice();
   const slots = state.slots.slice();
+  const reserved = state.reserved.slice();
   const carries: Carry[] = [];
-  let work: MosaicState = { ...state, cells, slots };
   state.slots.forEach((jar, slot) => {
     if (!jar || jar.n <= 0) return;
-    const cell = exposedCells(work, jar.color, slot)[0];
+    const cell = exposedCells({ ...state, reserved }, jar.color, slot)[0];
     if (cell === undefined) return;
-    cells[cell] = -1;
+    reserved.push(cell);
     const n = jar.n - 1;
     slots[slot] = { ...jar, n };
     carries.push({ slot, cell, color: jar.color, jarId: jar.id, done: n === 0 });
-    work = { ...work, cells, slots };
   });
   // Опустевшая баночка уходит из ячейки; у связанной пары — только когда опустеют обе.
   const gone: number[] = [];
@@ -264,8 +266,17 @@ export function stepMosaic(state: MosaicState): { state: MosaicState; carries: C
   // Освободившаяся ячейка не остаётся посередине: баночки справа сдвигаются влево, свободные места — все справа.
   const packed = slots.filter((j) => j !== null);
   slots.forEach((_, i) => (slots[i] = packed[i] ?? null));
+  return { state: settle({ ...state, slots, reserved }), carries };
+}
+
+/** Питомец взял кубик: он пропадает с поля, и соседние кубики открываются. */
+export function pickCell(state: MosaicState, cell: number): MosaicState {
+  if (state.cells[cell]! < 0 && !state.reserved.includes(cell)) return state;
+  const cells = state.cells.slice();
+  cells[cell] = -1;
+  const reserved = state.reserved.filter((c) => c !== cell);
   const left = cells.filter((c) => c >= 0).length;
-  return { state: settle({ ...state, cells, slots, left }), carries };
+  return settle({ ...state, cells, reserved, left });
 }
 
 /** Победа, если кубиков не осталось; тупик — если ни одна баночка в ячейке не может ничего унести и ни одну нельзя взять. */
@@ -273,5 +284,6 @@ function settle(state: MosaicState): MosaicState {
   if (state.left === 0) return { ...state, won: true, stuck: false };
   const canWork = state.slots.some((s) => s && s.n > 0 && exposedCells(state, s.color).length > 0);
   const canTap = state.columns.some((_, col) => canTapJar(state, col));
-  return { ...state, won: false, stuck: !canWork && !canTap };
+  // Пока питомцы несут кубики, после их возвращения могут открыться новые: это ещё не тупик.
+  return { ...state, won: false, stuck: !canWork && !canTap && state.reserved.length === 0 };
 }

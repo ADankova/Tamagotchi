@@ -3,6 +3,7 @@ import {
   MOSAIC_COLOR_HEX,
   MOSAIC_REWARD,
   newMosaic,
+  pickCell,
   stepMosaic,
   tapJar,
   type Carry,
@@ -18,7 +19,9 @@ import type { GameScreen, MiniGameHost } from './minigames';
 
 const STEP_MS = 260;
 /** Скорость бега питомца, пикселей в миллисекунду. */
-const RUN_PX_PER_MS = 0.22;
+const RUN_PX_PER_MS = 0.11;
+/** Доступные скорости: множитель бега питомцев и темпа игры. */
+const SPEEDS = [1, 2, 3] as const;
 const COLOR_CSS = MOSAIC_COLOR_HEX;
 const VISIBLE_IN_QUEUE = 3;
 
@@ -47,6 +50,8 @@ export class MosaicGame implements GameScreen {
   private finished = false;
   /** Самая долгая пробежка: итог показывается, когда последний питомец добежит. */
   private lastRunMs = 0;
+  private speed: number = SPEEDS[0];
+  private readonly speedButton = el('button', { type: 'button', class: 'm-speed' });
   /** Питомцы, которые ждут, пока освободится путь к кубику. */
   private waiting = 0;
 
@@ -70,7 +75,7 @@ export class MosaicGame implements GameScreen {
     this.stage.append(this.board, this.hole);
     this.root = el('div', { class: 'q-game m-game' }, [
       cb.header(GAMES_TEXT.mosaicTitle),
-      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.left])]),
+      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.left]), this.speedButton]),
       this.stage,
       el('div', { class: 'm-bottom' }, [this.links, this.slotRow, this.queues]),
       el('p', { class: 'q-hint', text: GAMES_TEXT.mosaicHint }),
@@ -80,7 +85,23 @@ export class MosaicGame implements GameScreen {
     this.renderJars();
     this.renderLeft();
     window.requestAnimationFrame(() => this.drawLinks());
-    this.timer = window.setInterval(() => this.tick(), STEP_MS);
+    this.speedButton.addEventListener('click', () => this.nextSpeed());
+    this.showSpeed();
+    this.timer = window.setInterval(() => this.tick(), STEP_MS / this.speed);
+  }
+
+  private showSpeed(): void {
+    this.speedButton.textContent = `▶▶ ×${this.speed}`;
+    this.speedButton.setAttribute('aria-label', GAMES_TEXT.mosaicSpeed(this.speed));
+  }
+
+  /** Кнопка скорости: питомцы бегают и игра идёт быстрее; уже бегущие доигрывают прежним темпом. */
+  private nextSpeed(): void {
+    this.speed = SPEEDS[(SPEEDS.indexOf(this.speed as (typeof SPEEDS)[number]) + 1) % SPEEDS.length]!;
+    this.showSpeed();
+    if (this.finished) return;
+    window.clearInterval(this.timer);
+    this.timer = window.setInterval(() => this.tick(), STEP_MS / this.speed);
   }
 
   /** Выйти из партии посреди игры — ничего не теряется, но и не сохраняется. */
@@ -216,7 +237,6 @@ export class MosaicGame implements GameScreen {
     this.state = state;
     carries.forEach((c) => this.carry(c));
     this.renderJars();
-    this.renderLeft();
     this.checkEnd();
   }
 
@@ -285,7 +305,7 @@ export class MosaicGame implements GameScreen {
       total += len;
       return len;
     });
-    const duration = Math.max(900, total / RUN_PX_PER_MS);
+    const duration = Math.max(900 / this.speed, total / (RUN_PX_PER_MS * this.speed));
     this.lastRunMs = Math.max(this.lastRunMs, duration);
     let acc = 0;
     let turnOffset = 0.5;
@@ -302,6 +322,11 @@ export class MosaicGame implements GameScreen {
     window.setTimeout(() => {
       cube.classList.add('gone');
       this.solid[c.cell] = false;
+      // Кубик взят: только теперь он пропадает и в расчёте, соседи открываются.
+      this.state = pickCell(this.state, c.cell);
+      this.lastRunMs = duration * (1 - turnOffset);
+      this.renderLeft();
+      this.checkEnd();
       cubeBadge.style.visibility = 'visible';
     }, duration * turnOffset);
     const anim = runner.animate(frames, { duration, easing: 'linear', fill: 'forwards' });
