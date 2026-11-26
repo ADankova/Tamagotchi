@@ -1,6 +1,7 @@
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_SICK_THRESHOLD } from '../core/config';
 import { levelStats } from '../core/stats';
+import { MOSAIC_REWARD } from '../core/mosaic';
 import { slideStatsKey } from '../core/slide';
 import { getLanguage, LANGUAGES, isLanguage, locale, setLanguage } from '../i18n';
 import { getMood, getNeeds, MAX_NAME_LENGTH } from '../core/pet';
@@ -560,6 +561,9 @@ export class UI {
         earnTreats: (n) => this.game.awardTreats(n),
         finishSlide: (mode, lines, treats) =>
           this.game.finishMiniGame(treats > 0, 0, { game: 'slide', key: slideStatsKey(mode), score: lines }),
+        mosaicStats: (picture) => levelStats(this.game.state.gameStats, 'mosaic', picture),
+        finishMosaic: (picture, won) =>
+          this.game.finishMiniGame(won, won ? MOSAIC_REWARD : 0, { game: 'mosaic', key: picture }),
         treatImage: ART.snack,
       },
       () => {
