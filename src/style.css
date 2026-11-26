@@ -1003,8 +1003,8 @@ body.overlay-open {
   grid-template-columns: repeat(var(--n), 1fr);
   grid-template-rows: repeat(var(--n), 1fr);
   gap: 4px;
-  width: min(100%, 62dvh);
-  aspect-ratio: 1;
+  width: min(100%, 50dvh);
+  aspect-ratio: 8 / 10;
   padding: 6px;
   background: #fff;
   border: 3px solid var(--ink);
@@ -1566,8 +1566,8 @@ body.overlay-open {
 
 .s-next {
   position: relative;
-  width: min(100%, 62dvh);
-  aspect-ratio: 10 / 1;
+  width: min(100%, 50dvh);
+  aspect-ratio: 8 / 1;
   opacity: 0.6;
   /* выровнено по клеткам поля (у поля рамка 3px) */
   padding: 0 3px;
@@ -1590,7 +1590,7 @@ body.overlay-open {
   background-image:
     linear-gradient(to right, rgb(59 42 30 / 0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(59 42 30 / 0.08) 1px, transparent 1px);
-  background-size: 10% 10%;
+  background-size: 12.5% 10%;
   border: 3px solid var(--ink);
   border-radius: 16px;
   overflow: hidden;
@@ -1710,6 +1710,18 @@ body.overlay-open {
   }
 }
 
+/* «Прилив»: новая полоса выезжает снизу. */
+.s-board.rise .s-block.spawn {
+  animation-name: block-rise;
+}
+
+@keyframes block-rise {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 .s-block.clearing .s-body {
   animation: block-clear 0.36s ease-in forwards;
 }
@@ -1744,18 +1756,14 @@ body.overlay-open {
   margin-top: 8px;
 }
 
-.s-bonuses[hidden],
-.s-bonus-button[hidden],
-.s-frozen[hidden] {
-  display: none;
-}
-
 .s-bonus-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
-  padding: 4px 12px 4px 8px;
+  min-height: 48px;
+  min-width: 64px;
+  justify-content: center;
+  padding: 4px 14px;
   font: inherit;
   font-weight: 800;
   color: var(--ink);
@@ -1770,14 +1778,26 @@ body.overlay-open {
   background: linear-gradient(#fff0d6, #ffd9a0);
 }
 
-.s-bonus-button:active {
+.s-bonus-button:disabled {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  box-shadow: 0 1px 0 var(--ink);
+  cursor: default;
+}
+
+.s-bonus-button.active {
+  outline: 3px solid #1c5f8f;
+  outline-offset: 2px;
+}
+
+.s-bonus-button:not(:disabled):active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 var(--ink);
 }
 
 .s-bonus-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   image-rendering: pixelated;
 }
 

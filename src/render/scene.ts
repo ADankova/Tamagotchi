@@ -13,18 +13,21 @@ export const GROUND_Y = SCREEN_H - 2;
 
 /** Сколько длится анимация действия. У сна своей анимации нет — он состояние. */
 export const ACTION_ANIM_MS: Readonly<Record<ActionType, number>> = {
-  feed: 2400,
-  snack: 1800,
+  feed: 5600,
+  snack: 2600,
   play: 2400,
   sleep: 0,
   clean: 1800,
   medicine: 1800,
 };
 
-const WALK_PERIOD_MS = 9600;
-const WALK_RANGE = 8;
-const STEP_MS = 400;
 const BOB_MS = 500;
+/** Подход питомца к миске, мс. */
+const FEED_WALK_MS = 2200;
+/** Сколько летит брошенное лакомство, мс. */
+const TREAT_FLIGHT_MS = 520;
+/** Раз в сколько мс спящий питомец шевелит ухом или хвостом. */
+const SLEEP_CYCLE_MS = 9000;
 const BLINK_EVERY_MS = 4000;
 const BLINK_MS = 160;
 const EGG_WOBBLE = [0, 1, 0, -1] as const;
@@ -52,11 +55,47 @@ export interface ActiveAction {
   startedAt: number;
 }
 
-/** Строка листа анимаций питомца: какую анимацию играть. */
-export type AnimRow = 'idle' | 'sleep' | 'eat' | 'sick' | 'hungry' | 'tired';
+/**
+ * Строка листа анимаций питомца: какую анимацию играть.
+ * Первые шесть — прежние (9 кадров), остальные — плавные (17 кадров); если у стадии строки нет,
+ * петArt подставляет ближайшую прежнюю.
+ */
+export type AnimRow =
+  | 'idle'
+  | 'sleep'
+  | 'eat'
+  | 'sick'
+  | 'hungry'
+  | 'tired'
+  | 'idle_smooth'
+  | 'catch'
+  | 'walk'
+  | 'eat_side'
+  | 'lie_wag'
+  | 'roll'
+  | 'sleep_twitch';
 
-/** Кадров в каждой анимации листа. */
+/** Кадров в прежних строках листа. */
 export const SHEET_FRAMES = 9;
+/** Кадров в новых (плавных) строках. */
+export const SMOOTH_FRAMES = 17;
+
+export const ROW_FRAMES: Readonly<Record<AnimRow, number>> = {
+  idle: SHEET_FRAMES,
+  sleep: SHEET_FRAMES,
+  eat: SHEET_FRAMES,
+  sick: SHEET_FRAMES,
+  hungry: SHEET_FRAMES,
+  tired: SHEET_FRAMES,
+  idle_smooth: SMOOTH_FRAMES,
+  catch: SMOOTH_FRAMES,
+  walk: SMOOTH_FRAMES,
+  eat_side: SMOOTH_FRAMES,
+  lie_wag: SMOOTH_FRAMES,
+  roll: SMOOTH_FRAMES,
+  sleep_twitch: SMOOTH_FRAMES,
+};
+
 const ANIM_FRAME_MS: Readonly<Record<AnimRow, number>> = {
   idle: 110,
   sleep: 200,
@@ -64,11 +103,27 @@ const ANIM_FRAME_MS: Readonly<Record<AnimRow, number>> = {
   sick: 140,
   hungry: 170,
   tired: 200,
+  idle_smooth: 170,
+  catch: 150,
+  walk: 120,
+  eat_side: 200,
+  lie_wag: 160,
+  roll: 200,
+  sleep_twitch: 200,
 };
 
+/** Кадр анимации в момент t (мс от её начала); цикличный. */
 export function animFrame(row: AnimRow, t: number, motion: number): number {
-  return motion ? Math.floor(t / ANIM_FRAME_MS[row]) % SHEET_FRAMES : 0;
+  return motion ? Math.floor(t / ANIM_FRAME_MS[row]) % ROW_FRAMES[row] : 0;
 }
+
+/** Кадр однократной анимации: после последнего кадра остаётся на нём. */
+export function animFrameOnce(row: AnimRow, e: number, motion: number): number {
+  return motion ? Math.min(ROW_FRAMES[row] - 1, Math.floor(Math.max(0, e) / ANIM_FRAME_MS[row])) : 0;
+}
+
+/** Длина одного прохода анимации, мс. */
+export const animLength = (row: AnimRow): number => ROW_FRAMES[row] * ANIM_FRAME_MS[row];
 
 export interface Placed {
   sprite: SpriteName;
@@ -78,6 +133,16 @@ export interface Placed {
   /** Только у тела питомца: строка и кадр цветной анимации. */
   anim?: AnimRow;
   frame?: number;
+  /** Отразить картинку по горизонтали (боковые позы смотрят влево). */
+  flip?: boolean;
+}
+
+/** Облачко запаха над какашкой: положение в клетках, размер и прозрачность. */
+export interface Puff {
+  x: number;
+  y: number;
+  r: number;
+  a: number;
 }
 
 export interface Butterfly {
@@ -97,10 +162,50 @@ export interface Scene {
   items: Placed[];
   /** Бабочка из режима ожидания: питомец за ней гоняется. */
   butterfly?: Butterfly;
+  /** Зеленоватый дымок над какашками. */
+  puffs?: Puff[];
 }
 
-// --- Режим ожидания: прогулка, потом охота на бабочку ---
-const WALK_SPAN_MS = 14000;
+// --- Режим ожидания: неспешный распорядок, раз в минуту с лишним — охота на бабочку ---
+
+/** Боковые позы нарисованы мордой вправо (если false) или влево (если true). */
+const SIDE_FACES_LEFT = false as boolean;
+/** Нужно ли отразить боковую позу, чтобы питомец смотрел вправо (heading) или влево. */
+const flipFor = (headingRight: boolean): boolean => SIDE_FACES_LEFT === headingRight;
+
+type IdleKind = 'stand' | 'walk' | 'lie' | 'roll';
+interface IdleSeg {
+  kind: IdleKind;
+  ms: number;
+  /** Смещение центра от середины экрана в начале и в конце отрезка, клетки. */
+  from: number;
+  to: number;
+}
+
+/** Скорость прогулки: 10 клеток за 3 секунды. */
+const WALK_CELLS_PER_MS = 10 / 3000;
+const walkSeg = (from: number, to: number): IdleSeg => ({ kind: 'walk', ms: Math.round(Math.abs(to - from) / WALK_CELLS_PER_MS), from, to });
+const stay = (kind: IdleKind, ms: number, at: number): IdleSeg => ({ kind, ms, from: at, to: at });
+
+const IDLE_PLAN: readonly IdleSeg[] = [
+  stay('stand', 5000, 0),
+  walkSeg(0, 8),
+  stay('stand', 4000, 8),
+  walkSeg(8, -8),
+  stay('lie', 6000, -8),
+  stay('roll', animLength('roll'), -8),
+  stay('lie', 4000, -8),
+  stay('stand', 3000, -8),
+  walkSeg(-8, -3),
+  stay('stand', 5000, -3),
+  walkSeg(-3, 6),
+  stay('lie', 7000, 6),
+  stay('stand', 4000, 6),
+  walkSeg(6, 0),
+  stay('stand', 3000, 0),
+];
+
+const WALK_SPAN_MS = IDLE_PLAN.reduce((sum, seg) => sum + seg.ms, 0);
 const CHASE_MS = 8000;
 const IDLE_CYCLE_MS = WALK_SPAN_MS + CHASE_MS;
 
@@ -108,6 +213,29 @@ const IDLE_CYCLE_MS = WALK_SPAN_MS + CHASE_MS;
 export function chaseTime(t: number): number | null {
   const c = t % IDLE_CYCLE_MS;
   return c >= WALK_SPAN_MS ? c - WALK_SPAN_MS : null;
+}
+
+interface IdlePose {
+  kind: IdleKind;
+  /** Смещение центра от середины, клетки. */
+  offset: number;
+  /** Сколько мс идёт текущий отрезок. */
+  e: number;
+  /** Идёт вправо. */
+  right: boolean;
+}
+
+/** Где питомец и что делает в момент t вне охоты на бабочку. */
+export function idlePose(t: number): IdlePose {
+  let c = t % IDLE_CYCLE_MS;
+  for (const seg of IDLE_PLAN) {
+    if (c < seg.ms) {
+      const k = seg.ms > 0 ? c / seg.ms : 0;
+      return { kind: seg.kind, offset: seg.from + (seg.to - seg.from) * k, e: c, right: seg.to > seg.from };
+    }
+    c -= seg.ms;
+  }
+  return { kind: 'stand', offset: 0, e: 0, right: false };
 }
 
 interface Chase {
@@ -303,7 +431,6 @@ export function composeScene(
   const elapsed = active ? Math.max(0, t - active.startedAt) : 0;
   const name = petSprite(pet);
   const blink = motion === 1 && t % BLINK_EVERY_MS < BLINK_MS;
-  const bob = motion * (step(t, BOB_MS) % 2);
   const items: Placed[] = [];
   const mid = SCREEN_W / 2;
 
@@ -311,21 +438,35 @@ export function composeScene(
   const tailExtra = tail ? SPRITES[tail[0]].w - TAIL_OVERLAP : 0;
   // Тело вместе с хвостом всегда целиком на экране.
   const maxX = SCREEN_W - 1 - SPRITES[name].w - tailExtra;
-  const petAt = (cx: number, dy = 0, eyesClosed = blink, anim: AnimRow = 'idle'): Placed => ({
+  /** clock — время анимации, мс (по умолчанию общее); once — не зацикливать. */
+  const petAt = (cx: number, dy = 0, eyesClosed = blink, anim: AnimRow = 'idle', clock = t, once = false, flip = false): Placed => ({
     sprite: name,
     x: Math.max(1, Math.min(maxX, center(name, cx))),
     y: onGround(name) + dy,
     eyesClosed,
     anim,
-    frame: animFrame(anim, t, motion),
+    frame: once ? animFrameOnce(anim, clock, motion) : animFrame(anim, clock, motion),
+    ...(flip ? { flip } : {}),
   });
   let butterfly: Butterfly | undefined;
+  const puffs: Puff[] = [];
 
   // Какашки лежат на полу, пока их не уберут; питомец ходит перед ними.
   if (state !== 'dead' && state !== 'egg' && state !== 'cleaning') {
     const shown = Math.min(pet.poops, POOP_SLOTS.length);
     for (let i = 0; i < shown; i++) {
-      items.push({ sprite: 'poopSmall', x: POOP_SLOTS.at(i) ?? 0, y: onGround('poopSmall') });
+      const px = POOP_SLOTS.at(i) ?? 0;
+      items.push({ sprite: 'poopSmall', x: px, y: onGround('poopSmall') });
+      // Зеленоватый дымок: три облачка поднимаются и расплываются.
+      for (let k = 0; k < 3; k++) {
+        const rise = motion ? ((t + k * 700 + i * 310) % 2100) / 2100 : k / 3;
+        puffs.push({
+          x: px + 3 + Math.sin((rise + k * 0.4) * Math.PI * 2) * 1.6,
+          y: onGround('poopSmall') - 1 - rise * 9,
+          r: 0.9 + rise * 1.6,
+          a: 0.7 * (1 - rise),
+        });
+      }
     }
   }
 
@@ -341,17 +482,35 @@ export function composeScene(
     }
 
     case 'idle': {
-      // Ходит туда-обратно рывками по 2 пикселя, как на настоящем LCD.
       const e = motion ? chaseTime(t) : null;
       if (e !== null) {
         const chase = chaseFrame(pet.species, e, t);
-        items.push(petAt(chase.cx, -chase.lift));
+        // Первые полсекунды питомец плавно идёт от своего места к месту охоты.
+        const startX = mid + idlePose(0).offset;
+        const k = Math.min(1, e / 500);
+        items.push(petAt(startX + (chase.cx - startX) * k, -chase.lift));
         butterfly = chase.butterfly;
         break;
       }
-      const walkPhase = motion ? (step(t % WALK_PERIOD_MS, STEP_MS) * STEP_MS) / WALK_PERIOD_MS : 0.25;
-      const offset = Math.round((triangle(walkPhase) - 0.5) * WALK_RANGE) * 2;
-      items.push(petAt(mid + offset, bob));
+      if (!motion) {
+        items.push(petAt(mid, 0, false, 'idle_smooth'));
+        break;
+      }
+      const pose = idlePose(t);
+      const cx = mid + pose.offset;
+      switch (pose.kind) {
+        case 'walk':
+          items.push(petAt(cx, 0, false, 'walk', pose.e, false, flipFor(pose.right)));
+          break;
+        case 'lie':
+          items.push(petAt(cx, 0, false, 'lie_wag', pose.e));
+          break;
+        case 'roll':
+          items.push(petAt(cx, 0, false, 'roll', pose.e, true));
+          break;
+        default:
+          items.push(petAt(cx, 0, blink, 'idle_smooth'));
+      }
       break;
     }
 
@@ -376,7 +535,9 @@ export function composeScene(
     }
 
     case 'sleeping': {
-      const p = petAt(mid, motion * (step(t, BOB_MS * 3) % 2), true, 'sleep');
+      // Спит клубочком; раз в 9 секунд дёргает ухом или хвостом.
+      const twitch = t % SLEEP_CYCLE_MS;
+      const p = petAt(mid, 0, true, 'sleep_twitch', twitch, true);
       items.push(p);
       const right = p.x + SPRITES[name].w;
       for (let i = 0; i < 2; i++) {
@@ -387,18 +548,40 @@ export function composeScene(
     }
 
     case 'eating': {
-      items.push(petAt(mid - 8, 0, blink, 'eat'));
-      if (elapsed < ACTION_ANIM_MS.feed * 0.85) items.push({ sprite: 'bowl', x: mid + 8, y: onGround('bowl') });
+      // Подходит к миске боком, наклоняется и ест.
+      const d = SIDE_FACES_LEFT ? -1 : 1; // куда смотрит питомец в боковой позе
+      const bowlX = d > 0 ? mid + 8 : mid - 8 - SPRITES.bowl.w;
+      const stopX = d > 0 ? bowlX - 8 : bowlX + SPRITES.bowl.w + 8;
+      const startX = mid - d * 12;
+      const walking = elapsed < FEED_WALK_MS;
+      if (walking) {
+        const k = motion ? elapsed / FEED_WALK_MS : 1;
+        items.push(petAt(startX + (stopX - startX) * k, 0, false, 'walk', elapsed, false, flipFor(d > 0)));
+      } else {
+        items.push(petAt(stopX, 0, false, 'eat_side', elapsed - FEED_WALK_MS, true, flipFor(d > 0)));
+      }
+      if (elapsed < ACTION_ANIM_MS.feed * 0.9) items.push({ sprite: 'bowl', x: bowlX, y: onGround('bowl') });
       break;
     }
 
     case 'snacking': {
-      const p = petAt(mid - 6, 0, blink, 'eat');
+      // Лакомство летит дугой, питомец ловит его в прыжке и съедает.
+      const px = mid - 2;
+      const p = petAt(px, 0, false, 'catch', elapsed, true);
       items.push(p);
-      if (elapsed < ACTION_ANIM_MS.snack / 2) {
-        items.push({ sprite: 'candy', x: mid + 8, y: onGround('candy') - 2 });
-      } else {
-        items.push({ sprite: 'heart', x: p.x + SPRITES[name].w, y: p.y - 4 });
+      const mouth = { x: p.x + SPRITES[name].w / 2 - SPRITES.candy.w / 2, y: p.y + 4 };
+      if (elapsed < TREAT_FLIGHT_MS) {
+        const k = motion ? elapsed / TREAT_FLIGHT_MS : 1;
+        const x0 = Math.min(mid + 16, SCREEN_W - SPRITES.candy.w - 1);
+        const y0 = GROUND_Y - 6;
+        items.push({
+          sprite: 'candy',
+          x: Math.round(x0 + (mouth.x - x0) * k),
+          y: Math.round(y0 + (mouth.y - y0) * k - Math.sin(Math.PI * k) * 8),
+        });
+      } else if (elapsed > ACTION_ANIM_MS.snack / 2) {
+        const rise = motion ? Math.min(1, (elapsed - ACTION_ANIM_MS.snack / 2) / 700) : 0;
+        items.push({ sprite: 'heart', x: p.x + SPRITES[name].w, y: p.y - 2 - Math.round(rise * 3) });
       }
       break;
     }
@@ -430,8 +613,8 @@ export function composeScene(
       const p = petAt(mid, 0);
       items.push(p);
       if (elapsed < ACTION_ANIM_MS.medicine / 2) {
-        const drop = motion ? Math.round((elapsed / (ACTION_ANIM_MS.medicine / 2)) * 6) : 3;
-        items.push({ sprite: 'pill', x: center('pill', mid), y: Math.max(1, p.y - 10 + drop) });
+        const drop = motion ? Math.round((elapsed / (ACTION_ANIM_MS.medicine / 2)) * 9) : 5;
+        items.push({ sprite: 'pill', x: center('pill', mid), y: Math.max(1, p.y - 13 + drop) });
       } else {
         items.push({ sprite: 'heart', x: center('heart', mid), y: Math.max(1, p.y - 8) });
       }
@@ -453,5 +636,5 @@ export function composeScene(
     items.splice(body, 0, tailItem);
   }
 
-  return { state, dim: state === 'sleeping', items, ...(butterfly ? { butterfly } : {}) };
+  return { state, dim: state === 'sleeping', items, ...(butterfly ? { butterfly } : {}), ...(puffs.length > 0 ? { puffs } : {}) };
 }

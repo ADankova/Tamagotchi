@@ -4,11 +4,13 @@ import {
   moveRange,
   newSlideGame,
   slide,
-  SLIDE_SIZE,
+  SLIDE_COLS,
+  SLIDE_ROWS,
   useCrumbs,
   useFreeze,
   type Block,
   type RowTemplate,
+  type SlideMode,
   type SlideFrame,
   type SlideState,
 } from '../core/slide';
@@ -17,7 +19,7 @@ import { ART } from './artData';
 import { el } from './dom';
 import type { GameScreen, MiniGameHost } from './minigames';
 
-// Экран «Питомцев-блоков»: поле 10×10, блоки-питомцы двигаются пальцем по своей полосе.
+// Экран «Питомцев-блоков»: поле 8×10, блоки-питомцы двигаются пальцем по своей полосе.
 
 const STEP_MS = 190;
 const CLEAR_MS = 380;
@@ -42,7 +44,8 @@ interface Drag {
   dx: number;
 }
 
-const pct = (n: number) => `${(n * 100) / SLIDE_SIZE}%`;
+const pct = (n: number) => `${(n * 100) / SLIDE_COLS}%`;
+const pctRow = (n: number) => `${(n * 100) / SLIDE_ROWS}%`;
 
 export class SlideGame implements GameScreen {
   readonly root: HTMLElement;
@@ -56,7 +59,6 @@ export class SlideGame implements GameScreen {
   private readonly bonusBar = el('div', { class: 's-bonuses' });
   private readonly freezeButton = this.bonusButton('freeze', GAMES_TEXT.slideFreeze, () => this.freeze());
   private readonly crumbsButton = this.bonusButton('crumbs', GAMES_TEXT.slideCrumbs, () => void this.crumble());
-  private readonly frozenChip = el('span', { class: 's-frozen' });
   private readonly status = el('p', { class: 'q-status', role: 'status', 'aria-live': 'polite' });
   private drag: Drag | null = null;
   private busy = false;
@@ -64,23 +66,27 @@ export class SlideGame implements GameScreen {
 
   constructor(
     private readonly host: MiniGameHost,
+    private readonly mode: SlideMode,
     private readonly cb: SlideCallbacks,
   ) {
-    this.state = newSlideGame(randomSeed());
+    this.state = newSlideGame(randomSeed(), mode);
+    this.board.classList.add(mode);
+    const nextWrap = el('div', { class: 's-next-wrap' }, [el('span', { class: 's-next-label', text: GAMES_TEXT.slideNext[mode] }), this.preview]);
     this.root = el('div', { class: 'q-game s-game' }, [
       cb.header(GAMES_TEXT.slideTitle),
       el('div', { class: 'q-top' }, [
-        el('span', { class: 'q-chip' }, [el('img', { class: 'q-chip-pet', src: host.petImage, alt: '' }), this.lines]),
+        el('span', { class: 'q-chip' }, [this.lines]),
         el('span', { class: 'q-chip' }, [el('img', { class: 'q-chip-pet', src: host.treatImage, alt: '' }), this.treats]),
       ]),
-      el('div', { class: 's-next-wrap' }, [el('span', { class: 's-next-label', text: GAMES_TEXT.slideNext }), this.preview]),
+      ...(mode === 'fall' ? [nextWrap] : []),
       el('div', { class: 'q-board-wrap' }, [this.board]),
+      ...(mode === 'rise' ? [nextWrap] : []),
       this.bonusBar,
       this.status,
       el('p', { class: 'q-hint', text: GAMES_TEXT.slideHint }),
       el('p', { class: 'q-hint', text: GAMES_TEXT.slideBonusHint }),
     ]);
-    this.bonusBar.append(this.freezeButton, this.crumbsButton, this.frozenChip);
+    this.bonusBar.append(this.freezeButton, this.crumbsButton);
     this.sync(this.state.blocks);
     this.renderPreview(this.state.next);
     this.renderScore();
@@ -91,7 +97,6 @@ export class SlideGame implements GameScreen {
     const icon = el('img', { class: 's-bonus-icon', src: ART[kind === 'freeze' ? 'bonus_freeze' : 'bonus_crumbs'], alt: '' });
     const button = el('button', { type: 'button', class: `s-bonus-button ${kind}`, 'aria-label': label }, [
       icon,
-      el('span', { class: 's-bonus-label', text: label }),
       el('span', { class: 's-bonus-count' }),
     ]);
     button.addEventListener('click', onClick);
@@ -106,7 +111,7 @@ export class SlideGame implements GameScreen {
   leave(): void {
     if (this.finished) return;
     this.finished = true;
-    this.host.finishSlide(this.state.lines, this.state.treats);
+    this.host.finishSlide(this.mode, this.state.lines, this.state.treats);
   }
 
   // --- Отрисовка ---
@@ -123,7 +128,7 @@ export class SlideGame implements GameScreen {
 
   private place(node: HTMLElement, b: Block): void {
     node.style.left = pct(b.col);
-    node.style.top = pct(b.row);
+    node.style.top = pctRow(b.row);
     node.style.width = pct(b.len);
     node.classList.toggle('single', b.len === 1);
     node.setAttribute('aria-label', GAMES_TEXT.slideBlock(b.row + 1, b.col + 1, b.len));
@@ -183,14 +188,13 @@ export class SlideGame implements GameScreen {
 
   private renderBonuses(): void {
     const { freezes, crumbs, frozen } = this.state;
-    this.freezeButton.hidden = freezes === 0;
-    this.crumbsButton.hidden = crumbs === 0;
-    this.freezeButton.querySelector('.s-bonus-count')!.textContent = `×${freezes}`;
-    this.crumbsButton.querySelector('.s-bonus-count')!.textContent = `×${crumbs}`;
-    this.frozenChip.hidden = frozen === 0;
-    this.frozenChip.textContent = GAMES_TEXT.slideFrozen(frozen);
+    // Кнопки видны всегда; без бонуса они неактивны.
+    this.freezeButton.disabled = freezes === 0;
+    this.crumbsButton.disabled = crumbs === 0;
+    this.freezeButton.querySelector('.s-bonus-count')!.textContent = freezes > 0 ? `×${freezes}` : '';
+    this.crumbsButton.querySelector('.s-bonus-count')!.textContent = crumbs > 0 ? `×${crumbs}` : '';
+    this.freezeButton.classList.toggle('active', frozen > 0);
     this.board.classList.toggle('frozen', frozen > 0);
-    this.bonusBar.hidden = freezes === 0 && crumbs === 0 && frozen === 0;
   }
 
   // --- Бонусы-кнопки ---
@@ -216,9 +220,9 @@ export class SlideGame implements GameScreen {
     const area = result.frames[0]!.crumbArea!;
     const zone = el('div', { class: 's-crumb-area' });
     zone.style.left = pct(area.col);
-    zone.style.top = pct(area.row);
+    zone.style.top = pctRow(area.row);
     zone.style.width = pct(CRUMB_SIZE);
-    zone.style.height = pct(CRUMB_SIZE);
+    zone.style.height = pctRow(CRUMB_SIZE);
     this.board.append(zone);
     this.host.playSound('place');
     await wait(480);
@@ -244,7 +248,7 @@ export class SlideGame implements GameScreen {
       e.preventDefault();
       node.setPointerCapture?.(e.pointerId);
       node.classList.add('dragging');
-      this.drag = { id, node, pointer: e.pointerId, x0: e.clientX, col: block.col, min, max, cell: this.board.clientWidth / SLIDE_SIZE, dx: 0 };
+      this.drag = { id, node, pointer: e.pointerId, x0: e.clientX, col: block.col, min, max, cell: this.board.clientWidth / SLIDE_COLS, dx: 0 };
       if (max === min) this.wiggle(node);
     });
     this.board.addEventListener('pointermove', (e) => {
@@ -298,6 +302,7 @@ export class SlideGame implements GameScreen {
     this.sync(this.state.blocks);
     this.renderPreview(this.state.next);
     this.renderScore();
+    if (this.state.frozen > 0 && this.status.textContent === '') this.status.textContent = GAMES_TEXT.slideFrozen(this.state.frozen);
     this.busy = false;
     if (this.state.over) this.gameOver();
   }
@@ -331,9 +336,9 @@ export class SlideGame implements GameScreen {
 
   private gameOver(): void {
     this.finished = true;
-    const before = this.host.slideStats().best ?? 0;
+    const before = this.host.slideStats(this.mode).best ?? 0;
     const { lines, treats } = this.state;
-    this.host.finishSlide(lines, treats);
+    this.host.finishSlide(this.mode, lines, treats);
     this.host.playSound(treats > 0 ? 'win' : 'lose');
     const retry = el('button', { type: 'button', class: 'chunky', text: GAMES_TEXT.retry });
     retry.addEventListener('click', () => this.cb.replay());

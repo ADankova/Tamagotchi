@@ -11,6 +11,7 @@ import {
 } from '../core/queens';
 import { randomSeed } from '../core/rng';
 import type { LevelStats } from '../core/stats';
+import { SLIDE_MODES, type SlideMode } from '../core/slide';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -27,11 +28,11 @@ export interface MiniGameHost {
   /** Партия закончена: победа, награда в лакомствах и размер поля (для счётчиков). */
   onFinish: (won: boolean, reward: number, size: number) => void;
   /** «Питомцы-блоки»: сыграно и рекорд. */
-  slideStats: () => LevelStats;
+  slideStats: (mode: SlideMode) => LevelStats;
   /** Лакомство собрано прямо в игре — начислить сразу. */
   earnTreats: (n: number) => void;
   /** Партия «Питомцев-блоков» окончена: счётчики и эффект игры. */
-  finishSlide: (lines: number, treats: number) => void;
+  finishSlide: (mode: SlideMode, lines: number, treats: number) => void;
   /** Картинка лакомства (data URL). */
   treatImage: string;
 }
@@ -103,14 +104,17 @@ export class GamesOverlay {
       return b;
     });
     const card = this.gameCard('queens', GAMES_TEXT.queensTitle, GAMES_TEXT.queensAbout, levels);
-    const slideStats = this.host.slideStats();
-    const slidePlay = el('button', { type: 'button', class: 'chunky level-button slide-play' }, [
-      el('span', { class: 'level-name', text: GAMES_TEXT.slidePlay }),
-      el('span', { class: 'level-info', text: '10×10' }),
-      el('span', { class: 'level-stats', text: GAMES_TEXT.slideStats(slideStats.played, slideStats.best ?? 0) }),
-    ]);
-    slidePlay.addEventListener('click', () => this.startSlide());
-    const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, [slidePlay]);
+    const slideButtons = SLIDE_MODES.map((mode) => {
+      const st = this.host.slideStats(mode);
+      const button = el('button', { type: 'button', class: `chunky level-button slide-play ${mode}` }, [
+        el('span', { class: 'level-name', text: GAMES_TEXT.slideModeName[mode] }),
+        el('span', { class: 'level-info', text: GAMES_TEXT.slideModeInfo[mode] }),
+        el('span', { class: 'level-stats', text: GAMES_TEXT.slideStats(st.played, st.best ?? 0) }),
+      ]);
+      button.addEventListener('click', () => this.startSlide(mode));
+      return button;
+    });
+    const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, slideButtons);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
@@ -162,10 +166,10 @@ export class GamesOverlay {
     this.body.replaceChildren(this.game.root);
   }
 
-  private startSlide(): void {
-    this.game = new SlideGame(this.host, {
+  private startSlide(mode: SlideMode): void {
+    this.game = new SlideGame(this.host, mode, {
       header: (title) => this.header(title, () => this.back(), '←'),
-      replay: () => this.startSlide(),
+      replay: () => this.startSlide(mode),
       done: () => this.close(),
     });
     this.body.replaceChildren(this.game.root);
