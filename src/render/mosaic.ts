@@ -18,7 +18,7 @@ import type { GameScreen, MiniGameHost } from './minigames';
 
 const STEP_MS = 260;
 /** Скорость бега питомца, пикселей в миллисекунду. */
-const RUN_PX_PER_MS = 0.32;
+const RUN_PX_PER_MS = 0.22;
 const COLOR_CSS = MOSAIC_COLOR_HEX;
 const VISIBLE_IN_QUEUE = 3;
 
@@ -228,7 +228,7 @@ export class MosaicGame implements GameScreen {
     const from = cube.getBoundingClientRect();
     const to = this.hole.getBoundingClientRect();
     const size = from.width;
-    const rs = Math.max(size * 0.8, 22);
+    const rs = Math.max(size * 0.9, 12);
     // Пока соседние кубики ещё видны на поле, свободного пути может не быть: питомец ждёт, а не бежит сквозь мозаику.
     {
       const cx = c.cell % this.state.w;
