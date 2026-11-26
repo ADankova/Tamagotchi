@@ -10,7 +10,19 @@
    "sick",
    "hungry",
    "tired"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795652364629-txttut-1f373f53.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
+  }
  },
  "blob_adultGood": {
   "file": "mcp-remote-devices-blob-1795650508187-bvb6fp-1852b5a6.png",

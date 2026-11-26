@@ -1,7 +1,8 @@
 // Листы анимаций питомцев (art/pets/*.png, собираются scripts/pets-build.py).
-// Строки листа: покой, сон, еда, у взрослых ещё болезнь, голод и усталость; 9 кадров в строке.
+// Строки листа: покой, сон, еда, у взрослых ещё болезнь, голод и усталость (9 кадров),
+// а также плавные: покой, поимка лакомства, ходьба, еда боком, лёжа, перекат, сон (17 кадров).
 import type { Species } from '../core/types';
-import type { AnimRow } from './scene';
+import { ROW_FRAMES, type AnimRow } from './scene';
 import type { BodyStage } from './species';
 import { PET_META } from './petMeta';
 import cat_adultGood_png from '../../art/pets/cat_adultGood.png';
@@ -94,17 +95,45 @@ function drawCell(
   cx: number,
   feetY: number,
   scale: number,
+  flip = false,
+  anchor?: { feet: number; left: number; right: number },
 ): void {
   const meta = PET_META[key];
   const img = sheet(key);
   if (!meta || !img) return;
   const { cell } = meta;
-  const dx = Math.round(cx - ((meta.left + meta.right) / 2) * scale);
-  const dy = Math.round(feetY - meta.feet * scale);
-  ctx.drawImage(img, col * cell, row * cell, cell, cell, dx, dy, cell * scale, cell * scale);
+  const a = anchor ?? meta;
+  const centre = ((a.left + a.right) / 2) * scale;
+  const dy = Math.round(feetY - a.feet * scale);
+  if (!flip) {
+    ctx.drawImage(img, col * cell, row * cell, cell, cell, Math.round(cx - centre), dy, cell * scale, cell * scale);
+    return;
+  }
+  ctx.save();
+  ctx.translate(Math.round(cx), 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, col * cell, row * cell, cell, cell, Math.round(-centre), dy, cell * scale, cell * scale);
+  ctx.restore();
 }
 
-/** Тело питомца: строка анимации и кадр. Если такой строки у стадии нет — играется покой. */
+/** Если у стадии нет нужной строки, играется ближайшая из имеющихся. */
+const ROW_FALLBACK: Readonly<Record<AnimRow, readonly AnimRow[]>> = {
+  idle: [],
+  sleep: [],
+  eat: [],
+  sick: [],
+  hungry: [],
+  tired: [],
+  idle_smooth: ['idle'],
+  walk: ['idle_smooth', 'idle'],
+  lie_wag: ['idle_smooth', 'idle'],
+  roll: ['lie_wag', 'idle_smooth', 'idle'],
+  eat_side: ['eat'],
+  catch: ['eat'],
+  sleep_twitch: ['sleep'],
+};
+
+/** Тело питомца: строка анимации и кадр. Если такой строки у стадии нет — играется ближайшая прежняя. */
 export function drawPet(
   ctx: CanvasRenderingContext2D,
   species: Species,
@@ -114,12 +143,22 @@ export function drawPet(
   cx: number,
   feetY: number,
   scale: number,
+  flip = false,
 ): void {
   const key = `${species}_${body}`;
   const meta = PET_META[key];
   if (!meta) return;
-  const row = Math.max(0, meta.rows.indexOf(anim));
-  drawCell(ctx, key, row, frame % meta.cols, cx, feetY, scale);
+  let used: AnimRow = anim;
+  for (const candidate of [anim, ...ROW_FALLBACK[anim]]) {
+    if (meta.rows.includes(candidate)) {
+      used = candidate;
+      break;
+    }
+  }
+  const row = Math.max(0, meta.rows.indexOf(used));
+  const info = meta.rowInfo?.[used];
+  // Прежние строки опираются на общие размеры листа, новые — на свои.
+  drawCell(ctx, key, row, frame % (info?.frames ?? ROW_FRAMES[used]), cx, feetY, scale, flip, info);
 }
 
 const EGG_FRAMES = 9;

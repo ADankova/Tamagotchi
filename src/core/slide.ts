@@ -1,23 +1,29 @@
 import { nextRandom } from './rng';
 
-// «Питомцы-блоки» (в духе Haru Cats Slide). Поле 10×10, строки нумеруются сверху (0) вниз (9).
+// «Питомцы-блоки» (в духе Haru Cats Slide). Поле 8 клеток в ширину и 10 в высоту, строки нумеруются сверху (0) вниз (9).
 // В каждой полосе лежат горизонтальные блоки длиной 1–4. Игрок сдвигает один блок влево или
 // вправо по свободным клеткам; блоки, под которыми пусто, падают; заполненная полоса исчезает;
-// затем сверху падает новая полоса. Если стопка дорастает до верхней полосы — игра окончена.
-// Раз в 15–20 полос на одном из блоков новой полосы лежит лакомство: убери этот блок — получишь его.
-// Раз в 4–7 полос на блоке лежит случайный бонус:
+// затем появляется новая полоса. Если стопка дорастает до верхней полосы — игра окончена.
+// Два режима: «Лавина» — новая полоса падает сверху; «Прилив» — новая полоса вырастает снизу и поднимает стопку.
+// Раз в 10–15 полос на одном из блоков новой полосы лежит лакомство: убери этот блок — получишь его.
+// Раз в 3–5 полос на блоке лежит случайный бонус:
 //  · заморозка и крошки уходят в запас (кнопки под полем): заморозка на 3 хода останавливает новые полосы,
 //    крошки разбивают блоки внутри поля 3×3 на одиночные клетки;
 //  · молния срабатывает, когда исчезает её полоса: вместе с ней пропадают блоки, касавшиеся её сверху и снизу.
 // Здесь только логика, без DOM. Всё детерминировано по seed.
 
-export const SLIDE_SIZE = 10;
+export const SLIDE_COLS = 8;
+export const SLIDE_ROWS = 10;
+export type SlideMode = 'fall' | 'rise';
+export const SLIDE_MODES: readonly SlideMode[] = ['fall', 'rise'];
+/** Ключ рекордов в статистике: у «Лавины» прежний (10), чтобы не потерять старые рекорды. */
+export const slideStatsKey = (mode: SlideMode): number => (mode === 'fall' ? 10 : 11);
 export const SLIDE_START_ROWS = 3;
-export const TREAT_EVERY_MIN = 15;
-export const TREAT_EVERY_MAX = 20;
+export const TREAT_EVERY_MIN = 10;
+export const TREAT_EVERY_MAX = 15;
 export const BLOCK_COLORS = 6;
-export const BONUS_EVERY_MIN = 4;
-export const BONUS_EVERY_MAX = 7;
+export const BONUS_EVERY_MIN = 3;
+export const BONUS_EVERY_MAX = 5;
 /** Сколько ходов не падают новые полосы после заморозки. */
 export const FREEZE_MOVES = 3;
 /** Сторона поля, которое разбивают крошки. */
@@ -41,8 +47,9 @@ export interface Block {
 export type RowTemplate = ReadonlyArray<Omit<Block, 'id' | 'row'>>;
 
 export interface SlideState {
+  mode: SlideMode;
   blocks: Block[];
-  /** Полоса, которая упадёт после следующего хода (видна над полем). */
+  /** Полоса, которая появится после следующего хода (видна у края, откуда придёт). */
   next: RowTemplate;
   rng: number;
   nextId: number;
@@ -98,31 +105,31 @@ const copy = (blocks: readonly Block[]): Block[] => blocks.map((b) => ({ ...b })
 
 /** Сетка занятости: id блока или -1. */
 export function occupancy(blocks: readonly Block[]): number[][] {
-  const grid = Array.from({ length: SLIDE_SIZE }, () => Array<number>(SLIDE_SIZE).fill(-1));
+  const grid = Array.from({ length: SLIDE_ROWS }, () => Array<number>(SLIDE_COLS).fill(-1));
   for (const b of blocks) {
     for (let c = b.col; c < b.col + b.len; c++) {
-      if (b.row >= 0 && b.row < SLIDE_SIZE) grid[b.row]![c] = b.id;
+      if (b.row >= 0 && b.row < SLIDE_ROWS) grid[b.row]![c] = b.id;
     }
   }
   return grid;
 }
 
-/** Случайная полоса: 3–6 занятых клеток, всегда хотя бы одна дырка. */
+/** Случайная полоса: 3–5 занятых клеток, всегда хотя бы одна дырка. */
 function makeRow(rng: Rng, withTreat: boolean, bonus?: Bonus): RowTemplate {
   for (;;) {
     const row: Array<Omit<Block, 'id' | 'row'>> = [];
     let c = 0;
-    while (c < SLIDE_SIZE) {
+    while (c < SLIDE_COLS) {
       if (rng.next() < 0.35) {
         c++; // дырка
         continue;
       }
-      const len = Math.min(1 + rng.int(4), SLIDE_SIZE - c);
+      const len = Math.min(1 + rng.int(4), SLIDE_COLS - c);
       row.push({ col: c, len, color: rng.int(BLOCK_COLORS), treat: false });
       c += len;
     }
     const filled = row.reduce((s, b) => s + b.len, 0);
-    if (filled < 3 || filled > 6) continue;
+    if (filled < 3 || filled > 5) continue;
     if (withTreat) row[rng.int(row.length)]!.treat = true;
     if (bonus) {
       const free = row.filter((b) => !b.treat);
@@ -162,7 +169,7 @@ export function settle(blocks: Block[]): boolean {
   const order = [...blocks].sort((a, b) => b.row - a.row);
   for (const b of order) {
     let row = b.row;
-    while (row + 1 < SLIDE_SIZE) {
+    while (row + 1 < SLIDE_ROWS) {
       let free = true;
       for (let c = b.col; c < b.col + b.len; c++) if (grid[row + 1]![c] !== -1) free = false;
       if (!free) break;
@@ -227,10 +234,11 @@ function frame(state: SlideState, spawned: number[] = []): SlideFrame {
 }
 
 /** Новая партия: три нижние полосы и следующая полоса наготове. */
-export function newSlideGame(seed: number): SlideState {
+export function newSlideGame(seed: number, mode: SlideMode = 'fall'): SlideState {
   const rng = new Rng(seed >>> 0 || 1);
   for (;;) {
     const state: SlideState = {
+      mode,
       blocks: [],
       next: [],
       rng: 0,
@@ -248,7 +256,7 @@ export function newSlideGame(seed: number): SlideState {
     };
     for (let i = 0; i < SLIDE_START_ROWS; i++) {
       // Стартовые полосы без лакомств и не считаются.
-      place(state, makeRow(rng, false), SLIDE_SIZE - SLIDE_START_ROWS + i);
+      place(state, makeRow(rng, false), SLIDE_ROWS - SLIDE_START_ROWS + i);
     }
     settle(state.blocks);
     if (fullRows(state.blocks).length > 0) continue;
@@ -266,7 +274,7 @@ export function moveRange(state: SlideState, id: number): [number, number] {
   let min = b.col;
   while (min > 0 && grid[b.row]![min - 1] === -1) min--;
   let max = b.col;
-  while (max + b.len < SLIDE_SIZE && grid[b.row]![max + b.len] === -1) max++;
+  while (max + b.len < SLIDE_COLS && grid[b.row]![max + b.len] === -1) max++;
   return [min, max];
 }
 
@@ -298,13 +306,20 @@ export function slide(prev: SlideState, id: number, col: number): { state: Slide
     return { state, frames };
   }
 
-  // Новая полоса падает сверху. Если стопка дошла до верха — места нет, конец игры.
+  // Новая полоса падает сверху («Лавина») или вырастает снизу («Прилив»).
+  // Если стопка дошла до верха — места нет, конец игры.
   for (let guard = 0; guard < 5; guard++) {
     if (state.blocks.some((b) => b.row === 0)) {
       state.over = true;
       break;
     }
-    const ids = place(state, state.next, 0);
+    let ids: number[];
+    if (state.mode === 'rise') {
+      for (const b of state.blocks) b.row--;
+      ids = place(state, state.next, SLIDE_ROWS - 1);
+    } else {
+      ids = place(state, state.next, 0);
+    }
     state.next = nextTemplate(state, rng);
     frames.push(frame(state, ids));
     resolve(state, frames);
@@ -312,7 +327,7 @@ export function slide(prev: SlideState, id: number, col: number): { state: Slide
       state.over = true;
       break;
     }
-    // Поле опустело — двигать нечего, пусть падает ещё одна полоса.
+    // Поле опустело — двигать нечего, пусть появится ещё одна полоса.
     if (state.blocks.length > 0) break;
   }
   state.rng = rng.state;
@@ -329,8 +344,8 @@ export function useFreeze(prev: SlideState): SlideState | null {
 function crumbWindow(blocks: readonly Block[], rng: Rng): { row: number; col: number } | null {
   let best = 0;
   let spots: Array<{ row: number; col: number }> = [];
-  for (let row = 0; row + CRUMB_SIZE <= SLIDE_SIZE; row++) {
-    for (let col = 0; col + CRUMB_SIZE <= SLIDE_SIZE; col++) {
+  for (let row = 0; row + CRUMB_SIZE <= SLIDE_ROWS; row++) {
+    for (let col = 0; col + CRUMB_SIZE <= SLIDE_COLS; col++) {
       let score = 0;
       for (const b of blocks) {
         if (b.len < 2 || b.row < row || b.row >= row + CRUMB_SIZE) continue;

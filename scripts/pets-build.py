@@ -24,6 +24,7 @@ def clean(im, cell, rows, cols):
     return im
 
 meta = {}
+EXTRA_COLS = 17
 for name, spec in MAP.items():
     cell = spec.get('cell', 64)
     rows, cols = spec['rows'], spec['cols']
@@ -32,32 +33,68 @@ for name, spec in MAP.items():
     if spec.get('copyRow'):
         dst, srcrow = spec['copyRow']
         im.paste(im.crop((0, srcrow * cell, cols * cell, (srcrow + 1) * cell)), (0, dst * cell))
-    bbox = im.getbbox()
-    # Нижняя точка и центр по всем кадрам: по ним питомец ставится на пол.
+    # Нижняя точка и центр по всем прежним кадрам: по ним питомец ставится на пол.
     bottom, left, right = 0, im.width, 0
     for r in range(rows):
         for c in range(cols):
             b = im.crop((c * cell, r * cell, (c + 1) * cell, (r + 1) * cell)).getbbox()
             if b:
                 bottom = max(bottom, b[3]); left = min(left, b[0]); right = max(right, b[2])
-    meta[name] = {'cell': cell, 'cols': cols, 'rows': spec['names'], 'feet': bottom, 'left': left, 'right': right}
+    names = list(spec['names'])
+    row_info = {}
+    extra = spec.get('extra')
+    if extra:
+        # Плавные анимации приходят подряд по 9 в строке (по 17 кадров на анимацию);
+        # раскладываем их в лист: одна анимация — одна строка из 17 кадров.
+        n = len(extra['names'])
+        total = n * EXTRA_COLS
+        ex_cols = 9
+        ex = clean(Image.open(os.path.join(SRC, extra['file'])), cell, -(-total // ex_cols), ex_cols)
+        full = Image.new('RGBA', (EXTRA_COLS * cell, (rows + n) * cell), (0, 0, 0, 0))
+        full.paste(im, (0, 0))
+        for i, nm in enumerate(extra['names']):
+            rb, rl, rr, cnt = 0, EXTRA_COLS * cell, 0, 0
+            for c in range(EXTRA_COLS):
+                k = i * EXTRA_COLS + c
+                frame = ex.crop(((k % ex_cols) * cell, (k // ex_cols) * cell, (k % ex_cols + 1) * cell, (k // ex_cols + 1) * cell))
+                full.paste(frame, (c * cell, (rows + i) * cell))
+                b = frame.getbbox()
+                if b:
+                    cnt += 1
+                    rb = max(rb, b[3]); rl = min(rl, b[0]); rr = max(rr, b[2])
+            row_info[nm] = {'feet': rb, 'left': rl, 'right': rr, 'frames': cnt}
+            names.append(nm)
+        im, cols = full, EXTRA_COLS
+    meta[name] = {'cell': cell, 'cols': cols, 'rows': names, 'feet': bottom, 'left': left, 'right': right, 'rowInfo': row_info}
     im.save(os.path.join(OUT, name + '.png'), optimize=True)
 json.dump(meta, open(os.path.join(OUT, 'meta.json'), 'w'), ensure_ascii=False, indent=1)
 ts = ['// Сгенерировано scripts/pets-build.py — не править руками.',
+      'export interface RowInfo {',
+      '  feet: number;',
+      '  left: number;',
+      '  right: number;',
+      '  frames: number;',
+      '}',
+      '',
       'export interface SheetMeta {',
       '  cell: number;',
       '  cols: number;',
       '  /** Названия строк листа сверху вниз. */',
       '  rows: readonly string[];',
-      '  /** Нижняя точка, левый и правый край картинки по всем кадрам (пиксели ячейки). */',
+      '  /** Нижняя точка, левый и правый край картинки по всем прежним кадрам (пиксели ячейки). */',
       '  feet: number;',
       '  left: number;',
       '  right: number;',
+      '  /** Свои размеры у плавных строк (прежние используют общие). */',
+      '  rowInfo?: Readonly<Record<string, RowInfo>>;',
       '}',
       '',
       'export const PET_META: Readonly<Record<string, SheetMeta>> = {']
 for k, v in meta.items():
-    ts.append("  %s: { cell: %d, cols: %d, rows: %s, feet: %d, left: %d, right: %d }," % (k, v['cell'], v['cols'], json.dumps(v['rows']).replace('"', "'"), v['feet'], v['left'], v['right']))
+    info = ''
+    if v['rowInfo']:
+        info = ', rowInfo: { ' + ', '.join("%s: { feet: %d, left: %d, right: %d, frames: %d }" % (n, i['feet'], i['left'], i['right'], i['frames']) for n, i in v['rowInfo'].items()) + ' }'
+    ts.append("  %s: { cell: %d, cols: %d, rows: %s, feet: %d, left: %d, right: %d%s }," % (k, v['cell'], v['cols'], json.dumps(v['rows']).replace('"', "'"), v['feet'], v['left'], v['right'], info))
 ts.append('};')
 open(os.path.join(ROOT, 'src', 'render', 'petMeta.ts'), 'w').write('\n'.join(ts) + '\n')
 print(len(meta), 'sheets')

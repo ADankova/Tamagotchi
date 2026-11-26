@@ -11,6 +11,7 @@ import {
   type Scene,
 } from './scene';
 import { backdropAt, drawBackdrop, hourOf } from './backdrop';
+import { ART } from './artData';
 import { drawButterfly, drawPet, drawProp, petArtVersion } from './petArt';
 import { SPECIES_LOOKS, type BodyStage } from './species';
 import { SPRITES, type Sprite, type SpriteName } from './sprites';
@@ -76,6 +77,28 @@ for (const [species, look] of Object.entries(SPECIES_LOOKS) as [Species, (typeof
     BODY_OF.set(name, { species, stage });
   }
   look.tail?.forEach((n) => TAIL_NAMES.add(n));
+}
+
+/** Предметы, которые нарисованы цветными картинками: ключ в ART и размер в клетках экрана. */
+const PROP_ART: Partial<Record<SpriteName, { art: keyof typeof ART; size: number }>> = {
+  poopSmall: { art: 'poop', size: 6 },
+  bowl: { art: 'feed', size: 11 },
+  candy: { art: 'snack', size: 7 },
+  pill: { art: 'medicine', size: 7 },
+};
+
+const artImages = new Map<string, HTMLImageElement>();
+let artLoaded = 0;
+
+function artImage(key: keyof typeof ART): HTMLImageElement | null {
+  let img = artImages.get(key);
+  if (!img) {
+    img = new Image();
+    img.onload = () => artLoaded++;
+    img.src = ART[key];
+    artImages.set(key, img);
+  }
+  return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
 const propCache = new Map<SpriteName, HTMLCanvasElement>();
@@ -213,7 +236,7 @@ export class PetCanvas {
   private draw(t: number): void {
     const scene = this.scene(t);
     const now = new Date();
-    const key = `${scene ? JSON.stringify(scene) : 'empty'}|${Math.floor(now.getTime() / 60000)}|${petArtVersion()}`;
+    const key = `${scene ? JSON.stringify(scene) : 'empty'}|${Math.floor(now.getTime() / 60000)}|${petArtVersion()}|${artLoaded}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
 
@@ -232,7 +255,7 @@ export class PetCanvas {
       const feet = (item.y + sprite.h) * cell;
       const body = BODY_OF.get(item.sprite);
       if (body) {
-        drawPet(ctx, body.species, body.stage, item.anim ?? 'idle', item.frame ?? 0, cx, feet, scale);
+        drawPet(ctx, body.species, body.stage, item.anim ?? 'idle', item.frame ?? 0, cx, feet, scale, item.flip ?? false);
       } else if (TAIL_NAMES.has(item.sprite)) {
         continue; // хвост нарисован вместе с телом
       } else if (item.sprite === 'egg' || item.sprite === 'eggCracked') {
@@ -240,11 +263,29 @@ export class PetCanvas {
         drawProp(ctx, item.sprite, frame, cx, feet, scale);
       } else if (item.sprite === 'grave') {
         drawProp(ctx, 'grave', 0, cx, feet, scale);
+      } else if (PROP_ART[item.sprite]) {
+        const spec = PROP_ART[item.sprite]!;
+        const img = artImage(spec.art);
+        if (img) {
+          // Цветная картинка стоит на том же месте, что и старый спрайт: по центру и на той же нижней линии.
+          const size = spec.size * cell;
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(img, Math.round(cx - size / 2), Math.round(feet - size), size, size);
+          ctx.imageSmoothingEnabled = false;
+        }
       } else {
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(propImage(item.sprite), item.x * cell, item.y * cell, sprite.w * cell, sprite.h * cell);
         ctx.imageSmoothingEnabled = false;
       }
+    }
+
+    // Дымок над какашками: мягкие зеленоватые облачка.
+    for (const puff of scene?.puffs ?? []) {
+      ctx.fillStyle = `rgba(132, 204, 92, ${puff.a.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(puff.x * cell, puff.y * cell, puff.r * cell, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     if (scene?.butterfly) {
