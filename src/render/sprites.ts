@@ -656,7 +656,7 @@ const iconMoon = sprite([
   '..###.',
 ]);
 
-export const SPRITES = {
+const RAW_SPRITES = {
   egg,
   eggCracked,
   ghost,
@@ -706,4 +706,23 @@ export const SPRITES = {
   dogTailB,
 } as const satisfies Record<string, Sprite>;
 
-export type SpriteName = keyof typeof SPRITES;
+export type SpriteName = keyof typeof RAW_SPRITES;
+
+/** Питомцы нарисованы крупнее прежнего: коробка, в которой они ходят, больше в этой же пропорции. */
+export const PET_SCALE = 1.5;
+
+const PET_BODIES = [
+  'baby', 'child', 'teen', 'adultGood', 'adultNormal', 'adultNaughty', 'elder',
+  'catBaby', 'catChild', 'catTeen', 'catAdultGood', 'catAdultNormal', 'catAdultNaughty', 'catElder',
+  'dogBaby', 'dogChild', 'dogTeen', 'dogAdultGood', 'dogAdultNormal', 'dogAdultNaughty', 'dogElder',
+] as const satisfies readonly SpriteName[];
+
+export const SPRITES: Readonly<Record<SpriteName, Sprite>> = {
+  ...RAW_SPRITES,
+  ...Object.fromEntries(
+    PET_BODIES.map((name) => {
+      const raw: Sprite = RAW_SPRITES[name];
+      return [name, { ...raw, w: Math.round(raw.w * PET_SCALE), h: Math.round(raw.h * PET_SCALE) }] as const;
+    }),
+  ),
+};

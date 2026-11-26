@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCREEN_W } from '../src/render/scene';
+import { PET_SCALE } from '../src/render/sprites';
 import { SPECIES, type Species } from '../src/core/types';
 import { SPECIES_LOOKS } from '../src/render/species';
 import { SPRITES, type SpriteName } from '../src/render/sprites';
@@ -34,9 +35,12 @@ const CREATURES: SpriteName[] = [
 describe('спрайты', () => {
   it.each(NAMES)('%s: прямоугольная карта из допустимых символов', (name: SpriteName) => {
     const s = SPRITES[name];
-    expect(s.h).toBe(s.rows.length);
+    // У питомцев коробка крупнее карты (PET_SCALE), у остальных совпадает.
+    const rawW = s.rows[0]!.length;
+    expect(Math.abs(s.h - s.rows.length * (s.h > s.rows.length ? PET_SCALE : 1))).toBeLessThanOrEqual(1);
     for (const row of s.rows) {
-      expect(row).toHaveLength(s.w);
+      expect(row).toHaveLength(rawW);
+      expect(s.w === rawW || Math.abs(s.w - rawW * PET_SCALE) <= 1).toBe(true);
       expect(/^[.#+oe]+$/.test(row)).toBe(true);
     }
   });
@@ -48,9 +52,9 @@ describe('спрайты', () => {
   });
 
   it.each(CREATURES)('%s: помещается на экран при ходьбе', (name: SpriteName) => {
-    // ширина + ход ±8 + хвост (4) + поля
-    expect(SPRITES[name].w + 16 + 4 + 2).toBeLessThanOrEqual(SCREEN_W);
-    expect(SPRITES[name].h).toBeLessThanOrEqual(20);
+    // Питомец крупнее прежнего: ходит, сколько позволяет экран, но целиком в нём помещается.
+    expect(SPRITES[name].w + 2).toBeLessThanOrEqual(SCREEN_W);
+    expect(SPRITES[name].h).toBeLessThanOrEqual(28);
   });
 
   it('у живых персонажей есть глаза (их можно закрыть)', () => {

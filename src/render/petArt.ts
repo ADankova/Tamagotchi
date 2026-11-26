@@ -133,6 +133,19 @@ const ROW_FALLBACK: Readonly<Record<AnimRow, readonly AnimRow[]>> = {
   sleep_twitch: ['sleep'],
 };
 
+/**
+ * Спокойные строки (без движения рта) и грустное лежание. Если у стадии они есть — играются вместо
+ * одноимённых прежних; больной, голодный и уставший питомец лежит грустным.
+ */
+const PREFERRED: Readonly<Partial<Record<AnimRow, string>>> = {
+  idle_smooth: 'idle_calm',
+  walk: 'walk_calm',
+  lie_wag: 'lie_calm',
+  sick: 'lie_sad',
+  hungry: 'lie_sad',
+  tired: 'lie_sad',
+};
+
 /** Тело питомца: строка анимации и кадр. Если такой строки у стадии нет — играется ближайшая прежняя. */
 export function drawPet(
   ctx: CanvasRenderingContext2D,
@@ -148,8 +161,9 @@ export function drawPet(
   const key = `${species}_${body}`;
   const meta = PET_META[key];
   if (!meta) return;
-  let used: AnimRow = anim;
-  for (const candidate of [anim, ...ROW_FALLBACK[anim]]) {
+  const preferred = PREFERRED[anim];
+  let used: string = anim;
+  for (const candidate of [...(preferred ? [preferred] : []), anim, ...ROW_FALLBACK[anim]]) {
     if (meta.rows.includes(candidate)) {
       used = candidate;
       break;
@@ -158,7 +172,7 @@ export function drawPet(
   const row = Math.max(0, meta.rows.indexOf(used));
   const info = meta.rowInfo?.[used];
   // Прежние строки опираются на общие размеры листа, новые — на свои.
-  drawCell(ctx, key, row, frame % (info?.frames ?? ROW_FRAMES[used]), cx, feetY, scale, flip, info);
+  drawCell(ctx, key, row, frame % (info?.frames ?? ROW_FRAMES[used as AnimRow]), cx, feetY, scale, flip, info);
 }
 
 const EGG_FRAMES = 9;

@@ -243,8 +243,8 @@ export class PetCanvas {
     const { ctx, cell } = this;
     const { width, height } = this.canvas;
     const reduced = this.motionQuery?.matches ?? false;
-    // Один пиксель рисунка питомца (64×64) занимает целое число пикселей экрана; взрослый занимает около трети ширины.
-    const scale = Math.max(1, Math.floor(cell / 4.5));
+    // Один пиксель рисунка питомца (64×64) занимает целое число пикселей экрана; взрослый занимает около половины ширины.
+    const scale = Math.max(1, Math.floor(cell / 3));
 
     ctx.imageSmoothingEnabled = false;
     drawBackdrop(ctx, width, height, backdropAt(hourOf(now)));

@@ -1,477 +1,725 @@
 {
-  "cat_adultGood": {
-    "file": "mcp-remote-devices-blob-1795650504868-tcm1m2-a7e18823.png",
-    "rows": 6,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat",
-      "sick",
-      "hungry",
-      "tired"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795652364629-txttut-1f373f53.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "roll",
-        "sleep_twitch"
-      ]
-    }
+ "cat_adultGood": {
+  "file": "mcp-remote-devices-blob-1795650504868-tcm1m2-a7e18823.png",
+  "rows": 6,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat",
+   "sick",
+   "hungry",
+   "tired"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795652364629-txttut-1f373f53.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
   },
-  "blob_adultGood": {
-    "file": "mcp-remote-devices-blob-1795650508187-bvb6fp-1852b5a6.png",
-    "rows": 6,
-    "cols": 9,
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671096979-9ktwzw-51fecf8b.png",
     "names": [
-      "idle",
-      "sleep",
-      "eat",
-      "sick",
-      "hungry",
-      "tired"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656061288-8jsq8q-28283f62.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "roll",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_adultGood": {
-    "file": "mcp-remote-devices-blob-1795650512042-5y1u8g-92a576de.png",
-    "rows": 6,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat",
-      "sick",
-      "hungry",
-      "tired"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656057637-j6w3sd-557ab809.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "roll",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_baby": {
-    "file": "mcp-remote-devices-blob-1795650526373-3zzlhe-9601ee33.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655368743-ffo00a-1a192fa4.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "roll",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_child": {
-    "file": "mcp-remote-devices-blob-1795650529240-1zpfxa-7182b6ed.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655370643-1btzwc-6818e966.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_teen": {
-    "file": "mcp-remote-devices-blob-1795650531658-qd41bq-b7ccc4a6.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655372531-3vyz1s-6409bfd9.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_adultNaughty": {
-    "file": "mcp-remote-devices-blob-1795650534081-3vati9-fe18f68e.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655385354-m0yq74-3b1a8153.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_elder": {
-    "file": "mcp-remote-devices-blob-1795650536058-f2jua3-837c5f80.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655387345-w4sibz-a85bcb7c.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "cat_adultNormal": {
-    "file": "mcp-remote-devices-blob-1795650538241-qnf790-d2662b3e.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655383234-rjvjmi-3ad554a9.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_baby": {
-    "file": "mcp-remote-devices-blob-1795650548605-74k9qj-07324464.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "copyRow": [
-      1,
-      0
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656496503-nx038v-ad785f99.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_child": {
-    "file": "mcp-remote-devices-blob-1795650550576-8amanc-35e7eff0.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656519025-1yo3e8-bce8cf53.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_teen": {
-    "file": "mcp-remote-devices-blob-1795650552964-ks0vkh-f4b88c81.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656549978-7drbrv-cc01b920.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_adultNaughty": {
-    "file": "mcp-remote-devices-blob-1795650555470-it2q4r-eaef114f.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656889784-qiudfa-a7996a51.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_elder": {
-    "file": "mcp-remote-devices-blob-1795650557270-6chc80-3b9916ff.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656919598-kznut9-1d422dbb.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "blob_adultNormal": {
-    "file": "mcp-remote-devices-blob-1795650559751-1xpn7n-8b8f05b3.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656784736-2tqb6t-12b22075.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_baby": {
-    "file": "mcp-remote-devices-blob-1795650571512-9lam2b-9c8f5cc6.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655542740-p9ocg9-d8c1f364.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_child": {
-    "file": "mcp-remote-devices-blob-1795650573539-xff8mg-7f97d629.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655546920-r7cffo-11954bc9.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_teen": {
-    "file": "mcp-remote-devices-blob-1795650576247-dg6q21-56cb925c.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655551382-xeiu5z-5aee2a6c.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_adultNaughty": {
-    "file": "mcp-remote-devices-blob-1795650578338-7zzhz1-a833e791.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656034461-5joa10-8857fc4b.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_elder": {
-    "file": "mcp-remote-devices-blob-1795650581277-c4g1ud-d457b584.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795656030223-pkh702-3c460327.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "dog_adultNormal": {
-    "file": "mcp-remote-devices-blob-1795650583805-nhssgg-be6f6566.png",
-    "rows": 3,
-    "cols": 9,
-    "names": [
-      "idle",
-      "sleep",
-      "eat"
-    ],
-    "extra": {
-      "file": "mcp-remote-devices-blob-1795655556086-q244hs-bd00c168.png",
-      "names": [
-        "idle_smooth",
-        "catch",
-        "walk",
-        "eat_side",
-        "lie_wag",
-        "sleep_twitch"
-      ]
-    }
-  },
-  "props_egg": {
-    "file": "mcp-remote-devices-blob-1795650589336-tcz7m1-4ef7e823.png",
-    "rows": 1,
-    "cols": 11,
-    "names": [
-      "wobble9_cracked_grave"
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad"
     ]
+   }
+  ]
+ },
+ "blob_adultGood": {
+  "file": "mcp-remote-devices-blob-1795650508187-bvb6fp-1852b5a6.png",
+  "rows": 6,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat",
+   "sick",
+   "hungry",
+   "tired"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656061288-8jsq8q-28283f62.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
   },
-  "butterfly": {
-    "file": "mcp-remote-devices-blob-1795650590433-fzc95a-6d6397d5.png",
-    "rows": 1,
-    "cols": 5,
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671148481-fxpi6j-d2f67ec2.png",
     "names": [
-      "flap"
-    ],
-    "cell": 32
-  }
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad"
+    ]
+   }
+  ]
+ },
+ "dog_adultGood": {
+  "file": "mcp-remote-devices-blob-1795650512042-5y1u8g-92a576de.png",
+  "rows": 6,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat",
+   "sick",
+   "hungry",
+   "tired"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656057637-j6w3sd-557ab809.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671099388-condaa-15ca5107.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad"
+    ]
+   }
+  ]
+ },
+ "cat_baby": {
+  "file": "mcp-remote-devices-blob-1795650526373-3zzlhe-9601ee33.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655368743-ffo00a-1a192fa4.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671094557-afi80e-5edc6507.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad"
+    ]
+   }
+  ]
+ },
+ "cat_child": {
+  "file": "mcp-remote-devices-blob-1795650529240-1zpfxa-7182b6ed.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655370643-1btzwc-6818e966.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671091551-k42aw3-0fb8731a.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "cat_teen": {
+  "file": "mcp-remote-devices-blob-1795650531658-qd41bq-b7ccc4a6.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655372531-3vyz1s-6409bfd9.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671088810-nqcorc-78bde6f3.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "cat_adultNaughty": {
+  "file": "mcp-remote-devices-blob-1795650534081-3vati9-fe18f68e.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655385354-m0yq74-3b1a8153.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671082230-xym81y-cf783f62.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "cat_elder": {
+  "file": "mcp-remote-devices-blob-1795650536058-f2jua3-837c5f80.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655387345-w4sibz-a85bcb7c.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671064953-098mi9-9c247b8a.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "cat_adultNormal": {
+  "file": "mcp-remote-devices-blob-1795650538241-qnf790-d2662b3e.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655383234-rjvjmi-3ad554a9.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671086058-kks03v-3df245e4.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_baby": {
+  "file": "mcp-remote-devices-blob-1795650548605-74k9qj-07324464.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "copyRow": [
+   1,
+   0
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656496503-nx038v-ad785f99.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671152176-vqp10o-7533da9a.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_child": {
+  "file": "mcp-remote-devices-blob-1795650550576-8amanc-35e7eff0.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656519025-1yo3e8-bce8cf53.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671154971-k0pc6h-60a0d745.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_teen": {
+  "file": "mcp-remote-devices-blob-1795650552964-ks0vkh-f4b88c81.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656549978-7drbrv-cc01b920.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671158261-4fp90m-e5c07ae1.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_adultNaughty": {
+  "file": "mcp-remote-devices-blob-1795650555470-it2q4r-eaef114f.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656889784-qiudfa-a7996a51.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671163518-0vsjrw-df980677.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_elder": {
+  "file": "mcp-remote-devices-blob-1795650557270-6chc80-3b9916ff.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656919598-kznut9-1d422dbb.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671165856-kaun5s-d3ba2b26.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "blob_adultNormal": {
+  "file": "mcp-remote-devices-blob-1795650559751-1xpn7n-8b8f05b3.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656784736-2tqb6t-12b22075.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671160979-0yjth5-920315dc.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_baby": {
+  "file": "mcp-remote-devices-blob-1795650571512-9lam2b-9c8f5cc6.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655542740-p9ocg9-d8c1f364.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671127674-7z8767-c4bfd46a.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_child": {
+  "file": "mcp-remote-devices-blob-1795650573539-xff8mg-7f97d629.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655546920-r7cffo-11954bc9.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671124641-j6bkbd-1afa42bd.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_teen": {
+  "file": "mcp-remote-devices-blob-1795650576247-dg6q21-56cb925c.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655551382-xeiu5z-5aee2a6c.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671122057-ndwzfg-d5b62709.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_adultNaughty": {
+  "file": "mcp-remote-devices-blob-1795650578338-7zzhz1-a833e791.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656034461-5joa10-8857fc4b.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671118599-nzxzyt-81b603db.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_elder": {
+  "file": "mcp-remote-devices-blob-1795650581277-c4g1ud-d457b584.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795656030223-pkh702-3c460327.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671115712-ejkr7c-33646fb0.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "dog_adultNormal": {
+  "file": "mcp-remote-devices-blob-1795650583805-nhssgg-be6f6566.png",
+  "rows": 3,
+  "cols": 9,
+  "names": [
+   "idle",
+   "sleep",
+   "eat"
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655556086-q244hs-bd00c168.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  },
+  "extras": [
+   {
+    "file": "mcp-remote-devices-blob-1795671130296-wbubfg-4dd69dce.png",
+    "names": [
+     "idle_calm",
+     "walk_calm",
+     "lie_calm",
+     "lie_sad",
+     "roll"
+    ]
+   }
+  ]
+ },
+ "props_egg": {
+  "file": "mcp-remote-devices-blob-1795650589336-tcz7m1-4ef7e823.png",
+  "rows": 1,
+  "cols": 11,
+  "names": [
+   "wobble9_cracked_grave"
+  ]
+ },
+ "butterfly": {
+  "file": "mcp-remote-devices-blob-1795650590433-fzc95a-6d6397d5.png",
+  "rows": 1,
+  "cols": 5,
+  "names": [
+   "flap"
+  ],
+  "cell": 32
+ }
 }
