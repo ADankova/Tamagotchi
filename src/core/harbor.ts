@@ -4,7 +4,7 @@ import { nextRandom } from './rng';
 // вида, а если такого корабля нет — ждёт на пристани. На корабль нужно собрать трёх одинаковых.
 
 /** Видов питомцев в партии. */
-export const HARBOR_KINDS = 7;
+export const HARBOR_KINDS = 8;
 /** Сколько троек каждого вида нужно собрать. */
 export const HARBOR_TRIPLES = 3;
 export const HARBOR_SHIPS = 3;
@@ -12,7 +12,7 @@ export const HARBOR_PIER = 5;
 export const HARBOR_NEED = 3;
 /** Поле: ширина 1, высота HARBOR_H. Острова — круги, радиус зависит от числа питомцев на острове. */
 export const HARBOR_H = 1.25;
-export const HARBOR_RADIUS = [0.1, 0.14, 0.17, 0.195] as const;
+export const HARBOR_RADIUS = [0.11, 0.15, 0.18, 0.205] as const;
 /** На сколько остров поднимается за один шаг воды. */
 export const HARBOR_RISE = 0.06;
 const GAP = 0.002;
@@ -25,8 +25,6 @@ export type HarborBonus = 'net' | 'clear' | 'shuffle';
 export const HARBOR_BONUSES: readonly HarborBonus[] = ['net', 'clear', 'shuffle'];
 /** Шанс острова нести бонус, в процентах. */
 export const HARBOR_BONUS_CHANCE = 14;
-/** Мест в общем блоке рядом с пристанью (куда «Удаление» складывает питомцев). */
-export const HARBOR_STASH = 5;
 
 export interface HarborPet {
   id: number;
@@ -276,12 +274,11 @@ export function useNet(state: HarborState): NetCatch | null {
   return { state: next, islandId: island.id, petId: pet.id };
 }
 
-/** «Удаление»: питомцы с пристани уходят в общий блок рядом. null — нечего убирать или блок полон. */
+/** «Удаление»: питомцы с пристани уходят в общий блок рядом (там они лежат кучкой). null — нечего убирать. */
 export function useClear(state: HarborState): HarborState | null {
   if (state.won || state.stuck || state.bonuses.clear <= 0) return null;
-  const room = HARBOR_STASH - state.stash.length;
-  if (state.pier.length === 0 || room <= 0) return null;
-  const moved = state.pier.slice(0, room);
+  if (state.pier.length === 0) return null;
+  const moved = state.pier.slice();
   return settle({
     ...state,
     pier: state.pier.slice(moved.length),
@@ -313,50 +310,50 @@ export function useShuffle(state: HarborState): HarborState | null {
 
 /** Вода движется: острова поднимаются, снизу всплывает новый. Возвращает то же состояние, если ничего не изменилось. */
 function moveWater(state: HarborState): HarborState {
-  const order = state.field.slice().sort((a, b) => a.y - b.y);
   let field = state.field.slice();
   let moved = false;
-  for (const island of order) {
-    const cur = field.find((i) => i.id === island.id)!;
-    const r = islandRadius(cur);
-    // Сначала вверх, потом вверх-вбок (скатывается с соседа), в конце — вбок к стенке, чтобы не оставалось щелей.
-    const tries: Array<[number, number]> = [
-      [0, HARBOR_RISE],
-      [-0.03, HARBOR_RISE * 0.8],
-      [0.03, HARBOR_RISE * 0.8],
-      [-0.06, HARBOR_RISE * 0.6],
-      [0.06, HARBOR_RISE * 0.6],
-      [-0.1, HARBOR_RISE * 0.4],
-      [0.1, HARBOR_RISE * 0.4],
-      [-0.16, HARBOR_RISE * 0.25],
-      [0.16, HARBOR_RISE * 0.25],
-    ];
-    let done = false;
-    for (const [dx, dy] of tries) {
-      const nx = cur.x + dx;
-      const ny = cur.y - dy;
-      if (fits(field, nx, ny, r, cur.id)) {
-        field = field.map((i) => (i.id === cur.id ? { ...i, x: nx, y: ny } : i));
-        moved = true;
-        done = true;
-        break;
+  const SUB = 3;
+  const step = HARBOR_RISE / SUB;
+  // Углы от вертикали, в градусах: сначала строго вверх, потом скатывание вбок.
+  const ANGLES = [0, 15, 30, 45, 60, 75, 88];
+  for (let sub = 0; sub < SUB; sub++) {
+    const order = field.slice().sort((a, b) => a.y - b.y);
+    for (const island of order) {
+      const cur = field.find((i) => i.id === island.id)!;
+      const r = islandRadius(cur);
+      let done = false;
+      // Вверх, а если мешает сосед — вверх-вбок: остров скатывается по соседу в свободную щель.
+      for (const angle of ANGLES) {
+        const sides = angle === 0 ? [0] : cur.id % 2 === 0 ? [-1, 1] : [1, -1];
+        for (const side of sides) {
+          const rad = (angle * Math.PI) / 180;
+          const nx = cur.x + side * Math.sin(rad) * step * 1.6;
+          const ny = cur.y - Math.cos(rad) * step * 1.6;
+          if (ny < cur.y - 1e-6 && fits(field, nx, ny, r, cur.id)) {
+            field = field.map((i) => (i.id === cur.id ? { ...i, x: nx, y: ny } : i));
+            moved = true;
+            done = true;
+            break;
+          }
+        }
+        if (done) break;
       }
-    }
-    if (!done) {
-      // Подняться нельзя: прижимаемся вбок к ближайшему препятствию (стенке или соседу), чтобы не оставалось щелей.
-      const room = (dir: number): number => {
-        let d = 0;
-        while (d < 0.3 && fits(field, cur.x + dir * (d + 0.005), cur.y, r, cur.id)) d += 0.005;
-        return d;
-      };
-      const left = room(-1);
-      const right = room(1);
-      const dir = left <= right ? -1 : 1;
-      const gap = Math.min(left, right);
-      if (gap >= 0.005) {
-        const step = Math.min(gap, 0.04);
-        field = field.map((i) => (i.id === cur.id ? { ...i, x: cur.x + dir * step } : i));
-        moved = true;
+      if (!done) {
+        // Подняться нельзя: прижимаемся вбок к ближайшему препятствию (стенке или соседу), чтобы не оставалось щелей.
+        const room = (dir: number): number => {
+          let d = 0;
+          while (d < 0.3 && fits(field, cur.x + dir * (d + 0.005), cur.y, r, cur.id)) d += 0.005;
+          return d;
+        };
+        const left = room(-1);
+        const right = room(1);
+        const dir = left <= right ? -1 : 1;
+        const gap = Math.min(left, right);
+        if (gap >= 0.005) {
+          const slide = Math.min(gap, 0.03);
+          field = field.map((i) => (i.id === cur.id ? { ...i, x: cur.x + dir * slide } : i));
+          moved = true;
+        }
       }
     }
   }
@@ -387,8 +384,8 @@ export function advanceHarbor(state: HarborState): HarborState {
   if (state.won || state.stuck) return state;
   const next = moveWater(state);
   if (next !== state) return settle(next);
-  // Спасти может «Обновление» или «Удаление» (если в общем блоке есть место).
-  const rescue = state.bonuses.shuffle > 0 || (state.bonuses.clear > 0 && state.stash.length < HARBOR_STASH);
+  // Спасти может «Обновление» или «Удаление».
+  const rescue = state.bonuses.shuffle > 0 || state.bonuses.clear > 0;
   const lost = state.pier.length >= HARBOR_PIER && !hasMatchOnField(state) && !rescue;
   return lost ? { ...state, stuck: true } : state;
 }

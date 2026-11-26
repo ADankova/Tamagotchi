@@ -14,7 +14,6 @@ import {
   useClear,
   useNet,
   useShuffle,
-  HARBOR_STASH,
   type HarborState,
 } from '../src/core/harbor';
 
@@ -262,7 +261,6 @@ describe('бухта питомцев', () => {
     expect(next !== null).toBe(true);
     expect(next!.pier.length).toBe(0);
     expect(next!.stash.length).toBe(waiting);
-    expect(next!.stash.length <= HARBOR_STASH).toBe(true);
     expect(next!.bonuses.clear).toBe(0);
   });
 
