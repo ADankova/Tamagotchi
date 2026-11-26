@@ -2559,3 +2559,7 @@ button.m-jar:active {
 .m-jar.spent {
   opacity: 0.8;
 }
+
+.m-links {
+  transition: opacity 0.12s;
+}

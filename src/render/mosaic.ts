@@ -137,6 +137,34 @@ export class MosaicGame implements GameScreen {
   }
 
   private renderJars(): void {
+    // Запоминаем, где баночки стояли, чтобы после перерисовки плавно довести их до новых мест.
+    const before = new Map<string, DOMRect>();
+    this.root.querySelectorAll<HTMLElement>('.m-jar[data-jar]').forEach((n) => before.set(n.dataset.jar!, n.getBoundingClientRect()));
+    this.paintJars();
+    if (before.size === 0 || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let moving = false;
+    this.root.querySelectorAll<HTMLElement>('.m-jar[data-jar]').forEach((node) => {
+      const old = before.get(node.dataset.jar!);
+      const now = node.getBoundingClientRect();
+      if (old) {
+        const dx = old.left - now.left;
+        const dy = old.top - now.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        moving = true;
+        node.animate([{ transform: `translate(${dx}px, ${dy}px)`, zIndex: 3 }, { transform: 'translate(0, 0)', zIndex: 3 }], { duration: 340, easing: 'cubic-bezier(0.3, 0.7, 0.3, 1)' });
+      } else if (node.closest('.m-queue')) {
+        // Баночка, которая только что показалась в очереди, выезжает снизу.
+        moving = true;
+        node.animate([{ transform: `translateY(${now.height * 0.6}px)`, opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 340, easing: 'ease-out' });
+      }
+    });
+    if (moving) {
+      this.links.style.opacity = '0';
+      window.setTimeout(() => (this.links.style.opacity = ''), 340);
+    }
+  }
+
+  private paintJars(): void {
     this.slotRow.replaceChildren(
       ...this.state.slots.map((jar) => {
         const slot = el('div', { class: jar ? 'm-slot full' : 'm-slot' });
