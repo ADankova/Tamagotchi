@@ -59,4 +59,21 @@ describe('мозаика', () => {
     expect(list.length).toBeGreaterThan(0);
     expect(Math.floor(list[0]! / s.w)).toBeGreaterThanOrEqual(Math.floor(list[list.length - 1]! / s.w));
   });
+
+  it('картинок с питомцами много, они крупнее сердечка, и каждую можно собрать', () => {
+    const names = Object.keys(MOSAIC_PICTURES);
+    expect(names.length >= 21).toBe(true);
+    for (const name of names) {
+      const rows = MOSAIC_PICTURES[name as keyof typeof MOSAIC_PICTURES];
+      expect(rows.every((r) => r.length === rows[0]!.length)).toBe(true);
+      expect([...rows.join('')].every((ch) => ch === '.' || (MOSAIC_COLORS as readonly string[]).includes(ch))).toBe(true);
+      const s = newMosaic(11, name as keyof typeof MOSAIC_PICTURES);
+      expect(s.left).toBe(rows.join('').replace(/\./g, '').length);
+      MOSAIC_COLORS.forEach((_, color) => {
+        const jars = s.columns.flat().filter((j) => j.color === color).reduce((a, j) => a + j.n, 0);
+        expect(jars).toBe(s.cells.filter((c) => c === color).length);
+      });
+    }
+    expect(Math.max(...names.map((n) => MOSAIC_PICTURES[n as keyof typeof MOSAIC_PICTURES][0]!.length)) >= 14).toBe(true);
+  });
 });

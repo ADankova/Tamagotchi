@@ -12,7 +12,7 @@ import {
 import { randomSeed } from '../core/rng';
 import type { LevelStats } from '../core/stats';
 import { SLIDE_MODES, type SlideMode } from '../core/slide';
-import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
+import { MOSAIC_COLOR_HEX, MOSAIC_COLORS, MOSAIC_PICTURE_NAMES, MOSAIC_PICTURES, type MosaicPicture } from '../core/mosaic';
 import { MosaicGame } from './mosaic';
 import { HarborGame } from './harbor';
 import { SlideGame } from './slide';
@@ -128,15 +128,16 @@ export class GamesOverlay {
     const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, slideButtons);
     const mosaicButtons = MOSAIC_PICTURE_NAMES.map((picture) => {
       const st = this.host.mosaicStats(picture);
-      const button = el('button', { type: 'button', class: 'chunky level-button' }, [
+      const button = el('button', { type: 'button', class: 'chunky level-button mosaic-pick' }, [
+        mosaicThumb(picture),
         el('span', { class: 'level-name', text: GAMES_TEXT.mosaicPicture[picture] ?? picture }),
-        el('span', { class: 'level-info', text: GAMES_TEXT.mosaicInfo(MOSAIC_REWARD) }),
         el('span', { class: 'level-stats', text: GAMES_TEXT.mosaicStats(st.played, st.won) }),
       ]);
       button.addEventListener('click', () => this.startMosaic(picture));
       return button;
     });
     const mosaicCard = this.gameCard('mosaic', GAMES_TEXT.mosaicTitle, GAMES_TEXT.mosaicAbout, mosaicButtons);
+    mosaicCard.querySelector('.level-buttons')?.classList.add('mosaic-grid');
     const harborStats = this.host.harborStats();
     const harborButton = el('button', { type: 'button', class: 'chunky level-button' }, [
       el('span', { class: 'level-name', text: GAMES_TEXT.harborLevel }),
@@ -512,4 +513,26 @@ class QueensGame implements GameScreen {
     this.root.append(card);
     primary.focus();
   }
+}
+
+/** Маленькая картинка мозаики для кнопки выбора. */
+function mosaicThumb(picture: MosaicPicture): HTMLElement {
+  const rows = MOSAIC_PICTURES[picture];
+  const canvas = document.createElement('canvas');
+  canvas.className = 'mosaic-thumb';
+  canvas.width = rows[0]!.length;
+  canvas.height = rows.length;
+  canvas.setAttribute('aria-hidden', 'true');
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    rows.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        const at = MOSAIC_COLORS.indexOf(ch as (typeof MOSAIC_COLORS)[number]);
+        if (at < 0) return;
+        ctx.fillStyle = MOSAIC_COLOR_HEX[at]!;
+        ctx.fillRect(x, y, 1, 1);
+      }),
+    );
+  }
+  return canvas;
 }

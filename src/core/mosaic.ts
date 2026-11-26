@@ -1,4 +1,5 @@
 import { nextRandom } from './rng';
+import { PET_PICTURES } from './mosaicPictures';
 
 // «Мозаика»: картинка из цветных кубиков. Снизу — баночки с числами; нажатая баночка встаёт в
 // свободную ячейку, и питомцы уносят из картинки столько кубиков её цвета, сколько написано.
@@ -21,13 +22,17 @@ export const MOSAIC_PICTURES = {
     'BBBRPPRBBB',
     'BBBBRRBBBB',
   ],
+  // Питомцы: картинки сделаны из их спрайтов (scripts/mosaic-from-pets.py).
+  ...PET_PICTURES,
 } as const;
 
 export type MosaicPicture = keyof typeof MOSAIC_PICTURES;
 export const MOSAIC_PICTURE_NAMES = Object.keys(MOSAIC_PICTURES) as MosaicPicture[];
 
 /** Цвета кубиков: буква картинки → индекс цвета. */
-export const MOSAIC_COLORS = ['B', 'R', 'P', 'W'] as const;
+export const MOSAIC_COLORS = ['B', 'R', 'P', 'W', 'O', 'T', 'K', 'Y'] as const;
+/** Цвет кубика и баночки на экране, в том же порядке. */
+export const MOSAIC_COLOR_HEX = ['#5aaef0', '#e8505b', '#ffa6c9', '#fff6e6', '#f5a35c', '#a8724a', '#4a3a33', '#ffd75e'] as const;
 
 export interface Jar {
   id: number;

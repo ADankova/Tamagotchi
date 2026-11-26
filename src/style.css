@@ -1951,7 +1951,7 @@ body.overlay-open {
   display: grid;
   gap: 1px;
   padding: 6px;
-  background: #fff;
+  background: #dfe9f1;
   border: 3px solid var(--ink);
   border-radius: 14px;
   box-sizing: border-box;
@@ -2495,4 +2495,33 @@ button.m-jar:active {
 .h-treat-chip .q-chip-pet {
   width: 20px;
   height: 20px;
+}
+
+/* Выбор картинки мозаики: сетка из двух колонок с превью */
+.level-buttons.mosaic-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mosaic-pick {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding: 8px 6px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  text-align: center;
+  --btn: var(--sky);
+}
+.mosaic-pick:nth-child(2),
+.mosaic-pick:nth-child(3) {
+  --btn: var(--sky);
+}
+.mosaic-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.mosaic-pick .level-stats {
+  flex-basis: auto;
+  text-align: center;
 }

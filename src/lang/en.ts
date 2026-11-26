@@ -1,3 +1,4 @@
+import { PET_PICTURE_NAMES } from '../core/mosaicPictures';
 import { DAY, HOUR, MINUTE } from '../core/config';
 import type { Dict } from './ru';
 
@@ -140,7 +141,7 @@ export const en: Dict = {
     mosaicTitle: 'Pet Thieves',
     mosaicAbout:
       'A picture made of coloured cubes. Tap a jar: it moves into a slot and your pet starts carrying cubes of its colour to the burrow, as many as the number says. Only exposed cubes can be carried: at the edge or next to an empty spot. Clear the whole picture before the slots fill up with jars that have nothing to carry.',
-    mosaicPicture: { heart: 'Heart' } as Record<string, string>,
+    mosaicPicture: { heart: 'Heart', ...Object.fromEntries(Object.entries(PET_PICTURE_NAMES).map(([k, v]) => [k, v.en])) } as Record<string, string>,
     mosaicInfo: (reward: number) => `Small picture · +${reward} ${plural(reward, 'treat', 'treats')}`,
     mosaicStats: (played: number, won: number) => `Played: ${played} · Won: ${won}`,
     mosaicLeft: (n: number) => `Cubes: ${n}`,

@@ -1,5 +1,6 @@
 import { randomSeed } from '../core/rng';
 import {
+  MOSAIC_COLOR_HEX,
   MOSAIC_REWARD,
   newMosaic,
   stepMosaic,
@@ -18,8 +19,7 @@ import type { GameScreen, MiniGameHost } from './minigames';
 const STEP_MS = 340;
 /** Скорость бега питомца, пикселей в миллисекунду. */
 const RUN_PX_PER_MS = 0.32;
-/** Цвета кубиков и баночек: тот же порядок, что в MOSAIC_COLORS (B, R, P, W). */
-const COLOR_CSS = ['#5aaef0', '#e8505b', '#ffa6c9', '#fff6e6'] as const;
+const COLOR_CSS = MOSAIC_COLOR_HEX;
 const VISIBLE_IN_QUEUE = 3;
 
 interface MosaicCallbacks {
@@ -56,6 +56,7 @@ export class MosaicGame implements GameScreen {
     this.state.cells.forEach((color) => {
       const cube = el('div', { class: 'm-cube' });
       cube.style.background = COLOR_CSS[color] ?? '#ccc';
+      if (color < 0) cube.classList.add('gone');
       this.cubes.push(cube);
       this.board.append(cube);
     });
