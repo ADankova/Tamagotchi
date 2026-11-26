@@ -2657,3 +2657,119 @@ button.m-jar:active {
   border: 2px solid var(--ink);
   border-radius: 50%;
 }
+
+/* Три в ряд */
+.m3-game {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.m3-bar {
+  height: 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #3b2a1e 14%, #fff6e4);
+  overflow: hidden;
+}
+.m3-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ffd25e, #ff9fc8);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+.m3-board {
+  position: relative;
+  width: 100%;
+  max-height: 62vh;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, #3b2a1e 10%, #fff6e4);
+  overflow: hidden;
+}
+.m3-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / 7);
+  height: calc(100% / 8);
+  padding: 2px;
+  box-sizing: border-box;
+  transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.4, 1), opacity 0.26s ease;
+  pointer-events: none;
+}
+.m3-face {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 30%;
+  background: color-mix(in srgb, var(--tile, #ccc) 30%, #fff);
+  border: 3px solid var(--tile, #ccc);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.m3-face-img {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  image-rendering: pixelated;
+}
+.m3-tile.selected .m3-face {
+  box-shadow: 0 0 0 3px #3b2a1e, 0 0 10px 2px #fff6e4;
+  transform: scale(1.06);
+}
+.m3-tile.pop {
+  opacity: 0;
+  z-index: 3;
+}
+.m3-tile.pop .m3-face {
+  transform: scale(1.5);
+  transition: transform 0.26s ease;
+}
+.m3-tile.special .m3-face {
+  box-shadow: 0 0 0 2px #fff6e4, 0 0 8px 1px var(--tile, #ffd25e);
+  animation: m3-glow 1.2s ease-in-out infinite alternate;
+}
+.m3-tile.rainbow .m3-face {
+  background: conic-gradient(#ff6b6b, #ffd25e, #7bc67e, #5aaef0, #a98af0, #ff6b6b);
+  border-color: #fff6e4;
+}
+.m3-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 52%;
+  height: 52%;
+  display: block;
+}
+.m3-badge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.m3-badge.rainbow {
+  inset: 12%;
+  width: auto;
+  height: auto;
+}
+.m3-tile.shake .m3-face {
+  animation: m3-shake 0.3s;
+}
+.m3-note {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+@keyframes m3-glow {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.12); }
+}
+@keyframes m3-shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}

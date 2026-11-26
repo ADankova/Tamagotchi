@@ -260,7 +260,8 @@ function isGameStats(v: unknown): v is GameStats {
   if (v.slide !== undefined && !isRecord(v.slide)) return false;
   if (v.mosaic !== undefined && !isRecord(v.mosaic)) return false;
   if (v.harbor !== undefined && !isRecord(v.harbor)) return false;
-  const levels = [...Object.values(v.queens), ...Object.values(isRecord(v.slide) ? v.slide : {}), ...Object.values(isRecord(v.mosaic) ? v.mosaic : {}), ...Object.values(isRecord(v.harbor) ? v.harbor : {})];
+  if (v.match3 !== undefined && !isRecord(v.match3)) return false;
+  const levels = [...Object.values(v.queens), ...Object.values(isRecord(v.slide) ? v.slide : {}), ...Object.values(isRecord(v.mosaic) ? v.mosaic : {}), ...Object.values(isRecord(v.harbor) ? v.harbor : {}), ...Object.values(isRecord(v.match3) ? v.match3 : {})];
   return levels.every(
     (l) =>
       isRecord(l) &&
