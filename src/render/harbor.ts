@@ -338,8 +338,10 @@ export class HarborGame implements GameScreen {
     if (this.finished) return;
     const next = advanceHarbor(this.state);
     if (next === this.state) return;
+    const shipsChanged = JSON.stringify(next.ships) !== JSON.stringify(this.state.ships);
     this.state = next;
-    this.renderShips();
+    // Корабли перерисовываем только когда они поменялись: иначе новый корабль появился бы до ухода старого.
+    if (shipsChanged) this.renderShips();
     this.renderField();
     this.checkEnd();
   }

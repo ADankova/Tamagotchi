@@ -12,10 +12,10 @@ export const HARBOR_PIER = 5;
 export const HARBOR_NEED = 3;
 /** Поле: ширина 1, высота HARBOR_H. Острова — круги, радиус зависит от числа питомцев на острове. */
 export const HARBOR_H = 1.25;
-export const HARBOR_RADIUS = [0.1, 0.145, 0.175, 0.2] as const;
+export const HARBOR_RADIUS = [0.115, 0.16, 0.19, 0.215] as const;
 /** На сколько остров поднимается за один шаг воды. */
 export const HARBOR_RISE = 0.06;
-const GAP = 0.012;
+const GAP = 0.002;
 /** Награда за победу, лакомств. */
 export const HARBOR_REWARD = 3;
 /** Шансы острова на 1, 2, 3 и 4 питомцев, в процентах. */
@@ -216,20 +216,42 @@ function moveWater(state: HarborState): HarborState {
   for (const island of order) {
     const cur = field.find((i) => i.id === island.id)!;
     const r = islandRadius(cur);
+    // Сначала вверх, потом вверх-вбок (скатывается с соседа), в конце — вбок к стенке, чтобы не оставалось щелей.
     const tries: Array<[number, number]> = [
       [0, HARBOR_RISE],
-      [-0.035, HARBOR_RISE * 0.7],
-      [0.035, HARBOR_RISE * 0.7],
-      [-0.07, HARBOR_RISE * 0.4],
-      [0.07, HARBOR_RISE * 0.4],
+      [-0.03, HARBOR_RISE * 0.8],
+      [0.03, HARBOR_RISE * 0.8],
+      [-0.06, HARBOR_RISE * 0.6],
+      [0.06, HARBOR_RISE * 0.6],
+      [-0.1, HARBOR_RISE * 0.4],
+      [0.1, HARBOR_RISE * 0.4],
     ];
+    let done = false;
     for (const [dx, dy] of tries) {
       const nx = cur.x + dx;
       const ny = cur.y - dy;
       if (fits(field, nx, ny, r, cur.id)) {
         field = field.map((i) => (i.id === cur.id ? { ...i, x: nx, y: ny } : i));
         moved = true;
+        done = true;
         break;
+      }
+    }
+    if (!done) {
+      // Подняться нельзя: прижимаемся вбок к ближайшему препятствию (стенке или соседу), чтобы не оставалось щелей.
+      const room = (dir: number): number => {
+        let d = 0;
+        while (d < 0.3 && fits(field, cur.x + dir * (d + 0.005), cur.y, r, cur.id)) d += 0.005;
+        return d;
+      };
+      const left = room(-1);
+      const right = room(1);
+      const dir = left <= right ? -1 : 1;
+      const gap = Math.min(left, right);
+      if (gap >= 0.005) {
+        const step = Math.min(gap, 0.04);
+        field = field.map((i) => (i.id === cur.id ? { ...i, x: cur.x + dir * step } : i));
+        moved = true;
       }
     }
   }
