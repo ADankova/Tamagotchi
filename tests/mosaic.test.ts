@@ -122,4 +122,16 @@ describe('мозаика', () => {
     expect(exposedCells(s, 3, 0)[0]).toBe(0);
     expect(exposedCells(s, 3, 3)[0]).toBe(7);
   });
+
+  it('освободившаяся ячейка слева: баночки справа сдвигаются влево', () => {
+    const s = newMosaic(5);
+    const cells = Array.from({ length: s.w * s.h }, () => -1);
+    cells[0] = 3;
+    const a = { id: 1, color: 3, n: 1 };
+    const b = { id: 2, color: 3, n: 4 };
+    const c = { id: 3, color: 3, n: 4 };
+    const state = { ...s, cells, left: 1, columns: [[], [], [], []], slots: [a, b, c, null, null] };
+    const next = stepMosaic(state).state;
+    expect(next.slots.map((j) => j?.id ?? 0)).toEqual([2, 3, 0, 0, 0]);
+  });
 });
