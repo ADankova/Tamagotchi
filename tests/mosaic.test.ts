@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exposedCells, isExposed, pickCell, MOSAIC_COLORS, MOSAIC_PICTURES, newMosaic, stepMosaic, tapJar } from '../src/core/mosaic';
+import { exposedCells, isExposed, pickCell, MOSAIC_COLORS, MOSAIC_PICTURES, newMosaic, stepMosaic, tapJar, canTapJar, pairOnTop } from '../src/core/mosaic';
 
 describe('мозаика', () => {
   it('числа на баночках каждого цвета в сумме равны числу кубиков', () => {
@@ -104,13 +104,29 @@ describe('мозаика', () => {
   it('партию можно выиграть, беря баночки подряд', () => {
     let s = newMosaic(11);
     for (let i = 0; i < 2000 && !s.won && !s.stuck; i++) {
-      const col = s.columns.findIndex((c) => c.length > 0);
-      if (col >= 0 && s.slots.includes(null)) s = tapJar(s, col) ?? s;
+      const col = s.columns.findIndex((_, i) => canTapJar(s, i));
+      if (col >= 0) s = tapJar(s, col) ?? s;
       const step = stepMosaic(s);
       s = step.carries.reduce((st, c) => pickCell(st, c.cell), step.state);
     }
     expect(s.won || s.stuck).toBe(true);
     if (s.won) expect(s.left).toBe(0);
+  });
+
+  it('связанную баночку можно взять, только когда обе сверху', () => {
+    let blocked = 0;
+    for (let seed = 1; seed < 40; seed++) {
+      const s = newMosaic(seed);
+      s.columns.forEach((c, i) => {
+        const jar = c[0];
+        if (!jar || jar.pair === undefined) return;
+        if (!pairOnTop(s, i)) {
+          blocked++;
+          expect(tapJar(s, i)).toBe(null);
+        } else expect(canTapJar(s, i)).toBe(true);
+      });
+    }
+    expect(blocked > 0).toBe(true);
   });
 
   it('exposedCells ближе к норке идут раньше', () => {

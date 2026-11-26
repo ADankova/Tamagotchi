@@ -103,6 +103,29 @@ function linkJars(columns: Jar[][], rand: () => number): void {
       other.pair = jar.id;
     }
   }
+  breakDeadlocks(columns);
+}
+
+/** Пара берётся, только когда обе баночки сверху; если пары ждут друг друга по кругу, лишние связи разрываются. */
+function breakDeadlocks(columns: Jar[][]): void {
+  const left = columns.map((c) => c.slice());
+  for (;;) {
+    const tops = left.map((c) => c[0]);
+    const free = tops.findIndex((j) => j && (j.pair === undefined || tops.some((t) => t?.id === j.pair) || left.some((c) => c[1]?.id === j.pair && c[0]?.id === j.id)));
+    if (free >= 0) {
+      const jar = left[free]![0]!;
+      const taken = new Set<number>([jar.id]);
+      if (jar.pair !== undefined) taken.add(jar.pair);
+      left.forEach((c, i) => (left[i] = c.filter((j) => !taken.has(j.id))));
+      continue;
+    }
+    const stuck = tops.find((j): j is Jar => !!j);
+    if (!stuck) return;
+    const mate = columns.flat().find((j) => j.id === stuck.pair);
+    stuck.pair = undefined;
+    if (mate) mate.pair = undefined;
+    left.forEach((c) => c.forEach((j) => { if (j.id === stuck.id) j.pair = undefined; if (mate && j.id === mate.id) j.pair = undefined; }));
+  }
 }
 
 /** Новая партия: числа на баночках каждого цвета в сумме равны числу кубиков этого цвета. */
@@ -217,14 +240,21 @@ function freeSlotsFor(state: MosaicState, count: number): number[] | null {
 /** Можно ли сейчас взять баночку из очереди col. */
 export function canTapJar(state: MosaicState, col: number): boolean {
   const jar = state.columns[col]?.[0];
-  return !!jar && freeSlotsFor(state, jar.pair === undefined ? 1 : 2) !== null;
+  return !!jar && pairOnTop(state, col) && freeSlotsFor(state, jar.pair === undefined ? 1 : 2) !== null;
+}
+
+/** Связанную баночку можно взять, только когда и её пара лежит самой верхней в своём столбце (или сразу под ней в том же). */
+export function pairOnTop(state: MosaicState, col: number): boolean {
+  const jar = state.columns[col]?.[0];
+  if (!jar || jar.pair === undefined) return true;
+  return state.columns.some((c, i) => c[0]?.id === jar.pair || (i === col && c[1]?.id === jar.pair));
 }
 
 /** Тап по баночке в очереди col: она встаёт в свободную ячейку (связанная — вместе с парой). null — нельзя. */
 export function tapJar(state: MosaicState, col: number): MosaicState | null {
   if (state.won || state.stuck) return null;
   const jar = state.columns[col]?.[0];
-  if (!jar) return null;
+  if (!jar || !pairOnTop(state, col)) return null;
   const places = freeSlotsFor(state, jar.pair === undefined ? 1 : 2);
   if (!places) return null;
   const taken = new Set<number>([jar.id]);
