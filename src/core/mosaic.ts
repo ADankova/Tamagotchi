@@ -4,14 +4,22 @@ import { PET_PICTURES } from './mosaicPictures';
 // «Мозаика»: картинка из цветных кубиков. Снизу — баночки с числами; нажатая баночка встаёт в
 // свободную ячейку, и питомцы уносят из картинки столько кубиков её цвета, сколько написано.
 
-export const MOSAIC_SLOTS = 4;
+export const MOSAIC_SLOTS = 5;
 export const MOSAIC_COLUMNS = 4;
 /** Награда за собранную картинку, лакомств. */
 export const MOSAIC_REWARD = 3;
 
 /** Картинка: буква — цвет кубика, точка — пусто. */
+/** Каждая клетка рисунка — четыре клетки (вдвое крупнее по каждой стороне). */
+function doubled(rows: readonly string[]): string[] {
+  return rows.flatMap((row) => {
+    const wide = [...row].map((ch) => ch + ch).join('');
+    return [wide, wide];
+  });
+}
+
 export const MOSAIC_PICTURES = {
-  heart: [
+  heart: doubled([
     'BBBBBBBBBB',
     'BRRRBBRRRB',
     'RPPPRRPPPR',
@@ -21,24 +29,26 @@ export const MOSAIC_PICTURES = {
     'BBRPPPPRBB',
     'BBBRPPRBBB',
     'BBBBRRBBBB',
-  ],
+  ]),
   // Питомцы: картинки сделаны из их спрайтов (scripts/mosaic-from-pets.py).
   ...PET_PICTURES,
-} as const;
+} as { heart: readonly string[] } & typeof PET_PICTURES;
 
 export type MosaicPicture = keyof typeof MOSAIC_PICTURES;
 export const MOSAIC_PICTURE_NAMES = Object.keys(MOSAIC_PICTURES) as MosaicPicture[];
 
 /** Цвета кубиков: буква картинки → индекс цвета. */
-export const MOSAIC_COLORS = ['B', 'R', 'P', 'W', 'O', 'T', 'K', 'Y'] as const;
+export const MOSAIC_COLORS = ['B', 'R', 'P', 'W', 'O', 'T', 'K', 'Y', 'G'] as const;
 /** Цвет кубика и баночки на экране, в том же порядке. */
-export const MOSAIC_COLOR_HEX = ['#5aaef0', '#e8505b', '#ffa6c9', '#fff6e6', '#f5a35c', '#a8724a', '#4a3a33', '#ffd75e'] as const;
+export const MOSAIC_COLOR_HEX = ['#5aaef0', '#e8505b', '#ffa6c9', '#fff6e6', '#f5a35c', '#a8724a', '#4a3a33', '#ffd75e', '#7bc67e'] as const;
 
 export interface Jar {
   id: number;
   color: number;
   /** Сколько кубиков ещё надо унести. */
   n: number;
+  /** Id баночки-пары: связанные баночки берутся из очереди вместе и уходят из ячеек тоже вместе. */
+  pair?: number;
 }
 
 export interface MosaicState {
@@ -72,6 +82,27 @@ function pictureCells(picture: MosaicPicture): { w: number; h: number; cells: nu
   return { w: rows[0]!.length, h: rows.length, cells };
 }
 
+/** Доля баночек, которые получают пару. */
+const PAIR_CHANCE = 0.1;
+
+/** Связывает соседние в очередях баночки по две: справа или под ними. */
+function linkJars(columns: Jar[][], rand: () => number): void {
+  const depth = Math.max(...columns.map((c) => c.length));
+  for (let d = 0; d < depth; d++) {
+    for (let c = 0; c < columns.length; c++) {
+      const jar = columns[c]![d];
+      if (!jar || jar.pair !== undefined || rand() > PAIR_CHANCE) continue;
+      const options = [columns[c + 1]?.[d], columns[c]?.[d + 1], columns[c + 1]?.[d + 1], columns[c - 1]?.[d + 1]].filter(
+        (o): o is Jar => !!o && o.pair === undefined,
+      );
+      const other = options[Math.floor(rand() * options.length)];
+      if (!other) continue;
+      jar.pair = other.id;
+      other.pair = jar.id;
+    }
+  }
+}
+
 /** Новая партия: числа на баночках каждого цвета в сумме равны числу кубиков этого цвета. */
 export function newMosaic(seed: number, picture: MosaicPicture = 'heart'): MosaicState {
   const { w, h, cells } = pictureCells(picture);
@@ -99,6 +130,7 @@ export function newMosaic(seed: number, picture: MosaicPicture = 'heart'): Mosai
   }
   const columns: Jar[][] = Array.from({ length: MOSAIC_COLUMNS }, () => []);
   jars.forEach((jar, i) => columns[i % MOSAIC_COLUMNS]!.push(jar));
+  linkJars(columns, rand);
   const state: MosaicState = {
     picture,
     w,
@@ -169,14 +201,38 @@ export function exposedCells(state: MosaicState, color: number, slot = 1): numbe
   return out.sort((a, b) => (way.get(a) ?? Infinity) - (way.get(b) ?? Infinity) || hole(a) - hole(b) || a - b);
 }
 
-/** Тап по баночке в очереди col: она встаёт в свободную ячейку. null — нельзя. */
+/** Свободные ячейки, которые нужны баночке: одной или паре (рядом, если есть где). */
+function freeSlotsFor(state: MosaicState, count: number): number[] | null {
+  const free = state.slots.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0);
+  if (free.length < count) return null;
+  if (count === 1) return [free[0]!];
+  const near = free.find((i) => free.includes(i + 1));
+  return near !== undefined ? [near, near + 1] : [free[0]!, free[1]!];
+}
+
+/** Можно ли сейчас взять баночку из очереди col. */
+export function canTapJar(state: MosaicState, col: number): boolean {
+  const jar = state.columns[col]?.[0];
+  return !!jar && freeSlotsFor(state, jar.pair === undefined ? 1 : 2) !== null;
+}
+
+/** Тап по баночке в очереди col: она встаёт в свободную ячейку (связанная — вместе с парой). null — нельзя. */
 export function tapJar(state: MosaicState, col: number): MosaicState | null {
   if (state.won || state.stuck) return null;
   const jar = state.columns[col]?.[0];
-  const slot = state.slots.indexOf(null);
-  if (!jar || slot < 0) return null;
-  const columns = state.columns.map((c, i) => (i === col ? c.slice(1) : c));
-  const slots = state.slots.map((s, i) => (i === slot ? jar : s));
+  if (!jar) return null;
+  const places = freeSlotsFor(state, jar.pair === undefined ? 1 : 2);
+  if (!places) return null;
+  const taken = new Set<number>([jar.id]);
+  const slots = state.slots.slice();
+  slots[places[0]!] = jar;
+  if (jar.pair !== undefined) {
+    const partner = state.columns.flat().find((j) => j.id === jar.pair);
+    if (!partner) return null;
+    taken.add(partner.id);
+    slots[places[1]!] = partner;
+  }
+  const columns = state.columns.map((c) => c.filter((j) => !taken.has(j.id)));
   return settle({ ...state, columns, slots, moves: state.moves + 1 });
 }
 
@@ -188,23 +244,31 @@ export function stepMosaic(state: MosaicState): { state: MosaicState; carries: C
   const carries: Carry[] = [];
   let work: MosaicState = { ...state, cells, slots };
   state.slots.forEach((jar, slot) => {
-    if (!jar) return;
+    if (!jar || jar.n <= 0) return;
     const cell = exposedCells(work, jar.color, slot)[0];
     if (cell === undefined) return;
     cells[cell] = -1;
     const n = jar.n - 1;
-    slots[slot] = n > 0 ? { ...jar, n } : null;
+    slots[slot] = { ...jar, n };
     carries.push({ slot, cell, color: jar.color, jarId: jar.id, done: n === 0 });
     work = { ...work, cells, slots };
   });
+  // Опустевшая баночка уходит из ячейки; у связанной пары — только когда опустеют обе.
+  const gone: number[] = [];
+  slots.forEach((jar, slot) => {
+    if (!jar || jar.n > 0) return;
+    const mate = jar.pair === undefined ? -1 : slots.findIndex((o) => o?.id === jar.pair);
+    if (mate < 0 || slots[mate]!.n <= 0) gone.push(slot);
+  });
+  gone.forEach((slot) => (slots[slot] = null));
   const left = cells.filter((c) => c >= 0).length;
   return { state: settle({ ...state, cells, slots, left }), carries };
 }
 
-/** Победа, если кубиков не осталось; тупик — если все ячейки заняты и ни одна не может ничего унести. */
+/** Победа, если кубиков не осталось; тупик — если ни одна баночка в ячейке не может ничего унести и ни одну нельзя взять. */
 function settle(state: MosaicState): MosaicState {
   if (state.left === 0) return { ...state, won: true, stuck: false };
-  const full = state.slots.every((s) => s !== null);
-  const canWork = state.slots.some((s) => s && exposedCells(state, s.color).length > 0);
-  return { ...state, won: false, stuck: full && !canWork };
+  const canWork = state.slots.some((s) => s && s.n > 0 && exposedCells(state, s.color).length > 0);
+  const canTap = state.columns.some((_, col) => canTapJar(state, col));
+  return { ...state, won: false, stuck: !canWork && !canTap };
 }
