@@ -884,6 +884,12 @@ body.overlay-open {
   background: radial-gradient(circle closest-side, var(--butter) 55%, transparent 100%);
 }
 
+.game-card-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
 .game-card-pet {
   width: 44px;
   height: 44px;
