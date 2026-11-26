@@ -99,81 +99,346 @@
  },
  "cat_baby": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "roll",
+   "sleep_twitch"
   ],
   "feet": 58,
   "left": 10,
   "right": 54,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 58,
+    "left": 12,
+    "right": 54,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 58,
+    "left": 8,
+    "right": 54,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 58,
+    "left": 8,
+    "right": 56,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 58,
+    "left": 8,
+    "right": 58,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 56,
+    "left": 4,
+    "right": 58,
+    "frames": 17
+   },
+   "roll": {
+    "feet": 56,
+    "left": 4,
+    "right": 56,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 52,
+    "left": 8,
+    "right": 54,
+    "frames": 17
+   }
+  }
  },
  "cat_child": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 62,
   "left": 6,
   "right": 58,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 62,
+    "left": 8,
+    "right": 60,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 62,
+    "left": 8,
+    "right": 58,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 62,
+    "left": 4,
+    "right": 60,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 60,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 51,
+    "left": 9,
+    "right": 56,
+    "frames": 17
+   }
+  }
  },
  "cat_teen": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 63,
   "left": 10,
   "right": 58,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 63,
+    "left": 12,
+    "right": 57,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 63,
+    "left": 12,
+    "right": 58,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 56,
+    "left": 2,
+    "right": 61,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 56,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 52,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 55,
+    "left": 3,
+    "right": 60,
+    "frames": 17
+   }
+  }
  },
  "cat_adultNaughty": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 62,
   "left": 2,
   "right": 62,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 56,
+    "left": 4,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 58,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   }
+  }
  },
  "cat_elder": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 62,
   "left": 2,
   "right": 58,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 60,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 60,
+    "left": 4,
+    "right": 60,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 54,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 56,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   }
+  }
  },
  "cat_adultNormal": {
   "cell": 64,
-  "cols": 9,
+  "cols": 17,
   "rows": [
    "idle",
    "sleep",
-   "eat"
+   "eat",
+   "idle_smooth",
+   "catch",
+   "walk",
+   "eat_side",
+   "lie_wag",
+   "sleep_twitch"
   ],
   "feet": 62,
   "left": 2,
   "right": 62,
-  "rowInfo": {}
+  "rowInfo": {
+   "idle_smooth": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "catch": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "walk": {
+    "feet": 62,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   },
+   "eat_side": {
+    "feet": 62,
+    "left": 2,
+    "right": 62,
+    "frames": 17
+   },
+   "lie_wag": {
+    "feet": 54,
+    "left": 2,
+    "right": 64,
+    "frames": 17
+   },
+   "sleep_twitch": {
+    "feet": 54,
+    "left": 2,
+    "right": 60,
+    "frames": 17
+   }
+  }
  },
  "blob_baby": {
   "cell": 64,
