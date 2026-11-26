@@ -259,7 +259,8 @@ function isGameStats(v: unknown): v is GameStats {
   // «Питомцы-блоки» появились в 1.7.0 — в сохранениях 1.6.0 их счётчиков ещё нет.
   if (v.slide !== undefined && !isRecord(v.slide)) return false;
   if (v.mosaic !== undefined && !isRecord(v.mosaic)) return false;
-  const levels = [...Object.values(v.queens), ...Object.values(isRecord(v.slide) ? v.slide : {}), ...Object.values(isRecord(v.mosaic) ? v.mosaic : {})];
+  if (v.harbor !== undefined && !isRecord(v.harbor)) return false;
+  const levels = [...Object.values(v.queens), ...Object.values(isRecord(v.slide) ? v.slide : {}), ...Object.values(isRecord(v.mosaic) ? v.mosaic : {}), ...Object.values(isRecord(v.harbor) ? v.harbor : {})];
   return levels.every(
     (l) =>
       isRecord(l) &&
