@@ -12,6 +12,8 @@ import {
 import { randomSeed } from '../core/rng';
 import type { LevelStats } from '../core/stats';
 import { SLIDE_MODES, type SlideMode } from '../core/slide';
+import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
+import { MosaicGame } from './mosaic';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -33,6 +35,10 @@ export interface MiniGameHost {
   earnTreats: (n: number) => void;
   /** Партия «Питомцев-блоков» окончена: счётчики и эффект игры. */
   finishSlide: (mode: SlideMode, lines: number, treats: number) => void;
+  /** «Мозаика»: сыграно и выиграно на картинке. */
+  mosaicStats: (picture: MosaicPicture) => LevelStats;
+  /** Партия «Мозаики» окончена. */
+  finishMosaic: (picture: MosaicPicture, won: boolean) => void;
   /** Картинка лакомства (data URL). */
   treatImage: string;
 }
@@ -115,11 +121,23 @@ export class GamesOverlay {
       return button;
     });
     const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, slideButtons);
+    const mosaicButtons = MOSAIC_PICTURE_NAMES.map((picture) => {
+      const st = this.host.mosaicStats(picture);
+      const button = el('button', { type: 'button', class: 'chunky level-button' }, [
+        el('span', { class: 'level-name', text: GAMES_TEXT.mosaicPicture[picture] ?? picture }),
+        el('span', { class: 'level-info', text: GAMES_TEXT.mosaicInfo(MOSAIC_REWARD) }),
+        el('span', { class: 'level-stats', text: GAMES_TEXT.mosaicStats(st.played, st.won) }),
+      ]);
+      button.addEventListener('click', () => this.startMosaic(picture));
+      return button;
+    });
+    const mosaicCard = this.gameCard('mosaic', GAMES_TEXT.mosaicTitle, GAMES_TEXT.mosaicAbout, mosaicButtons);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
       card,
       slideCard,
+      mosaicCard,
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
     this.body.querySelector<HTMLElement>('.level-button')?.focus();
@@ -162,6 +180,15 @@ export class GamesOverlay {
         this.host.onFinish(won, won ? level.reward : 0, level.size);
         this.close();
       },
+    });
+    this.body.replaceChildren(this.game.root);
+  }
+
+  private startMosaic(picture: MosaicPicture): void {
+    this.game = new MosaicGame(this.host, picture, {
+      header: (title) => this.header(title, () => this.back(), '←'),
+      replay: () => this.startMosaic(picture),
+      done: () => this.close(),
     });
     this.body.replaceChildren(this.game.root);
   }

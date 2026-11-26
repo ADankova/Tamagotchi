@@ -38,7 +38,7 @@ describe('счётчики мини-игр', () => {
     const moved = migrate(v4);
     expect(moved?.version).toBe(SAVE_VERSION);
     expect((moved?.settings as { language: string }).language).toBe('ru');
-    expect(moved?.gameStats).toEqual({ queens: {}, slide: {} });
+    expect(moved?.gameStats).toEqual({ queens: {}, slide: {}, mosaic: {} });
   });
 
   it('Game.finishMiniGame записывает партию, даже если питомец уже не может играть', () => {
@@ -66,6 +66,6 @@ describe('счётчики мини-игр', () => {
     const raw = JSON.parse(serialize(createInitialState(1000, 'ru')));
     raw.gameStats = { queens: { '6': { played: 3, won: 2 } } };
     const back = deserialize(JSON.stringify(raw));
-    expect(back?.gameStats).toEqual({ queens: { '6': { played: 3, won: 2 } }, slide: {} });
+    expect(back?.gameStats).toEqual({ queens: { '6': { played: 3, won: 2 } }, slide: {}, mosaic: {} });
   });
 });
