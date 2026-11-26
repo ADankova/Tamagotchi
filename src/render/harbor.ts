@@ -83,7 +83,8 @@ const PILE_SPOTS: readonly (readonly [number, number])[] = [
   [50, 14],
   [26, 22],
 ];
-const PET_SIZE = [58, 44, 40, 38] as const;
+/** Поперечник питомца в долях ширины поля: у всех островов одинаковый, как бы ни отличались сами острова. */
+const PET_D = 0.13;
 /** Остров рисуется ровно по расчётному кругу, чтобы острова не налезали друг на друга. */
 const ISLAND_VISUAL = 1;
 
@@ -239,7 +240,7 @@ export class HarborGame implements GameScreen {
   private islandNode(island: HarborIsland): HTMLElement {
     const node = el('div', { class: this.popNew ? 'h-island pop' : 'h-island' });
     const spots = SPOTS[island.size - 1] ?? SPOTS[0]!;
-    const size = PET_SIZE[island.size - 1] ?? PET_SIZE[0];
+    const size = (PET_D / (islandRadius(island) * 2 * ISLAND_VISUAL)) * 100;
     island.pets.forEach((pet) => {
       const spot = spots[pet.spot] ?? spots[0]!;
       const btn = el('button', { type: 'button', class: 'h-pet', 'data-pet': String(pet.id), 'aria-label': this.label() });
