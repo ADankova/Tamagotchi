@@ -315,4 +315,11 @@ describe('бухта питомцев', () => {
     expect(restoreHarbor({ ...s, ships: [] })).toBe(null);
     expect(restoreHarbor({ ...s, field: [{ id: 1 }] })).toBe(null);
   });
+
+  it('остров у потолка уступает место: нижний сосед поднимается', () => {
+    const mk = (id: number, x: number, y: number, size: number) => ({ id, pets: [{ id: id * 10, kind: 0, spot: 0 }], size, bonus: null, treat: false, x, y });
+    let s: HarborState = { ...newHarbor(3), deck: [], field: [mk(1, 0.352, 0.15, 2), mk(2, 0.817, 0.182, 3), mk(3, 0.158, 0.384, 2)] };
+    for (let i = 0; i < 20; i++) s = advanceHarbor(s);
+    expect(s.field[2]!.y < 0.2).toBe(true);
+  });
 });
