@@ -2076,12 +2076,17 @@ button.m-jar:active {
   background: var(--jar);
 }
 .m-jar.back {
-  opacity: 0.55;
+  /* Не прозрачные, а блёклые: труба между связанными баночками не просвечивает сквозь них, как и в активной зоне. */
+  background: color-mix(in srgb, var(--jar) 45%, #fffaf0);
+  border-color: color-mix(in srgb, var(--ink) 45%, #fffaf0);
+  box-shadow: 0 4px 0 rgb(59 42 30 / 0.18);
   min-height: 36px;
   font-size: 1.05rem;
 }
 .m-slot .m-jar.back {
-  opacity: 1;
+  background: var(--jar);
+  border-color: var(--ink);
+  box-shadow: 0 4px 0 rgb(59 42 30 / 0.35);
   min-height: 44px;
   font-size: 1.3rem;
 }
@@ -2557,7 +2562,11 @@ button.m-jar:active {
   display: none;
 }
 .m-jar.spent {
-  opacity: 0.8;
+  filter: saturate(0.6);
+}
+/* Выступ сверху — только у баночек в активной зоне; в очереди баночки просто блоки. */
+.m-queue .m-jar-lid {
+  display: none;
 }
 
 .m-links {
