@@ -261,7 +261,7 @@ export class MosaicGame implements GameScreen {
     const hy = to.top - stage.top + to.height / 2;
     const w = this.state.w;
     const h = this.state.h;
-    const slotEl = this.slotRow.children[c.slot] as HTMLElement | undefined;
+    const slotEl = (this.slotRow.querySelector(`[data-jar="${c.jarId}"]`)?.parentElement ?? this.slotRow.children[c.slot]) as HTMLElement | undefined;
     const sr = (slotEl ?? this.hole).getBoundingClientRect();
     const sx = sr.left - stage.left + sr.width / 2;
     const sy = sr.top - stage.top + sr.height / 2;

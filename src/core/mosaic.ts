@@ -261,6 +261,9 @@ export function stepMosaic(state: MosaicState): { state: MosaicState; carries: C
     if (mate < 0 || slots[mate]!.n <= 0) gone.push(slot);
   });
   gone.forEach((slot) => (slots[slot] = null));
+  // Освободившаяся ячейка не остаётся посередине: баночки справа сдвигаются влево, свободные места — все справа.
+  const packed = slots.filter((j) => j !== null);
+  slots.forEach((_, i) => (slots[i] = packed[i] ?? null));
   const left = cells.filter((c) => c >= 0).length;
   return { state: settle({ ...state, cells, slots, left }), carries };
 }
