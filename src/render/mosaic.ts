@@ -40,6 +40,7 @@ export class MosaicGame implements GameScreen {
   private readonly hole = el('div', { class: 'm-hole' });
   private readonly slotRow = el('div', { class: 'm-slots' });
   private readonly queues = el('div', { class: 'm-queues' });
+  private linksHtml = '';
   private readonly links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   private readonly left = el('span', {});
   private readonly cubes: HTMLElement[] = [];
@@ -154,7 +155,11 @@ export class MosaicGame implements GameScreen {
           `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="url(#${gid})" stroke-width="10" stroke-linecap="round"/>`,
       );
     });
-    this.links.innerHTML = parts.join('');
+    const html = parts.join('');
+    if (html !== this.linksHtml) {
+      this.linksHtml = html;
+      this.links.innerHTML = html;
+    }
   }
 
   private renderJars(): void {
@@ -180,8 +185,13 @@ export class MosaicGame implements GameScreen {
       }
     });
     if (moving) {
-      this.links.style.opacity = '0';
-      window.setTimeout(() => (this.links.style.opacity = ''), 340);
+      // Трубы между баночками едут вместе с ними, а не исчезают и не перерисовываются рывком.
+      const t0 = performance.now();
+      const follow = (): void => {
+        this.drawLinks();
+        if (performance.now() - t0 < 380) window.requestAnimationFrame(follow);
+      };
+      follow();
     }
   }
 
@@ -232,7 +242,7 @@ export class MosaicGame implements GameScreen {
     }
     this.seen = true;
     if (this.finished) return;
-    const { state, carries } = stepMosaic(this.state);
+    const { state, carries } = stepMosaic(this.state, (cell) => this.hasWay(cell % this.state.w, Math.floor(cell / this.state.w)));
     if (carries.length === 0) return;
     this.state = state;
     carries.forEach((c) => this.carry(c));

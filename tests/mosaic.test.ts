@@ -23,6 +23,15 @@ describe('мозаика', () => {
     expect(isExposed(s, inner)).toBe(true);
   });
 
+  it('число на баночке не уменьшается, пока питомец не может выбежать', () => {
+    let s = newMosaic(5);
+    s = tapJar(s, 0)!;
+    const n = s.slots[0]!.n;
+    const r = stepMosaic(s, () => false);
+    expect(r.carries.length).toBe(0);
+    expect(r.state.slots[0]!.n).toBe(n);
+  });
+
   it('баночка встаёт в ячейку и уносит кубики по одному', () => {
     let s = newMosaic(5);
     const jar = s.columns[0]![0]!;
