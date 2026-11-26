@@ -161,6 +161,12 @@ const DEV_TEXT = {
   addPoop: '+1 какашка',
   enabled: 'Режим тестирования включён — он внизу настроек.',
   tapsLeft: (n: number) => `Ещё ${n} — и откроется режим тестирования`,
+  animButton: 'Анимации',
+  animOff: 'Обычное поведение',
+  animRows: {
+    idle: 'Покой (старая)', sleep: 'Сон (старая)', eat: 'Еда (старая)', sick: 'Болезнь', hungry: 'Голод', tired: 'Усталость',
+    idle_smooth: 'Покой', catch: 'Ловит лакомство', walk: 'Ходьба', eat_side: 'Еда боком', lie_wag: 'Лежит', roll: 'Кувырок', sleep_twitch: 'Сон',
+  } as Record<string, string>,
   badge: (scale: number) => `×${scale}`,
   badgeLabel: (scale: number) => `Время ускорено в ${scale} раз. Нажмите, чтобы вернуть обычную скорость.`,
 };

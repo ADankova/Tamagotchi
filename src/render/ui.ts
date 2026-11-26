@@ -34,7 +34,7 @@ import {
 } from '../strings';
 import { PetCanvas } from './canvas';
 import { ACTION_ICONS, iconImg, NEED_ICONS, STAT_ICONS } from './icons';
-import { CUTSCENE_MS, POOP_SLOTS } from './scene';
+import { CUTSCENE_MS, POOP_SLOTS, setAnimPreview, type AnimRow } from './scene';
 import { GamesOverlay } from './minigames';
 import { ART } from './artData';
 import { bodyStage } from './species';
@@ -129,6 +129,7 @@ export class UI {
   private readonly petName = el('h2', { class: 'pet-name' });
   private readonly petStage = el('p', { class: 'pet-meta' });
   private readonly speedBadge = el('button', { type: 'button', class: 'speed-badge', 'data-reset-speed': '', hidden: '' });
+  private readonly animPicker = el('div', { class: 'anim-picker', hidden: '' });
   private readonly versionLine = el('p', { class: 'version' });
   private readonly devStatus = el('p', { class: 'setting-status dev-status', role: 'status' });
   private devPanel: HTMLElement | null = null;
@@ -436,6 +437,7 @@ export class UI {
     const device = el('div', { class: 'device' }, [
       el('header', { class: 'device-header' }, [this.petName, this.petStage]),
       this.speedBadge,
+      this.animPicker,
       el('div', { class: 'lcd-area' }, [el('div', { class: 'lcd' }, [this.canvas, this.needs])]),
       this.petMood,
     ]);
@@ -597,10 +599,35 @@ export class UI {
     this.devPanel = createDevPanel(this.game, () => this.disableDevMode());
     this.versionLine.before(this.devPanel);
     this.devStatus.textContent = announce ? DEV_TEXT.enabled : '';
+    this.buildAnimPicker();
+  }
+
+  /** Кнопка со списком анимаций на корпусе (только в режиме тестирования). */
+  private buildAnimPicker(): void {
+    const toggle = el('button', { type: 'button', class: 'anim-toggle', text: `🎞 ${DEV_TEXT.animButton}` });
+    const list = el('div', { class: 'anim-list', hidden: '' });
+    const choose = (row: AnimRow | null) => {
+      setAnimPreview(row);
+      list.hidden = true;
+      toggle.textContent = `🎞 ${row ? DEV_TEXT.animRows[row] ?? row : DEV_TEXT.animButton}`;
+    };
+    const items: (AnimRow | null)[] = [null, ...(Object.keys(DEV_TEXT.animRows) as AnimRow[])];
+    for (const row of items) {
+      const b = el('button', { type: 'button', class: 'anim-item', text: row ? DEV_TEXT.animRows[row] ?? row : DEV_TEXT.animOff });
+      b.addEventListener('click', () => choose(row));
+      list.append(b);
+    }
+    toggle.addEventListener('click', () => {
+      list.hidden = !list.hidden;
+    });
+    this.animPicker.replaceChildren(toggle, list);
+    this.animPicker.hidden = false;
   }
 
   private disableDevMode(): void {
     writeDevFlag(false);
+    setAnimPreview(null);
+    this.animPicker.hidden = true;
     this.devPanel?.remove();
     this.devPanel = null;
     this.devStatus.textContent = '';
