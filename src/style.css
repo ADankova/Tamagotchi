@@ -1943,7 +1943,7 @@ body.overlay-open {
 }
 .m-stage {
   position: relative;
-  width: min(100%, 46dvh);
+  width: min(100%, calc((100dvh - 480px) * var(--ar, 1)));
   margin: 0 auto;
   padding-bottom: 34px;
 }

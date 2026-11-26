@@ -132,6 +132,7 @@ const GAMES_TEXT = {
   mosaicTitle: 'Питомцы-воришки',
   mosaicAbout:
     'Картинка собрана из цветных кубиков. Нажми на баночку — она встанет в ячейку, и питомцы начнут уносить в норку кубики её цвета, сколько написано на баночке. Уносят только открытые кубики, у края или рядом с пустым местом. Освободи всю картинку, пока ячейки не забились баночками, которым нечего уносить.',
+  mosaicLevel: 'Случайная картинка',
   mosaicPicture: { heart: 'Сердечко', ...Object.fromEntries(Object.entries(PET_PICTURE_NAMES).map(([k, v]) => [k, v.ru])) } as Record<string, string>,
   mosaicInfo: (reward: number) => `Небольшая картинка · +${reward} ${treatWord(reward)}`,
   mosaicStats: (played: number, won: number) => `Сыграно: ${played} · Побед: ${won}`,
