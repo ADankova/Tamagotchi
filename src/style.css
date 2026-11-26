@@ -2731,30 +2731,21 @@ button.m-jar:active {
   transition: transform 0.26s ease;
 }
 .m3-tile.special .m3-face {
-  box-shadow: 0 0 0 2px #fff6e4, 0 0 8px 1px var(--tile, #ffd25e);
-  animation: m3-glow 1.2s ease-in-out infinite alternate;
+  background: none;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  filter: drop-shadow(0 2px 2px rgba(59, 42, 30, 0.35));
+  animation: m3-bob 1.1s ease-in-out infinite alternate;
 }
-.m3-tile.rainbow .m3-face {
-  background: conic-gradient(#ff6b6b, #ffd25e, #7bc67e, #5aaef0, #a98af0, #ff6b6b);
-  border-color: #fff6e4;
-}
-.m3-badge {
+.m3-tile.special .m3-face svg {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 52%;
-  height: 52%;
-  display: block;
-}
-.m3-badge svg {
+  inset: 0;
   width: 100%;
   height: 100%;
-  display: block;
 }
-.m3-badge.rainbow {
-  inset: 12%;
-  width: auto;
-  height: auto;
+.m3-tile.rainbow .m3-face {
+  animation: m3-spin-bob 1.1s ease-in-out infinite alternate;
 }
 .m3-tile.shake .m3-face {
   animation: m3-shake 0.3s;
@@ -2765,9 +2756,13 @@ button.m-jar:active {
   font-size: 0.85rem;
   opacity: 0.75;
 }
-@keyframes m3-glow {
-  from { filter: brightness(1); }
-  to { filter: brightness(1.12); }
+@keyframes m3-bob {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+@keyframes m3-spin-bob {
+  from { transform: scale(1) rotate(-6deg); }
+  to { transform: scale(1.1) rotate(6deg); }
 }
 @keyframes m3-shake {
   25% { transform: translateX(-4px); }
