@@ -77,6 +77,15 @@ export type AnimRow =
 
 /** Кадров в прежних строках листа. */
 export const SHEET_FRAMES = 9;
+
+let animPreview: AnimRow | null = null;
+/** Показывать выбранную анимацию вместо обычного поведения (null — обычное поведение). */
+export function setAnimPreview(row: AnimRow | null): void {
+  animPreview = row;
+}
+export function getAnimPreview(): AnimRow | null {
+  return animPreview;
+}
 /** Кадров в новых (плавных) строках. */
 export const SMOOTH_FRAMES = 17;
 
@@ -448,6 +457,10 @@ export function composeScene(
     frame: once ? animFrameOnce(anim, clock, motion) : animFrame(anim, clock, motion),
     ...(flip ? { flip } : {}),
   });
+  if (animPreview && state !== 'egg' && state !== 'dead') {
+    // Режим просмотра анимаций (кнопка в режиме тестирования): выбранная строка по кругу.
+    return { state, dim: false, items: [petAt(mid, 0, false, animPreview)] };
+  }
   let butterfly: Butterfly | undefined;
   const puffs: Puff[] = [];
 

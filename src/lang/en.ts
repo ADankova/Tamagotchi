@@ -169,6 +169,12 @@ export const en: Dict = {
     addPoop: '+1 poop',
     enabled: 'Test mode is on — it is at the bottom of Settings.',
     tapsLeft: (n: number) => `${n} more to open test mode`,
+    animButton: 'Animations',
+    animOff: 'Normal behaviour',
+    animRows: {
+      idle: 'Idle (old)', sleep: 'Sleep (old)', eat: 'Eat (old)', sick: 'Sick', hungry: 'Hungry', tired: 'Tired',
+      idle_smooth: 'Idle', catch: 'Catches treat', walk: 'Walk', eat_side: 'Eat (side)', lie_wag: 'Lying', roll: 'Roll', sleep_twitch: 'Sleep',
+    } as Record<string, string>,
     badge: (scale: number) => `×${scale}`,
     badgeLabel: (scale: number) => `Time is sped up ${scale} times. Tap to return to normal speed.`,
   },
