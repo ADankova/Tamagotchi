@@ -2417,3 +2417,60 @@ button.m-jar:active {
 .h-field {
   width: min(100%, calc((100dvh - 430px) / 1.25));
 }
+
+/* Правки: компактный общий блок кучкой, кнопки бонусов меньше */
+.h-dock {
+  grid-template-columns: minmax(0, 3.1fr) minmax(0, 1fr);
+}
+.h-stash {
+  position: relative;
+  display: block;
+  min-height: 56px;
+  padding: 0;
+}
+.h-pile-pet {
+  position: absolute;
+  width: 38%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  animation: h-appear 0.01s 0.45s backwards;
+}
+.h-pile-n {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 14px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  z-index: 30;
+}
+.h-bonus {
+  flex-direction: row;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 4px;
+  font-size: 11px;
+}
+.h-bonus-icon {
+  width: 22px;
+  height: 22px;
+}
+.h-bonus-n {
+  right: -5px;
+  top: -8px;
+  min-width: 19px;
+  height: 19px;
+  line-height: 15px;
+  font-size: 11px;
+}
+.h-field {
+  width: min(100%, calc((100dvh - 390px) / 1.25));
+}

@@ -5,7 +5,6 @@ import {
   islandRadius,
   HARBOR_NEED,
   HARBOR_PIER,
-  HARBOR_STASH,
   HARBOR_REWARD,
   newHarbor,
   tapHarborPet,
@@ -69,9 +68,24 @@ const SPOTS: readonly (readonly [number, number][])[] = [
     [69, 68],
   ],
 ];
+/** Места питомцев в кучке (проценты блока), снизу вверх. */
+const PILE_SPOTS: readonly (readonly [number, number])[] = [
+  [24, 74],
+  [50, 78],
+  [76, 74],
+  [37, 56],
+  [63, 56],
+  [24, 44],
+  [50, 36],
+  [76, 44],
+  [37, 24],
+  [63, 24],
+  [50, 14],
+  [26, 22],
+];
 const PET_SIZE = [58, 44, 40, 38] as const;
-/** Остров рисуется чуть больше расчётного круга. */
-const ISLAND_VISUAL = 1.06;
+/** Остров рисуется ровно по расчётному кругу, чтобы острова не налезали друг на друга. */
+const ISLAND_VISUAL = 1;
 
 interface HarborCallbacks {
   header: (title: string) => HTMLElement;
@@ -89,7 +103,7 @@ function petFace(kind: number, label: string): HTMLElement {
 
 const INK = '#3b2a1e';
 const BONUS_SVG: Record<HarborBonus, string> = {
-  net: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="#cfeefd" stroke="${INK}" stroke-width="2.5"/><path d="M6 13h14M13 6v14M7.5 8l11 10M18.5 8l-11 10" stroke="${INK}" stroke-width="1.2" fill="none"/><path d="M20 20l9 9" stroke="#b87a45" stroke-width="4.5" stroke-linecap="round"/></svg>`,
+  net: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 7 Q5 22 14 22 Q23 22 24 7 Z" fill="#d8f1ff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 Q9.5 18 12.5 21.5M14 9 V22M19 8 Q18.5 18 15.5 21.5M5 13 Q14 16.5 23 13M7 17.5 Q14 21 21 17.5" stroke="${INK}" stroke-width="1" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="7" rx="10" ry="3.6" fill="none" stroke="${INK}" stroke-width="2.6"/><path d="M23.5 8.5L29.5 29" stroke="#b87a45" stroke-width="3.6" stroke-linecap="round"/><path d="M23.5 8.5L29.5 29" stroke="${INK}" stroke-width="1" stroke-linecap="round" opacity="0.5"/></svg>`,
   clear: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 10h16l-1.8 18H9.8z" fill="#9fd0f0" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M6 10h20M12 10V6h8v4" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 15v9M19 15v9" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   shuffle: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 15a9 9 0 0 1 16-5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M25 17a9 9 0 0 1-16 5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M26 4v8h-8z" fill="${INK}"/><path d="M6 28v-8h8z" fill="${INK}"/></svg>`,
 };
@@ -177,14 +191,17 @@ export class HarborGame implements GameScreen {
       slots.push(slot);
     }
     this.pierRow.replaceChildren(...slots);
-    const stash: HTMLElement[] = [];
-    for (let i = 0; i < HARBOR_STASH; i++) {
-      const pet = this.state.stash[i];
-      const slot = el('div', { class: 'h-pier-slot', 'data-pet': pet ? String(pet.id) : '' });
-      if (pet) slot.append(petFace(pet.kind, this.label()));
-      stash.push(slot);
-    }
-    this.stashBox.replaceChildren(...stash);
+    // Питомцы из «Удаления» лежат кучкой: каждый на своём стабильном месте, поздние сверху.
+    const pile = this.state.stash.slice(-PILE_SPOTS.length).map((pet, i) => {
+      const spot = PILE_SPOTS[i]!;
+      const slot = el('div', { class: 'h-pile-pet', 'data-pet': String(pet.id) });
+      slot.style.left = `${spot[0]}%`;
+      slot.style.top = `${spot[1]}%`;
+      slot.append(petFace(pet.kind, this.label()));
+      return slot;
+    });
+    const total = this.state.stash.length;
+    this.stashBox.replaceChildren(...pile, ...(total > 0 ? [el('span', { class: 'h-pile-n', text: String(total) })] : []));
   }
 
   private renderBonuses(): void {
@@ -335,7 +352,7 @@ export class HarborGame implements GameScreen {
   private apply(next: HarborState, mover?: { kind: number; id: number; from: DOMRect; islandId: number }): void {
     const before = this.state;
     const oldPetRects = new Map<number, DOMRect>();
-    this.root.querySelectorAll<HTMLElement>('.h-pier-slot').forEach((slot) => {
+    this.root.querySelectorAll<HTMLElement>('.h-pier-slot, .h-pile-pet').forEach((slot) => {
       if (slot.dataset.pet) oldPetRects.set(Number(slot.dataset.pet), slot.getBoundingClientRect());
     });
     const oldShipNodes = [...this.shipRow.children] as HTMLElement[];
@@ -373,7 +390,9 @@ export class HarborGame implements GameScreen {
       if (!rect) continue;
       const stashAt = next.stash.findIndex((p) => p.id === old.id);
       if (stashAt >= 0 && !before.stash.some((p) => p.id === old.id)) {
-        this.fly(old.kind, rect, (this.stashBox.children[stashAt] as HTMLElement).getBoundingClientRect());
+        const shown = Math.min(stashAt, PILE_SPOTS.length - 1) + (next.stash.length > PILE_SPOTS.length ? next.stash.length - PILE_SPOTS.length : 0);
+        const face = this.stashBox.querySelector<HTMLElement>(`.h-pile-pet[data-pet="${old.id}"]`) ?? (this.stashBox.children[Math.min(shown, this.stashBox.children.length - 1)] as HTMLElement | undefined) ?? this.stashBox;
+        this.fly(old.kind, rect, face.getBoundingClientRect());
         continue;
       }
       if (next.pier.some((p) => p.id === old.id) || next.stash.some((p) => p.id === old.id)) continue;
