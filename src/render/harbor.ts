@@ -1,11 +1,11 @@
 import { randomSeed } from '../core/rng';
 import {
   advanceHarbor,
-  HARBOR_COLS,
+  HARBOR_H,
+  islandRadius,
   HARBOR_NEED,
   HARBOR_PIER,
   HARBOR_REWARD,
-  HARBOR_ROWS,
   newHarbor,
   tapHarborPet,
   type HarborIsland,
@@ -22,8 +22,10 @@ import type { BodyStage } from './species';
 
 // Экран «Бухты питомцев»: корабли сверху, пристань, острова, которые всплывают снизу.
 
-const WATER_STEP_MS = 900;
+const WATER_STEP_MS = 450;
 const FLY_MS = 480;
+/** Корабль уплывает вверх; новый появляется, когда он уже пропал. */
+const SAIL_MS = 800;
 
 interface Kind {
   species: Species;
@@ -32,7 +34,7 @@ interface Kind {
   ring: string;
 }
 
-/** Восемь видов: три зверя в трёх возрастах (без «взрослого» близнеца подростка). */
+/** Девять видов: три зверя в трёх возрастах (взрослый выглядит как подросток, его не берём). */
 const KINDS: readonly Kind[] = [
   { species: 'cat', body: 'teen', ring: '#5aaef0' },
   { species: 'dog', body: 'teen', ring: '#e8505b' },
@@ -42,27 +44,29 @@ const KINDS: readonly Kind[] = [
   { species: 'blob', body: 'baby', ring: '#a98af0' },
   { species: 'cat', body: 'child', ring: '#ff9a52' },
   { species: 'dog', body: 'child', ring: '#43cfc4' },
+  { species: 'blob', body: 'child', ring: '#b5d94a' },
 ];
 
-/** Где стоят питомцы на острове (в процентах острова) в зависимости от их числа. */
+/** Где стоят питомцы в пузыре (в процентах пузыря) и какой доли пузыря размером питомец, по числу питомцев. */
 const SPOTS: readonly (readonly [number, number][])[] = [
-  [[50, 46]],
+  [[50, 52]],
   [
-    [30, 48],
-    [70, 48],
+    [30, 52],
+    [70, 52],
   ],
   [
-    [50, 30],
-    [28, 64],
-    [72, 64],
+    [50, 32],
+    [29, 67],
+    [71, 67],
   ],
   [
-    [30, 30],
-    [70, 30],
-    [30, 66],
-    [70, 66],
+    [31, 32],
+    [69, 32],
+    [31, 68],
+    [69, 68],
   ],
 ];
+const PET_SIZE = [58, 44, 40, 38] as const;
 
 interface HarborCallbacks {
   header: (title: string) => HTMLElement;
@@ -107,7 +111,7 @@ export class HarborGame implements GameScreen {
       this.field,
       el('p', { class: 'q-hint', text: GAMES_TEXT.harborHint }),
     ]);
-    this.field.style.aspectRatio = `${HARBOR_COLS} / ${HARBOR_ROWS * 0.82}`;
+    this.field.style.aspectRatio = `1 / ${HARBOR_H}`;
     this.renderShips();
     this.renderPier();
     this.renderField();
@@ -158,15 +162,22 @@ export class HarborGame implements GameScreen {
     this.pierRow.replaceChildren(...slots);
   }
 
+  private placeIsland(node: HTMLElement, island: HarborIsland): void {
+    const r = islandRadius(island);
+    node.style.width = `${r * 200}%`;
+    node.style.left = `${(island.x - r) * 100}%`;
+    node.style.top = `${((island.y - r) / HARBOR_H) * 100}%`;
+  }
+
   private islandNode(island: HarborIsland): HTMLElement {
     const node = el('div', { class: 'h-island' });
-    node.style.width = `${100 / HARBOR_COLS}%`;
-    node.style.height = `${100 / HARBOR_ROWS}%`;
     const spots = SPOTS[island.pets.length - 1] ?? SPOTS[0]!;
+    const size = PET_SIZE[island.pets.length - 1] ?? PET_SIZE[0];
     island.pets.forEach((pet, i) => {
       const btn = el('button', { type: 'button', class: 'h-pet', 'data-pet': String(pet.id), 'aria-label': this.label() });
       btn.style.left = `${spots[i]![0]}%`;
       btn.style.top = `${spots[i]![1]}%`;
+      btn.style.width = `${size}%`;
       btn.append(petFace(pet.kind, this.label()));
       btn.addEventListener('click', () => this.tap(island.id, pet, btn));
       node.append(btn);
@@ -176,36 +187,31 @@ export class HarborGame implements GameScreen {
 
   private renderField(): void {
     const present = new Set<number>();
-    this.state.field.forEach((island, at) => {
-      if (!island) return;
+    this.state.field.forEach((island) => {
       present.add(island.id);
-      const col = at % HARBOR_COLS;
-      const row = Math.floor(at / HARBOR_COLS);
       let node = this.islandNodes.get(island.id);
-      const left = `${(col * 100) / HARBOR_COLS}%`;
-      const top = `${(row * 100) / HARBOR_ROWS}%`;
       if (!node) {
         node = this.islandNode(island);
-        node.style.left = left;
-        node.style.top = `${100}%`;
-        node.classList.add('rising');
         this.islandNodes.set(island.id, node);
         this.field.append(node);
-        const made = node;
-        window.requestAnimationFrame(() =>
-          window.requestAnimationFrame(() => {
-            made.classList.remove('rising');
-            made.style.top = top;
-          }),
-        );
-      } else {
-        node.style.left = left;
-        node.style.top = top;
       }
-      const alive = new Set(island.pets.map((p) => String(p.id)));
-      node.querySelectorAll<HTMLElement>('.h-pet').forEach((btn) => {
-        if (!alive.has(btn.dataset.pet ?? '')) btn.remove();
+      this.placeIsland(node, island);
+      // Пузырь с меньшим числом питомцев сжимается: расставляем оставшихся по-новому.
+      const alive = island.pets.map((p) => String(p.id));
+      const buttons = [...node.querySelectorAll<HTMLElement>('.h-pet')];
+      buttons.forEach((btn) => {
+        if (!alive.includes(btn.dataset.pet ?? '')) btn.remove();
       });
+      const left = [...node.querySelectorAll<HTMLElement>('.h-pet')];
+      const spots = SPOTS[left.length - 1];
+      const size = PET_SIZE[left.length - 1];
+      if (spots && size !== undefined) {
+        left.forEach((btn, i) => {
+          btn.style.left = `${spots[i]![0]}%`;
+          btn.style.top = `${spots[i]![1]}%`;
+          btn.style.width = `${size}%`;
+        });
+      }
     });
     for (const [id, node] of [...this.islandNodes]) {
       if (present.has(id)) continue;
@@ -263,13 +269,14 @@ export class HarborGame implements GameScreen {
     const oldShipRects = oldShipNodes.map((n) => n.getBoundingClientRect());
     this.state = next;
     // Корабли, которые отплыли: прежний корабль в этом месте исчез или сменился.
-    const sailing: Array<{ node: HTMLElement; rect: DOMRect }> = [];
+    const sailing: Array<{ node: HTMLElement; rect: DOMRect; slot: number }> = [];
     before.ships.forEach((ship, i) => {
       const now = next.ships[i];
       const gone = ship && (!now || now.kind !== ship.kind || now.count < ship.count);
-      if (gone && oldShipNodes[i]) sailing.push({ node: oldShipNodes[i]!, rect: oldShipRects[i]! });
+      if (gone && oldShipNodes[i]) sailing.push({ node: oldShipNodes[i]!, rect: oldShipRects[i]!, slot: i });
     });
     this.renderShips();
+    sailing.forEach(({ slot }) => (this.shipRow.children[slot] as HTMLElement | undefined)?.classList.add('late'));
     this.renderPier();
     this.renderField();
     this.renderLeft();
@@ -289,7 +296,11 @@ export class HarborGame implements GameScreen {
       const rect = oldPierRects.get(old.id);
       const target = [...this.shipRow.children].find((n) => (n as HTMLElement).dataset.kind === String(old.kind));
       const to = (target ?? this.shipRow).getBoundingClientRect();
-      if (rect) this.fly(old.kind, rect, to);
+      if (!rect) continue;
+      const slot = target ? [...this.shipRow.children].indexOf(target) : -1;
+      // На корабль, который появляется после отплытия прежнего, питомец пересаживается тогда же.
+      if (sailing.some((x) => x.slot === slot)) window.setTimeout(() => this.fly(old.kind, rect, to), SAIL_MS);
+      else this.fly(old.kind, rect, to);
     }
     sailing.forEach(({ node, rect }) => this.sail(node, rect));
     this.checkEnd();
@@ -308,14 +319,14 @@ export class HarborGame implements GameScreen {
     this.root.append(node);
     const anim = node.animate(
       [
-        { transform: 'translateX(0)', opacity: 1 },
-        { transform: 'translateX(18px)', opacity: 1, offset: 0.3 },
-        { transform: 'translateX(140px)', opacity: 0 },
+        { transform: 'translateY(0)', opacity: 1 },
+        { transform: 'translateY(8px)', opacity: 1, offset: 0.2 },
+        { transform: 'translateY(-90px)', opacity: 0 },
       ],
-      { duration: 800, easing: 'ease-in', fill: 'forwards' },
+      { duration: SAIL_MS, easing: 'ease-in', fill: 'forwards' },
     );
     anim.onfinish = () => node.remove();
-    window.setTimeout(() => node.remove(), 1000);
+    window.setTimeout(() => node.remove(), SAIL_MS + 200);
   }
 
   private tick(): void {
