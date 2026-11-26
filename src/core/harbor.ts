@@ -391,8 +391,16 @@ function moveWater(state: HarborState): HarborState {
         };
         const left = room(-1);
         const right = room(1);
-        const dir = left <= right ? -1 : 1;
-        const gap = Math.min(left, right);
+        // Прижимаемся к ближайшему препятствию. Если эта сторона занята островом ниже (он ждёт, пока освободится путь вверх),
+        // уходим на другую сторону, чтобы дать ему подняться.
+        const below = (dir: number): boolean =>
+          field.some((o) => o.id !== cur.id && o.y > cur.y + 0.02 && (o.x - cur.x) * dir > r * 0.3 && Math.hypot(o.x - cur.x, o.y - cur.y) < r + islandRadius(o) + 0.06);
+        let dir = left <= right ? -1 : 1;
+        let gap = Math.min(left, right);
+        if (below(dir)) {
+          dir = -dir;
+          gap = dir < 0 ? left : right;
+        }
         if (gap >= 0.005) {
           const slide = Math.min(gap, 0.03);
           field = field.map((i) => (i.id === cur.id ? { ...i, x: cur.x + dir * slide } : i));
