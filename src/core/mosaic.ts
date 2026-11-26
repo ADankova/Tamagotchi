@@ -128,6 +128,10 @@ function breakDeadlocks(columns: Jar[][]): void {
   }
 }
 
+/** Сколько питомцев в одной баночке: от JAR_MIN до JAR_MAX (хвост цвета может быть меньше). */
+const JAR_MIN = 8;
+const JAR_MAX = 16;
+
 /** Новая партия: числа на баночках каждого цвета в сумме равны числу кубиков этого цвета. */
 export function newMosaic(seed: number, picture: MosaicPicture = 'heart'): MosaicState {
   const { w, h, cells } = pictureCells(picture);
@@ -142,9 +146,9 @@ export function newMosaic(seed: number, picture: MosaicPicture = 'heart'): Mosai
   MOSAIC_COLORS.forEach((_, color) => {
     let rest = cells.filter((c) => c === color).length;
     while (rest > 0) {
-      const n = rest <= 8 ? rest : 4 + Math.floor(rand() * 5);
+      const n = rest <= JAR_MAX ? rest : JAR_MIN + Math.floor(rand() * (JAR_MAX - JAR_MIN + 1));
       // Не оставляем хвост из одного-двух кубиков отдельной баночкой.
-      const take = rest - n > 0 && rest - n < 3 ? rest : n;
+      const take = rest - n > 0 && rest - n < JAR_MIN / 2 ? rest : n;
       jars.push({ id: id++, color, n: take });
       rest -= take;
     }
