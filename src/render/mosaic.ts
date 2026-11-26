@@ -16,7 +16,7 @@ import type { GameScreen, MiniGameHost } from './minigames';
 
 // Экран «Мозаики»: картинка из кубиков, норка, ячейки и очереди баночек.
 
-const STEP_MS = 340;
+const STEP_MS = 260;
 /** Скорость бега питомца, пикселей в миллисекунду. */
 const RUN_PX_PER_MS = 0.32;
 const COLOR_CSS = MOSAIC_COLOR_HEX;
@@ -37,6 +37,7 @@ export class MosaicGame implements GameScreen {
   private readonly hole = el('div', { class: 'm-hole' });
   private readonly slotRow = el('div', { class: 'm-slots' });
   private readonly queues = el('div', { class: 'm-queues' });
+  private readonly links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   private readonly left = el('span', {});
   private readonly cubes: HTMLElement[] = [];
   /** Кубик ещё виден на поле (его уже «взяли» в расчёте, но питомец ещё не добежал): обходить нужно и такие. */
@@ -71,12 +72,14 @@ export class MosaicGame implements GameScreen {
       cb.header(GAMES_TEXT.mosaicTitle),
       el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.left])]),
       this.stage,
-      this.slotRow,
-      this.queues,
+      el('div', { class: 'm-bottom' }, [this.links, this.slotRow, this.queues]),
       el('p', { class: 'q-hint', text: GAMES_TEXT.mosaicHint }),
     ]);
+    this.links.setAttribute('class', 'm-links');
+    this.links.setAttribute('aria-hidden', 'true');
     this.renderJars();
     this.renderLeft();
+    window.requestAnimationFrame(() => this.drawLinks());
     this.timer = window.setInterval(() => this.tick(), STEP_MS);
   }
 
@@ -90,21 +93,54 @@ export class MosaicGame implements GameScreen {
   }
 
   private jarNode(jar: Jar, front: boolean, hidden: boolean): HTMLElement {
-    const node = el(front ? 'button' : 'div', { class: 'm-jar', 'aria-label': GAMES_TEXT.mosaicJar(jar.n) }, [
+    const node = el(front ? 'button' : 'div', { class: 'm-jar', 'aria-label': GAMES_TEXT.mosaicJar(jar.n), 'data-jar': String(jar.id) }, [
       el('span', { class: 'm-jar-lid' }),
-      el('span', { class: 'm-jar-n', text: hidden ? '?' : String(jar.n) }),
+      el('span', { class: 'm-jar-n', text: jar.n <= 0 ? '' : hidden ? '?' : String(jar.n) }),
     ]);
     node.style.setProperty('--jar', COLOR_CSS[jar.color] ?? '#ccc');
     node.classList.toggle('back', !front);
     node.classList.toggle('hidden-n', hidden);
+    node.classList.toggle('spent', jar.n <= 0);
+    node.classList.toggle('linked', jar.pair !== undefined);
     return node;
+  }
+
+  /** Соединения между связанными баночками: труба цвета обеих баночек. */
+  private drawLinks(): void {
+    if (!this.root.isConnected) return;
+    const box = this.links.parentElement?.getBoundingClientRect();
+    if (!box) return;
+    const nodes = new Map<string, HTMLElement>();
+    this.links.parentElement!.querySelectorAll<HTMLElement>('.m-jar[data-jar]').forEach((n) => nodes.set(n.dataset.jar!, n));
+    const jars = [...this.state.slots, ...this.state.columns.flat()].filter((j): j is Jar => !!j);
+    const parts: string[] = [];
+    jars.forEach((jar, i) => {
+      if (jar.pair === undefined || jar.id > jar.pair) return;
+      const a = nodes.get(String(jar.id));
+      const b = nodes.get(String(jar.pair));
+      const mate = jars.find((j) => j.id === jar.pair);
+      if (!a || !b || !mate) return;
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      const x1 = ra.left + ra.width / 2 - box.left;
+      const y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left + rb.width / 2 - box.left;
+      const y2 = rb.top + rb.height / 2 - box.top;
+      const gid = `lg${i}`;
+      parts.push(
+        `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0.3" stop-color="${COLOR_CSS[jar.color]}"/><stop offset="0.7" stop-color="${COLOR_CSS[mate.color]}"/></linearGradient>` +
+          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3b2a1e" stroke-width="16" stroke-linecap="round"/>` +
+          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="url(#${gid})" stroke-width="10" stroke-linecap="round"/>`,
+      );
+    });
+    this.links.innerHTML = parts.join('');
   }
 
   private renderJars(): void {
     this.slotRow.replaceChildren(
       ...this.state.slots.map((jar) => {
         const slot = el('div', { class: jar ? 'm-slot full' : 'm-slot' });
-        if (jar) slot.append(this.jarNode(jar, false, false), el('img', { class: 'm-slot-pet', src: this.host.petImage, alt: '' }));
+        if (jar) slot.append(this.jarNode(jar, false, false), ...(jar.n > 0 ? [el('img', { class: 'm-slot-pet', src: this.host.petImage, alt: '' })] : []));
         return slot;
       }),
     );
@@ -119,6 +155,7 @@ export class MosaicGame implements GameScreen {
         return column;
       }),
     );
+    this.drawLinks();
   }
 
   private renderLeft(): void {
@@ -163,7 +200,7 @@ export class MosaicGame implements GameScreen {
     const from = cube.getBoundingClientRect();
     const to = this.hole.getBoundingClientRect();
     const size = from.width;
-    const rs = size * 0.8;
+    const rs = Math.max(size * 0.8, 22);
     // Пока соседние кубики ещё видны на поле, свободного пути может не быть: питомец ждёт, а не бежит сквозь мозаику.
     {
       const cx = c.cell % this.state.w;

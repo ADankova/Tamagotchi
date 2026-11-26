@@ -140,7 +140,7 @@ export const en: Dict = {
     slideBlock: (row: number, col: number, len: number) => `Block: row ${row}, cells ${col}–${col + len - 1}`,
     mosaicTitle: 'Pet Thieves',
     mosaicAbout:
-      'A picture made of coloured cubes. Tap a jar: it moves into a slot and your pet starts carrying cubes of its colour to the burrow, as many as the number says. Only exposed cubes can be carried: at the edge or next to an empty spot. Clear the whole picture before the slots fill up with jars that have nothing to carry.',
+      'A picture made of coloured cubes. Tap a jar: it moves into a slot and your pet starts carrying cubes of its colour to the burrow, as many as the number says. Only exposed cubes can be carried: at the edge or next to an empty spot. Clear the whole picture before the slots fill up with jars that have nothing to carry. Jars joined by a tube are taken together (you need two free slots) and leave the slots together: an empty one waits for its partner.',
     mosaicLevel: 'Random picture',
     mosaicPicture: { heart: 'Heart', ...Object.fromEntries(Object.entries(PET_PICTURE_NAMES).map(([k, v]) => [k, v.en])) } as Record<string, string>,
     mosaicInfo: (reward: number) => `Small picture · +${reward} ${plural(reward, 'treat', 'treats')}`,

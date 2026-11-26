@@ -31,15 +31,51 @@ describe('мозаика', () => {
     expect(s.columns[0]!.length).toBeGreaterThanOrEqual(0);
     const before = s.left;
     const r = stepMosaic(s);
-    expect(r.carries.length).toBeLessThanOrEqual(1);
+    expect(r.carries.length).toBeLessThanOrEqual(2);
     expect(r.state.left).toBe(before - r.carries.length);
   });
 
   it('нельзя взять баночку, когда все ячейки заняты', () => {
-    let s = newMosaic(5);
-    for (let c = 0; c < 4; c++) s = tapJar(s, c)!;
-    expect(s.slots.every((x) => x)).toBe(true);
-    expect(tapJar(s, 0)).toBe(null);
+    const s = newMosaic(5);
+    const jar = (id: number): { id: number; color: number; n: number } => ({ id, color: 0, n: 3 });
+    const full = { ...s, slots: [jar(101), jar(102), jar(103), jar(104)], columns: [[jar(1)], [], [], []] };
+    expect(tapJar(full, 0)).toBe(null);
+  });
+
+  it('связанные баночки берутся только вместе и уходят только вместе', () => {
+    const s = newMosaic(5);
+    const a = { id: 1, color: 0, n: 1, pair: 2 };
+    const b = { id: 2, color: 3, n: 1, pair: 1 };
+    const base = { ...s, columns: [[a], [b], [], []], slots: [null, null, null, null] as (typeof a | null)[] };
+    // Одна свободная ячейка — пара не берётся.
+    expect(tapJar({ ...base, slots: [{ id: 9, color: 0, n: 2 }, { id: 8, color: 0, n: 2 }, { id: 7, color: 0, n: 2 }, null] }, 0)).toBe(null);
+    // Две свободные — берутся обе, из очереди пропадают обе, ячейки соседние.
+    const took = tapJar(base, 0)!;
+    expect(took.slots.filter((x) => x).length).toBe(2);
+    expect(took.columns.flat().length).toBe(0);
+    expect(took.slots[0]?.id).toBe(1);
+    expect(took.slots[1]?.id).toBe(2);
+    // Одна опустела — остаётся и ждёт вторую.
+    const cells = s.cells.slice();
+    const mid = { ...took, cells, slots: [{ ...a, n: 0 }, { ...b, n: 2 }, null, null] };
+    const step = stepMosaic(mid).state;
+    expect(step.slots[0]?.id).toBe(1);
+    // Опустели обе — уходят обе.
+    const both = stepMosaic({ ...mid, slots: [{ ...a, n: 0 }, { ...b, n: 0 }, null, null] }).state;
+    expect(both.slots.every((x) => x === null)).toBe(true);
+  });
+
+  it('баночки в очередях иногда связаны парами, пары взаимны', () => {
+    let pairs = 0;
+    for (let seed = 1; seed <= 6; seed++) {
+      const jars = newMosaic(seed, 'cat_baby').columns.flat();
+      for (const j of jars) {
+        if (j.pair === undefined) continue;
+        pairs++;
+        expect(jars.find((o) => o.id === j.pair)?.pair).toBe(j.id);
+      }
+    }
+    expect(pairs > 10).toBe(true);
   });
 
   it('партию можно выиграть, беря баночки подряд', () => {

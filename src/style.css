@@ -2525,3 +2525,37 @@ button.m-jar:active {
   flex-basis: auto;
   text-align: center;
 }
+
+/* «Питомцы-воришки»: пять ячеек, связанные баночки */
+.m-bottom {
+  position: relative;
+  width: min(100%, 46dvh);
+  margin: 0 auto;
+}
+.m-bottom .m-slots,
+.m-bottom .m-queues {
+  width: 100%;
+}
+.m-bottom .m-jar {
+  position: relative;
+  z-index: 2;
+}
+.m-bottom .m-slots {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.m-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+.m-jar.spent .m-jar-n {
+  display: none;
+}
+.m-jar.spent {
+  opacity: 0.8;
+}
