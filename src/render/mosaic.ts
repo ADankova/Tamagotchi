@@ -214,7 +214,7 @@ export class MosaicGame implements GameScreen {
     this.slotRow.replaceChildren(
       ...this.state.slots.map((jar) => {
         const slot = el('div', { class: jar ? 'm-slot full' : 'm-slot' });
-        if (jar) slot.append(this.jarNode(jar, false, false), ...(jar.n > 0 ? [el('img', { class: 'm-slot-pet', src: this.host.petImage, alt: '' })] : []));
+        if (jar) slot.append(this.jarNode(jar, false, false));
         return slot;
       }),
     );
