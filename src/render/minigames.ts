@@ -59,6 +59,7 @@ export interface GameScreen {
 }
 
 const DOUBLE_TAP_MS = 260;
+const FAVOURITES_KEY = 'tamagotchi.favouriteGames';
 const RULES: readonly QueensRule[] = ['region', 'line', 'touch'];
 
 /** Модальное окно мини-игр. close() закрывает его; системная «Назад» тоже ведёт сюда. */
@@ -153,13 +154,41 @@ export class GamesOverlay {
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
-      card,
-      slideCard,
-      mosaicCard,
-      harborCard,
+      ...this.sortedByFavourites([
+        { id: 'queens', node: card },
+        { id: 'slide', node: slideCard },
+        { id: 'mosaic', node: mosaicCard },
+        { id: 'harbor', node: harborCard },
+      ]),
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
     this.body.querySelector<HTMLElement>('.level-button')?.focus();
+  }
+
+  /** Избранные игры хранятся на устройстве и показываются в начале списка. */
+  private favourites(): string[] {
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(FAVOURITES_KEY) ?? '[]') as unknown;
+      return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private toggleFavourite(id: string): void {
+    const list = this.favourites();
+    const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+    try {
+      window.localStorage.setItem(FAVOURITES_KEY, JSON.stringify(next));
+    } catch {
+      // Без хранилища звёздочка просто не запомнится.
+    }
+    this.showMenu();
+  }
+
+  private sortedByFavourites(cards: Array<{ id: string; node: HTMLElement }>): HTMLElement[] {
+    const fav = this.favourites();
+    return [...cards.filter((c) => fav.includes(c.id)), ...cards.filter((c) => !fav.includes(c.id))].map((c) => c.node);
   }
 
   /** Карточка игры: описание спрятано и раскрывается кнопкой «i». */
@@ -180,10 +209,20 @@ export class GamesOverlay {
       info.setAttribute('aria-expanded', String(!text.hidden));
       info.classList.toggle('open', !text.hidden);
     });
+    const isFav = this.favourites().includes(id);
+    const star = el('button', {
+      type: 'button',
+      class: `star-button${isFav ? ' on' : ''}`,
+      'aria-pressed': String(isFav),
+      'aria-label': GAMES_TEXT.favourite(title, isFav),
+      text: isFav ? '★' : '☆',
+    });
+    star.addEventListener('click', () => this.toggleFavourite(id));
     return el('section', { class: 'game-card' }, [
       el('div', { class: 'game-card-head' }, [
         el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
         el('h2', { text: title }),
+        star,
         info,
       ]),
       text,

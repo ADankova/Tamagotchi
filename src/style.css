@@ -859,6 +859,27 @@ body.overlay-open {
   cursor: pointer;
 }
 
+.star-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: auto;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.star-button.on {
+  color: #e8a92a;
+}
+
 .info-button.open {
   background: radial-gradient(circle closest-side, var(--butter) 55%, transparent 100%);
 }
