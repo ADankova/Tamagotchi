@@ -1,10 +1,9 @@
 import { randomSeed } from '../core/rng';
 import {
   M3_COLS,
-  M3_REWARD,
   M3_ROWS,
   m3Adjacent,
-  m3Outcome,
+  restoreM3,
   m3Swap,
   m3Tap,
   newM3,
@@ -70,28 +69,29 @@ export class Match3Game implements GameScreen {
   readonly leaveText = GAMES_TEXT.match3LeaveConfirm;
   private state: M3State;
   private readonly board = el('div', { class: 'm3-board' });
-  private readonly movesChip = el('span', {});
-  private readonly scoreChip = el('span', {});
-  private readonly bar = el('span', { class: 'm3-bar-fill' });
+  private readonly treatChip = el('span', {});
+  private collected = loadTotal();
+  private restartTimer = 0;
   private readonly help = el('div', { class: 'm3-help', hidden: '' });
   private readonly note = el('p', { class: 'm3-note', text: GAMES_TEXT.match3Hint });
   private readonly nodes = new Map<number, HTMLElement>();
   private selected: number | null = null;
   private busy = false;
-  private finished = false;
-  private moved = false;
   private drag: { index: number; x: number; y: number; done: boolean } | null = null;
 
   constructor(
     private readonly host: MiniGameHost,
-    private readonly cb: Callbacks,
+    cb: Callbacks,
   ) {
-    this.state = newM3(randomSeed());
+    this.state = loadSaved() ?? newM3(randomSeed());
     this.board.style.aspectRatio = `${M3_COLS} / ${M3_ROWS}`;
     this.root = el('div', { class: 'q-game m3-game' }, [
       cb.header(GAMES_TEXT.match3Title),
-      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.movesChip]), el('span', { class: 'q-chip' }, [this.scoreChip]), this.helpButton()]),
-      el('div', { class: 'm3-bar' }, [this.bar]),
+      el('div', { class: 'q-top' }, [
+        el('span', { class: 'q-chip h-treat-chip' }, [el('img', { class: 'q-chip-pet', src: host.treatImage, alt: '' }), this.treatChip]),
+        this.restartButton(),
+        this.helpButton(),
+      ]),
       el('div', { class: 'm3-wrap' }, [this.board, this.help]),
       this.note,
     ]);
@@ -150,18 +150,48 @@ export class Match3Game implements GameScreen {
       row(['#/#/#/#'], BONUS_ART.col, L.colTitle, L.colText),
       row(['##/##', '###/.#./.#.', '#../#../###'], BONUS_ART.bomb, L.bombTitle, L.bombText),
       row(['#####', '.#./###/.#.'], BONUS_ART.rainbow, L.rainbowTitle, L.rainbowText),
+      row([], '<img src="' + this.host.treatImage + '" alt="">', L.treatTitle, L.treatText),
       el('p', { class: 'm3-legend-tip', text: L.tip }),
     ]);
   }
 
+  /** Игра сохраняется после каждого хода, поэтому выход ничего не теряет. */
   hasProgress(): boolean {
-    return this.moved && !this.finished;
+    return false;
   }
 
   private renderStats(): void {
-    this.movesChip.textContent = GAMES_TEXT.match3Moves(this.state.moves);
-    this.scoreChip.textContent = GAMES_TEXT.match3Score(this.state.score, this.state.goal);
-    this.bar.style.width = `${Math.min(100, (this.state.score / this.state.goal) * 100)}%`;
+    this.treatChip.textContent = GAMES_TEXT.match3Treats(this.collected);
+  }
+
+  /** «Заново»: нужно нажать дважды подряд, чтобы случайно не стереть поле. */
+  private restartButton(): HTMLElement {
+    const button = el('button', { type: 'button', class: 'm3-help-button m3-restart', 'aria-label': GAMES_TEXT.match3Restart, text: '↻' });
+    button.addEventListener('click', () => {
+      if (this.busy) return;
+      if (button.classList.contains('on')) {
+        window.clearTimeout(this.restartTimer);
+        button.classList.remove('on');
+        button.textContent = '↻';
+        this.selected = null;
+        this.state = newM3(randomSeed());
+        storeSaved(this.state);
+        for (const tile of this.nodes.values()) tile.remove();
+        this.nodes.clear();
+        this.show(this.state.cells, false);
+        this.note.textContent = GAMES_TEXT.match3Hint;
+        return;
+      }
+      button.classList.add('on');
+      button.textContent = '?!';
+      this.note.textContent = GAMES_TEXT.match3RestartSure;
+      this.restartTimer = window.setTimeout(() => {
+        button.classList.remove('on');
+        button.textContent = '↻';
+        this.note.textContent = GAMES_TEXT.match3Hint;
+      }, 3000);
+    });
+    return button;
   }
 
   private faceNode(piece: M3Piece): HTMLElement {
@@ -174,7 +204,7 @@ export class Match3Game implements GameScreen {
 
   /** Рисуем питомца (или радугу) и значок бонуса; повторно — только если вид или бонус изменился. */
   private decorate(tile: HTMLElement, piece: M3Piece): void {
-    const key = `${piece.kind}/${piece.special ?? ''}`;
+    const key = `${piece.kind}/${piece.special ?? ''}/${piece.treat ? 't' : ''}`;
     if (tile.dataset.key === key) return;
     tile.dataset.key = key;
     const face = tile.querySelector<HTMLElement>('.m3-face')!;
@@ -184,7 +214,11 @@ export class Match3Game implements GameScreen {
     tile.classList.toggle('bomb', piece.special === 'bomb');
     tile.classList.toggle('line', piece.special === 'row' || piece.special === 'col');
     tile.setAttribute('aria-label', piece.special ? GAMES_TEXT.match3Special[piece.special] : GAMES_TEXT.match3Tile);
-    if (piece.special) {
+    tile.classList.toggle('treat', !!piece.treat);
+    if (piece.treat) {
+      face.append(el('img', { class: 'm3-treat-img', src: this.host.treatImage, alt: '' }));
+      tile.setAttribute('aria-label', GAMES_TEXT.match3TreatLabel);
+    } else if (piece.special) {
       if (piece.kind >= 0) tile.style.setProperty('--tile', KINDS[piece.kind % KINDS.length]!.color);
       face.innerHTML = BONUS_ART[piece.special];
     } else if (piece.kind >= 0) {
@@ -244,7 +278,7 @@ export class Match3Game implements GameScreen {
   }
 
   private down(e: PointerEvent): void {
-    if (this.busy || this.finished) return;
+    if (this.busy) return;
     const index = this.cellAt(e);
     if (index === null) return;
     this.drag = { index, x: e.clientX, y: e.clientY, done: false };
@@ -272,7 +306,7 @@ export class Match3Game implements GameScreen {
   private up(e: PointerEvent): void {
     const d = this.drag;
     this.drag = null;
-    if (!d || d.done || this.busy || this.finished) return;
+    if (!d || d.done || this.busy) return;
     const index = this.cellAt(e);
     if (index === null || index !== d.index) return;
     this.tap(index);
@@ -304,7 +338,7 @@ export class Match3Game implements GameScreen {
   }
 
   private async trySwap(a: number, b: number): Promise<void> {
-    if (this.busy || this.finished) return;
+    if (this.busy) return;
     this.selected = null;
     const result = m3Swap(this.state, a, b);
     this.busy = true;
@@ -337,17 +371,17 @@ export class Match3Game implements GameScreen {
 
   private async play(result: M3Result): Promise<void> {
     this.busy = true;
-    this.moved = true;
+    // Результат хода известен сразу: сохраняем его до анимации, чтобы выход посреди неё ничего не терял.
+    this.state = result.state;
+    storeSaved(this.state);
     for (const step of result.steps) {
-      this.host.playSound(step.chain > 1 ? 'snack' : 'place');
+      this.host.playSound(step.treats > 0 ? 'snack' : step.chain > 1 ? 'mark' : 'place');
       this.show(step.afterClear);
-      this.state = { ...this.state, score: this.state.score + step.gain };
-      this.renderStats();
+      if (step.treats > 0) this.gain(step.treats);
       await sleep(CLEAR_MS);
       this.show(step.afterFall);
       await sleep(FALL_MS);
     }
-    this.state = result.state;
     if (result.reshuffled) {
       this.note.textContent = GAMES_TEXT.match3Shuffle;
       this.show(this.state.cells, false);
@@ -355,33 +389,60 @@ export class Match3Game implements GameScreen {
     } else {
       this.note.textContent = GAMES_TEXT.match3Hint;
     }
-    this.renderStats();
     this.busy = false;
-    this.checkEnd();
   }
 
-  private checkEnd(): void {
-    const outcome = m3Outcome(this.state);
-    if (this.finished || outcome === 'playing') return;
-    this.finished = true;
-    const won = outcome === 'won';
-    this.host.finishMatch3(won, this.state.score);
-    this.host.playSound(won ? 'win' : 'lose');
-    const retry = el('button', { type: 'button', class: 'chunky', text: GAMES_TEXT.retry });
-    retry.addEventListener('click', () => this.cb.replay());
-    const finish = el('button', { type: 'button', class: 'chunky primary', text: GAMES_TEXT.finish });
-    finish.addEventListener('click', () => this.cb.done());
-    const card = el('div', { class: won ? 'q-result won' : 'q-result' }, [
-      el('img', { class: 'q-result-pet', src: this.host.petImage, alt: '' }),
-      el('h2', { text: won ? GAMES_TEXT.match3WinTitle : GAMES_TEXT.match3LoseTitle }),
-      el('p', {
-        text: won
-          ? GAMES_TEXT.match3WinText(this.host.petName, this.state.score, M3_REWARD)
-          : GAMES_TEXT.match3LoseText(this.host.petName, this.state.score, this.state.goal),
-      }),
-      el('div', { class: 'q-result-buttons' }, [retry, finish]),
-    ]);
-    window.setTimeout(() => this.root.append(card), 400);
-    finish.focus();
+  /** Лакомства сразу попадают питомцу. */
+  private gain(n: number): void {
+    this.collected += n;
+    storeTotal(this.collected);
+    this.host.earnTreats(n);
+    this.renderStats();
+    const chip = this.treatChip.parentElement;
+    chip?.classList.remove('bump');
+    void chip?.offsetWidth;
+    chip?.classList.add('bump');
   }
+}
+
+const SAVE_KEY = 'tamagotchi.match3';
+const TOTAL_KEY = 'tamagotchi.match3.treats';
+
+function storeSaved(state: M3State): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch {
+    // хранилище закрыто — поле просто не сохранится
+  }
+}
+
+function loadSaved(): M3State | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? restoreM3(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeTotal(n: number): void {
+  try {
+    localStorage.setItem(TOTAL_KEY, String(n));
+  } catch {
+    // ignore
+  }
+}
+
+function loadTotal(): number {
+  try {
+    const n = Number(localStorage.getItem(TOTAL_KEY));
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Сколько лакомств собрано в «Трёх в ряд» за всё время (для списка игр). */
+export function match3Collected(): number {
+  return loadTotal();
 }

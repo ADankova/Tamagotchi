@@ -5,7 +5,8 @@ import {
   M3_COLS,
   M3_ROWS,
   m3Index,
-  m3Outcome,
+  restoreM3,
+  M3_MAX_TREATS,
   m3Swap,
   m3Tap,
   newM3,
@@ -15,7 +16,7 @@ import {
 } from '../src/core/match3';
 
 /** Поле из строк: цифра — вид питомца, '.' — «запас» из неповторяющихся видов, буква — бонус (r,c,b,w=радуга). */
-function board(rows: string[], moves = 10): M3State {
+function board(rows: string[]): M3State {
   const cells: (M3Piece | null)[] = [];
   let id = 1;
   const special: Record<string, M3Special> = { r: 'row', c: 'col', b: 'bomb', w: 'rainbow' };
@@ -29,7 +30,7 @@ function board(rows: string[], moves = 10): M3State {
       else cells.push({ id: id++, kind: Number(ch) });
     }
   }
-  return { cells, seed: 7, nextId: id, moves, score: 0, goal: 100000 };
+  return { cells, seed: 7, nextId: id };
 }
 
 describe('three in a row', () => {
@@ -55,8 +56,6 @@ describe('three in a row', () => {
     const above = s.cells[m3Index(5, 0)]!;
     const res = m3Swap(s, m3Index(6, 2), m3Index(7, 2))!;
     expect(res).not.toBeNull();
-    expect(res.state.moves).toBe(9);
-    expect(res.state.score).toBeGreaterThanOrEqual(30);
     expect(res.steps[0]!.cleared).toBeGreaterThanOrEqual(3);
     expect(res.state.cells.every((p) => p !== null)).toBe(true);
     expect(above !== undefined).toBe(true);
@@ -137,7 +136,6 @@ describe('bonuses', () => {
     const s = board([]);
     s.cells[m3Index(5, 3)] = { id: 200, kind: 0, special: 'row' };
     const res = m3Tap(s, m3Index(5, 3))!;
-    expect(res.state.moves).toBe(9);
     expect(res.steps[0]!.cleared).toBeGreaterThanOrEqual(M3_COLS);
     expect(res.steps[0]!.afterClear.slice(m3Index(5, 0), m3Index(5, 0) + M3_COLS).every((p) => p === null)).toBe(true);
   });
@@ -160,12 +158,61 @@ describe('bonuses', () => {
   });
 });
 
-describe('outcome', () => {
-  it('wins on goal and loses without moves', () => {
-    const s = newM3(3);
-    expect(m3Outcome(s)).toBe('playing');
-    expect(m3Outcome({ ...s, score: s.goal })).toBe('won');
-    expect(m3Outcome({ ...s, moves: 0 })).toBe('lost');
+describe('treats and saving', () => {
+  it('an ordinary match does not take a treat, a line bonus and a bomb do', () => {
+    const s = board([]);
+    s.cells[m3Index(5, 0)] = { id: 900, kind: -3, treat: true };
+    s.cells[m3Index(5, 3)] = { id: 901, kind: 0, special: 'row' };
+    s.cells[m3Index(3, 5)] = { id: 902, kind: -3, treat: true };
+    const res = m3Tap(s, m3Index(5, 3))!;
+    expect(res.steps[0]!.treats).toBe(1);
+    const b = board([]);
+    b.cells[m3Index(2, 2)] = { id: 910, kind: -3, treat: true };
+    b.cells[m3Index(4, 3)] = { id: 911, kind: 0, special: 'bomb' };
+    expect(m3Tap(b, m3Index(4, 3))!.steps[0]!.treats).toBe(1);
+  });
+
+  it('a treat next to a match is not cleared', () => {
+    const s = board([]);
+    s.cells[m3Index(4, 3)] = { id: 920, kind: -3, treat: true };
+    for (const c of [0, 1, 2]) s.cells[m3Index(4, c)] = { id: 930 + c, kind: 1 };
+    const res = m3Swap(s, m3Index(0, 0), m3Index(0, 1))!;
+    expect(res.steps[0]!.treats).toBe(0);
+    expect(res.steps[0]!.afterClear.some((p) => p?.id === 920)).toBe(true);
+  });
+
+  it('treats appear while playing but never more than the cap', () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      let s = newM3(seed);
+      for (let n = 0; n < 40; n++) {
+        let moved = false;
+        for (let i = 0; i < 56 && !moved; i++) {
+          for (const j of [i + 1, i + 7]) {
+            const r = m3Swap(s, i, j);
+            if (r) {
+              s = r.state;
+              moved = true;
+              break;
+            }
+          }
+        }
+        const treats = s.cells.filter((p) => p?.treat).length;
+        expect(treats).toBeLessThanOrEqual(M3_MAX_TREATS);
+        seen += treats;
+        if (!moved) break;
+      }
+    }
+    expect(seen).toBeGreaterThanOrEqual(1);
+  });
+
+  it('a saved board is restored and a broken one is rejected', () => {
+    const s = newM3(11);
+    const back = restoreM3(JSON.parse(JSON.stringify(s)));
+    expect(back).toEqual(s);
+    expect(restoreM3({ cells: [], seed: 1, nextId: 1 })).toBeNull();
+    expect(restoreM3(null)).toBeNull();
+    expect(restoreM3({ ...s, cells: s.cells.map((p) => ({ ...p, kind: 99 })) })).toBeNull();
   });
 
   it('is deterministic', () => {

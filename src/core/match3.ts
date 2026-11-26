@@ -5,10 +5,9 @@ import { nextRandom } from './rng';
 export const M3_COLS = 7;
 export const M3_ROWS = 8;
 export const M3_KINDS = 6;
-export const M3_MOVES = 25;
-export const M3_GOAL = 4500;
-/** Лакомства за победу. */
-export const M3_REWARD = 3;
+/** Сколько лакомств может лежать на поле одновременно и как часто они появляются среди упавших питомцев. */
+export const M3_MAX_TREATS = 3;
+export const M3_TREAT_CHANCE = 0.06;
 /** Бомба сносит всё, что ближе этого числа клеток (по прямой). */
 export const M3_BOMB_RADIUS = 3;
 
@@ -17,9 +16,11 @@ export type M3Special = 'row' | 'col' | 'bomb' | 'rainbow';
 
 export interface M3Piece {
   id: number;
-  /** Вид питомца; у радужного бонуса -1: сам он ни с чем не складывается. */
+  /** Вид питомца; у радужного бонуса -1, у лакомства -3: сами они ни с чем не складываются. */
   kind: number;
   special?: M3Special;
+  /** Лакомство: ни с чем не складывается, собирается только бомбой и бонусами-линиями. */
+  treat?: true;
 }
 
 export type M3Cells = (M3Piece | null)[];
@@ -28,9 +29,6 @@ export interface M3State {
   cells: M3Cells;
   seed: number;
   nextId: number;
-  moves: number;
-  score: number;
-  goal: number;
 }
 
 /** Один шаг каскада: сначала исчезают сложенные, потом всё падает и досыпается. */
@@ -40,7 +38,8 @@ export interface M3Step {
   /** Поле после падения и досыпания. */
   afterFall: M3Cells;
   cleared: number;
-  gain: number;
+  /** Сколько лакомств собрано на этом шаге. */
+  treats: number;
   /** Номер звена цепочки: 1, 2, 3… */
   chain: number;
 }
@@ -181,13 +180,19 @@ function reach(piece: M3Piece, index: number): number[] {
 
 function fall(state: M3State, cells: M3Cells): M3Cells {
   const out: M3Cells = new Array<M3Piece | null>(cells.length).fill(null);
+  let treats = cells.filter((p) => p?.treat).length;
   for (let c = 0; c < M3_COLS; c++) {
     let write = M3_ROWS - 1;
     for (let r = M3_ROWS - 1; r >= 0; r--) {
       const piece = cells[m3Index(r, c)];
       if (piece) out[m3Index(write--, c)] = piece;
     }
-    for (let r = write; r >= 0; r--) out[m3Index(r, c)] = { id: state.nextId++, kind: randomKind(state) };
+    for (let r = write; r >= 0; r--) {
+      if (treats < M3_MAX_TREATS && rand(state) < M3_TREAT_CHANCE) {
+        treats++;
+        out[m3Index(r, c)] = { id: state.nextId++, kind: -3, treat: true };
+      } else out[m3Index(r, c)] = { id: state.nextId++, kind: randomKind(state) };
+    }
   }
   return out;
 }
@@ -221,7 +226,7 @@ function swapIsValid(cells: M3Cells, a: number, b: number): boolean {
 
 /** Можно ли поменять эти две клетки местами. */
 export function m3CanSwap(state: M3State, a: number, b: number): boolean {
-  return state.moves > 0 && m3Adjacent(a, b) && swapIsValid(state.cells, a, b);
+  return m3Adjacent(a, b) && swapIsValid(state.cells, a, b);
 }
 
 function cloneState(state: M3State): M3State {
@@ -261,19 +266,19 @@ function cascade(state: M3State, forced: Set<number>, hint: number[]): M3Step[] 
     }
     const afterClear = state.cells.slice();
     let removed = 0;
+    let treats = 0;
     for (const i of clear) {
       if (afterClear[i]) removed++;
+      if (afterClear[i]?.treat) treats++;
       afterClear[i] = null;
     }
     for (const m of born) {
       const base = state.cells[m.at]!;
       afterClear[m.at] = { id: base.id, kind: m.special === 'rainbow' ? -1 : base.kind, special: m.special };
     }
-    const gain = removed * 10 * chain;
-    state.score += gain;
     const afterFall = fall(state, afterClear);
     state.cells = afterFall;
-    steps.push({ afterClear, afterFall, cleared: removed, gain, chain });
+    steps.push({ afterClear, afterFall, cleared: removed, treats, chain });
     pending = new Set();
     spot = [];
   }
@@ -300,7 +305,6 @@ export function m3Swap(state: M3State, a: number, b: number): M3Result | null {
   if (!m3CanSwap(state, a, b)) return null;
   const next = cloneState(state);
   next.cells = swapped(next.cells, a, b);
-  next.moves--;
   const pa = next.cells[b]!; // бывший a
   const pb = next.cells[a]!; // бывший b
   const forced = new Set<number>();
@@ -325,28 +329,44 @@ export function m3Swap(state: M3State, a: number, b: number): M3Result | null {
 /** Нажать на бонус-линию или бомбу: сработает на месте. */
 export function m3Tap(state: M3State, index: number): M3Result | null {
   const piece = state.cells[index];
-  if (state.moves <= 0 || !piece || !piece.special || piece.special === 'rainbow') return null;
+  if (!piece || !piece.special || piece.special === 'rainbow') return null;
   const next = cloneState(state);
-  next.moves--;
   const steps = cascade(next, new Set([index]), [index]);
   return finish(next, steps);
 }
 
 function finish(next: M3State, steps: M3Step[]): M3Result {
-  const reshuffled = next.score < next.goal && next.moves > 0 && ensurePlayable(next);
+  const reshuffled = ensurePlayable(next);
   return { state: next, steps, reshuffled };
 }
 
-export type M3Outcome = 'playing' | 'won' | 'lost';
-
-export function m3Outcome(state: M3State): M3Outcome {
-  if (state.score >= state.goal) return 'won';
-  return state.moves <= 0 ? 'lost' : 'playing';
+/** Проверка сохранённого поля: любое неподходящее значение — повод начать заново. */
+export function restoreM3(raw: unknown): M3State | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const v = raw as Record<string, unknown>;
+  if (!Array.isArray(v.cells) || v.cells.length !== M3_ROWS * M3_COLS) return null;
+  if (typeof v.seed !== 'number' || typeof v.nextId !== 'number') return null;
+  const specials: unknown[] = ['row', 'col', 'bomb', 'rainbow'];
+  const cells: M3Cells = [];
+  for (const c of v.cells) {
+    if (typeof c !== 'object' || c === null) return null;
+    const p = c as Record<string, unknown>;
+    if (typeof p.id !== 'number' || typeof p.kind !== 'number' || !Number.isInteger(p.kind)) return null;
+    if (p.kind < -3 || p.kind >= M3_KINDS) return null;
+    if (p.special !== undefined && !specials.includes(p.special)) return null;
+    const piece: M3Piece = { id: p.id, kind: p.kind };
+    if (p.special !== undefined) piece.special = p.special as M3Special;
+    if (p.treat === true) piece.treat = true;
+    cells.push(piece);
+  }
+  const m = findMatches(cells);
+  if (m.runs.length + m.squares.length > 0 || !hasMoves(cells)) return null;
+  return { cells, seed: v.seed, nextId: v.nextId };
 }
 
 /** Новая партия: поле без готовых троек и квадратов, но с ходом. */
-export function newM3(seed: number, goal = M3_GOAL, moves = M3_MOVES): M3State {
-  const state: M3State = { cells: new Array<M3Piece | null>(M3_ROWS * M3_COLS).fill(null), seed, nextId: 1, moves, score: 0, goal };
+export function newM3(seed: number): M3State {
+  const state: M3State = { cells: new Array<M3Piece | null>(M3_ROWS * M3_COLS).fill(null), seed, nextId: 1 };
   for (let r = 0; r < M3_ROWS; r++) {
     for (let c = 0; c < M3_COLS; c++) {
       let kind = randomKind(state);

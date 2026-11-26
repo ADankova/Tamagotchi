@@ -1,4 +1,3 @@
-import { M3_REWARD } from '../core/match3';
 import { ACTIONS, blockReason, cooldownLeft } from '../core/actions';
 import { ACTION_COOLDOWN_MS, NEED_ALERT_THRESHOLD, POOP_HEALTH_THRESHOLD, POOP_SICK_THRESHOLD } from '../core/config';
 import { levelStats } from '../core/stats';
@@ -568,9 +567,6 @@ export class UI {
         harborStats: () => levelStats(this.game.state.gameStats, 'harbor', 'bay'),
         finishHarbor: (won) =>
           this.game.finishMiniGame(won, 0, { game: 'harbor', key: 'bay' }),
-        match3Stats: () => levelStats(this.game.state.gameStats, 'match3', 'pets'),
-        finishMatch3: (won, score) =>
-          this.game.finishMiniGame(won, won ? M3_REWARD : 0, { game: 'match3', key: 'pets', score }),
         treatImage: ART.snack,
       },
       () => {
