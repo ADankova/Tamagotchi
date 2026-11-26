@@ -137,11 +137,26 @@ export class MosaicGame implements GameScreen {
     const jars = [...this.state.slots, ...this.state.columns.flat()].filter((j): j is Jar => !!j);
     const parts: string[] = [];
     jars.forEach((jar, i) => {
-      if (jar.pair === undefined || jar.id > jar.pair) return;
+      if (jar.pair === undefined) return;
       const a = nodes.get(String(jar.id));
       const b = nodes.get(String(jar.pair));
       const mate = jars.find((j) => j.id === jar.pair);
-      if (!a || !b || !mate) return;
+      if (!mate) return;
+      if (a && !b) {
+        // Пара лежит глубже видимых рядов очереди: короткая труба уходит вниз, чтобы связь была видна заранее.
+        const ra = a.getBoundingClientRect();
+        const x = ra.left + ra.width / 2 - box.left;
+        const y1 = ra.top + ra.height / 2 - box.top;
+        const y2 = ra.bottom - box.top + 12;
+        const gid = `ls${i}`;
+        parts.push(
+          `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"><stop offset="0.5" stop-color="${COLOR_CSS[jar.color]}"/><stop offset="1" stop-color="${COLOR_CSS[mate.color]}"/></linearGradient>` +
+            `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#3b2a1e" stroke-width="16" stroke-linecap="round"/>` +
+            `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="url(#${gid})" stroke-width="10" stroke-linecap="round"/>`,
+        );
+        return;
+      }
+      if (!a || !b || jar.id > jar.pair) return;
       const ra = a.getBoundingClientRect();
       const rb = b.getBoundingClientRect();
       const x1 = ra.left + ra.width / 2 - box.left;
@@ -199,7 +214,7 @@ export class MosaicGame implements GameScreen {
     this.slotRow.replaceChildren(
       ...this.state.slots.map((jar) => {
         const slot = el('div', { class: jar ? 'm-slot full' : 'm-slot' });
-        if (jar) slot.append(this.jarNode(jar, false, false), ...(jar.n > 0 ? [el('img', { class: 'm-slot-pet', src: this.host.petImage, alt: '' })] : []));
+        if (jar) slot.append(this.jarNode(jar, false, false));
         return slot;
       }),
     );
