@@ -241,14 +241,15 @@ export function tapJar(state: MosaicState, col: number): MosaicState | null {
 }
 
 /** Один шаг: каждая баночка в ячейке посылает питомца за открытым кубиком своего цвета. Кубик пропадёт, когда питомец его возьмёт (pickCell). */
-export function stepMosaic(state: MosaicState): { state: MosaicState; carries: Carry[] } {
+/** `canTake` — может ли питомец прямо сейчас выбежать к этому кубику (иначе число на баночке не трогаем). */
+export function stepMosaic(state: MosaicState, canTake: (cell: number) => boolean = () => true): { state: MosaicState; carries: Carry[] } {
   if (state.won || state.stuck) return { state, carries: [] };
   const slots = state.slots.slice();
   const reserved = state.reserved.slice();
   const carries: Carry[] = [];
   state.slots.forEach((jar, slot) => {
     if (!jar || jar.n <= 0) return;
-    const cell = exposedCells({ ...state, reserved }, jar.color, slot)[0];
+    const cell = exposedCells({ ...state, reserved }, jar.color, slot).find(canTake);
     if (cell === undefined) return;
     reserved.push(cell);
     const n = jar.n - 1;
