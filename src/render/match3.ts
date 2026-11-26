@@ -103,18 +103,38 @@ export class Match3Game implements GameScreen {
     this.renderStats();
   }
 
-  /** Памятка под полем: из чего собирается каждый бонус. */
+  /** Памятка под полем: что получится из каждой комбинации, с примерами. */
   private legend(): HTMLElement {
-    const item = (art: string[], title: string, text: string): HTMLElement => {
-      const icons = el('span', { class: 'm3-legend-icons' });
-      icons.innerHTML = art.map((a) => `<span class="m3-legend-icon">${a}</span>`).join('');
-      return el('div', { class: 'm3-legend-item' }, [icons, el('b', { text: title }), el('span', { text: text })]);
-    };
     const L = GAMES_TEXT.match3Legend;
+    // Пример комбинации: «#» — питомец одного вида, «.» — пусто.
+    const shape = (rows: string): HTMLElement => {
+      const lines = rows.split('/');
+      const box = el('span', { class: 'm3-shape' });
+      box.style.gridTemplateColumns = `repeat(${lines[0]!.length}, 1fr)`;
+      for (const line of lines) {
+        for (const ch of line) box.append(el('i', { class: ch === '#' ? 'on' : 'off' }));
+      }
+      return box;
+    };
+    const row = (shapes: string[], art: string | null, title: string, text: string): HTMLElement => {
+      const icon = el('span', { class: 'm3-legend-icon' });
+      if (art) icon.innerHTML = art;
+      else icon.textContent = '✨';
+      return el('div', { class: 'm3-legend-row' }, [
+        el('span', { class: 'm3-legend-shapes' }, shapes.map(shape)),
+        el('span', { class: 'm3-legend-arrow', text: '→' }),
+        icon,
+        el('span', { class: 'm3-legend-text' }, [el('b', { text: title }), el('span', { text })]),
+      ]);
+    };
     return el('div', { class: 'm3-legend' }, [
-      item([BONUS_ART.row, BONUS_ART.col], L.lineTitle, L.lineText),
-      item([BONUS_ART.bomb], L.bombTitle, L.bombText),
-      item([BONUS_ART.rainbow], L.rainbowTitle, L.rainbowText),
+      el('h3', { text: L.title }),
+      row(['###', '#/#/#'], null, L.threeTitle, L.threeText),
+      row(['####'], BONUS_ART.row, L.rowTitle, L.rowText),
+      row(['#/#/#/#'], BONUS_ART.col, L.colTitle, L.colText),
+      row(['##/##'], BONUS_ART.bomb, L.bombTitle, L.bombText),
+      row(['#####', '.#./###/.#.', '###/.#./.#.', '#../#../###'], BONUS_ART.rainbow, L.rainbowTitle, L.rainbowText),
+      el('p', { class: 'm3-legend-tip', text: L.tip }),
     ]);
   }
 
