@@ -32,6 +32,25 @@
      "lie_calm",
      "lie_sad"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795720868179-4qf7h3-27915d46.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
+    ]
    }
   ]
  },
@@ -275,6 +294,25 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795721080043-rjdi1k-df01a60d.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
+    ]
    }
   ]
  },
@@ -353,6 +391,25 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795720970304-a0xinv-9968c915.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "eat_v3",
+     "walk_v3",
+     "idle_v3",
+     "catch_v3"
     ]
    }
   ]
