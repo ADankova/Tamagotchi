@@ -14,6 +14,7 @@ import {
   useClear,
   useNet,
   useShuffle,
+  restoreHarbor,
   type HarborState,
 } from '../src/core/harbor';
 
@@ -275,5 +276,43 @@ describe('бухта питомцев', () => {
     expect(next.bonuses.shuffle).toBe(0);
     const changed = next.field.some((i, n) => i.pets.some((p, k) => p.kind !== s.field[n]!.pets[k]!.kind));
     expect(changed).toBe(true);
+  });
+
+  it('на части островов лежат лакомства, они достаются за опустевший остров', () => {
+    let treatIslands = 0;
+    let got = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      let s = newHarbor(seed);
+      treatIslands += [...s.field, ...s.deck].filter((i) => i.treat).length;
+      expect([...s.field, ...s.deck].every((i) => !(i.treat && i.bonus))).toBe(true);
+      const island = s.field.find((i) => i.treat);
+      if (!island) continue;
+      for (const p of island.pets) s = tapHarborPet(s, island.id, p.id) ?? s;
+      if (!s.field.some((i) => i.id === island.id)) {
+        expect(s.treats).toBe(1);
+        got++;
+      }
+    }
+    expect(treatIslands > 0).toBe(true);
+    expect(got > 0).toBe(true);
+  });
+
+  it('партия сохраняется и читается обратно; лакомства считаются заново', () => {
+    let s = newHarbor(7);
+    s = { ...s, treats: 2 };
+    const back = restoreHarbor(JSON.parse(JSON.stringify(s)));
+    expect(back !== null).toBe(true);
+    expect(back!.treats).toBe(0);
+    expect(back!.field.length).toBe(s.field.length);
+    expect(back!.total).toBe(s.total);
+  });
+
+  it('испорченное или законченное сохранение не читается', () => {
+    const s = newHarbor(9);
+    expect(restoreHarbor(null)).toBe(null);
+    expect(restoreHarbor({})).toBe(null);
+    expect(restoreHarbor({ ...s, won: true })).toBe(null);
+    expect(restoreHarbor({ ...s, ships: [] })).toBe(null);
+    expect(restoreHarbor({ ...s, field: [{ id: 1 }] })).toBe(null);
   });
 });

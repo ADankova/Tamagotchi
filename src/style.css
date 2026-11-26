@@ -2474,3 +2474,25 @@ button.m-jar:active {
 .h-field {
   width: min(100%, calc((100dvh - 390px) / 1.25));
 }
+
+/* Значки на островах без чёрного кружка */
+.h-island-bonus {
+  background: none;
+  border: 0;
+  padding: 0;
+  width: 30%;
+  filter: drop-shadow(0 1px 1px rgba(59, 42, 30, 0.45));
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.h-island-bonus svg {
+  filter: none;
+}
+.h-bonus-icon {
+  width: 26px;
+  height: 26px;
+}
+.h-treat-chip .q-chip-pet {
+  width: 20px;
+  height: 20px;
+}

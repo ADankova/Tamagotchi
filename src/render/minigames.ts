@@ -15,7 +15,6 @@ import { SLIDE_MODES, type SlideMode } from '../core/slide';
 import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
 import { MosaicGame } from './mosaic';
 import { HarborGame } from './harbor';
-import { HARBOR_REWARD } from '../core/harbor';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -141,7 +140,7 @@ export class GamesOverlay {
     const harborStats = this.host.harborStats();
     const harborButton = el('button', { type: 'button', class: 'chunky level-button' }, [
       el('span', { class: 'level-name', text: GAMES_TEXT.harborLevel }),
-      el('span', { class: 'level-info', text: GAMES_TEXT.harborInfo(HARBOR_REWARD) }),
+      el('span', { class: 'level-info', text: GAMES_TEXT.harborInfo() }),
       el('span', { class: 'level-stats', text: GAMES_TEXT.harborStats(harborStats.played, harborStats.won) }),
     ]);
     harborButton.addEventListener('click', () => this.startHarbor());
