@@ -60,6 +60,9 @@ export interface GameScreen {
 }
 
 const DOUBLE_TAP_MS = 260;
+/** Мягкая звёздочка со скруглёнными лучами; заливка и обводка задаются в CSS. */
+const STAR_SVG =
+  '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 3.2c.5 0 .9.3 1.1.7l1.9 3.9 4.3.6c.9.1 1.2 1.2.6 1.8l-3.1 3 .7 4.3c.2.9-.8 1.6-1.6 1.1L12 16.6l-3.9 2c-.8.4-1.7-.2-1.6-1.1l.7-4.3-3.1-3c-.6-.6-.3-1.7.6-1.8l4.3-.6 1.9-3.9c.2-.4.6-.7 1-.7z" stroke-width="2" stroke-linejoin="round"/></svg>';
 const FAVOURITES_KEY = 'tamagotchi.favouriteGames';
 const RULES: readonly QueensRule[] = ['region', 'line', 'touch'];
 
@@ -216,8 +219,8 @@ export class GamesOverlay {
       class: `star-button${isFav ? ' on' : ''}`,
       'aria-pressed': String(isFav),
       'aria-label': GAMES_TEXT.favourite(title, isFav),
-      text: isFav ? '★' : '☆',
     });
+    star.innerHTML = STAR_SVG;
     star.addEventListener('click', () => this.toggleFavourite(id));
     return el('section', { class: 'game-card' }, [
       el('div', { class: 'game-card-head' }, [
