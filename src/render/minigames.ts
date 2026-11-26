@@ -18,6 +18,7 @@ import { HarborGame } from './harbor';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
+import { gameIcon } from './gameIcons';
 
 // Окно мини-игр поверх экрана питомца: список игр и «Судоку с питомцем».
 
@@ -220,7 +221,7 @@ export class GamesOverlay {
     star.addEventListener('click', () => this.toggleFavourite(id));
     return el('section', { class: 'game-card' }, [
       el('div', { class: 'game-card-head' }, [
-        el('img', { class: 'game-card-pet', src: this.host.petImage, alt: '' }),
+        gameIcon(id),
         el('h2', { text: title }),
         star,
         info,
