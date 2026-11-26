@@ -14,6 +14,8 @@ import type { LevelStats } from '../core/stats';
 import { SLIDE_MODES, type SlideMode } from '../core/slide';
 import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
 import { MosaicGame } from './mosaic';
+import { HarborGame } from './harbor';
+import { HARBOR_REWARD } from '../core/harbor';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -39,6 +41,10 @@ export interface MiniGameHost {
   mosaicStats: (picture: MosaicPicture) => LevelStats;
   /** Партия «Мозаики» окончена. */
   finishMosaic: (picture: MosaicPicture, won: boolean) => void;
+  /** «Бухта питомцев»: сыграно и выиграно. */
+  harborStats: () => LevelStats;
+  /** Партия «Бухты питомцев» окончена. */
+  finishHarbor: (won: boolean) => void;
   /** Картинка лакомства (data URL). */
   treatImage: string;
 }
@@ -132,12 +138,21 @@ export class GamesOverlay {
       return button;
     });
     const mosaicCard = this.gameCard('mosaic', GAMES_TEXT.mosaicTitle, GAMES_TEXT.mosaicAbout, mosaicButtons);
+    const harborStats = this.host.harborStats();
+    const harborButton = el('button', { type: 'button', class: 'chunky level-button' }, [
+      el('span', { class: 'level-name', text: GAMES_TEXT.harborLevel }),
+      el('span', { class: 'level-info', text: GAMES_TEXT.harborInfo(HARBOR_REWARD) }),
+      el('span', { class: 'level-stats', text: GAMES_TEXT.harborStats(harborStats.played, harborStats.won) }),
+    ]);
+    harborButton.addEventListener('click', () => this.startHarbor());
+    const harborCard = this.gameCard('harbor', GAMES_TEXT.harborTitle, GAMES_TEXT.harborAbout, [harborButton]);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
       card,
       slideCard,
       mosaicCard,
+      harborCard,
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
     this.body.querySelector<HTMLElement>('.level-button')?.focus();
@@ -188,6 +203,15 @@ export class GamesOverlay {
     this.game = new MosaicGame(this.host, picture, {
       header: (title) => this.header(title, () => this.back(), '←'),
       replay: () => this.startMosaic(picture),
+      done: () => this.close(),
+    });
+    this.body.replaceChildren(this.game.root);
+  }
+
+  private startHarbor(): void {
+    this.game = new HarborGame(this.host, {
+      header: (title) => this.header(title, () => this.back(), '←'),
+      replay: () => this.startHarbor(),
       done: () => this.close(),
     });
     this.body.replaceChildren(this.game.root);
