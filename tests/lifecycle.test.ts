@@ -8,13 +8,13 @@ import { makePet, T0 } from './helpers';
 describe('стадии', () => {
   it.each([
     [0, 'egg'],
-    [5 * MINUTE - 1, 'egg'],
-    [5 * MINUTE, 'baby'],
-    [1 * DAY, 'child'],
-    [3 * DAY, 'teen'],
-    [6 * DAY, 'adult'],
-    [14 * DAY - 1, 'adult'],
-    [14 * DAY, 'elder'],
+    [10 * MINUTE - 1, 'egg'],
+    [10 * MINUTE, 'baby'],
+    [1 * DAY + 10 * MINUTE, 'child'],
+    [5 * DAY + 10 * MINUTE - 1, 'child'],
+    [5 * DAY + 10 * MINUTE, 'adult'],
+    [25 * DAY + 10 * MINUTE - 1, 'adult'],
+    [25 * DAY + 10 * MINUTE, 'elder'],
   ] as const)('возраст %d мс → %s', (age, stage) => {
     expect(stageForAge(age)).toBe(stage);
   });
@@ -39,13 +39,12 @@ describe('качество ухода', () => {
 });
 
 describe('питомец', () => {
-  it('новый питомец — яйцо со стартовыми значениями и сроком жизни 16–20 дней', () => {
+  it('новый питомец — яйцо со стартовыми значениями и сроком жизни 30 дней и 10 минут', () => {
     const pet = createPet('  Пушок  ', T0, 123);
     expect(pet.name).toBe('Пушок');
     expect(pet.stage).toBe('egg');
     expect(pet.stats).toEqual(START_STATS);
-    expect(pet.lifespanMs).toBeGreaterThanOrEqual(16 * DAY);
-    expect(pet.lifespanMs).toBeLessThanOrEqual(20 * DAY);
+    expect(pet.lifespanMs).toBe(30 * DAY + 10 * MINUTE);
   });
 
   it('имя обрезается до 16 символов', () => {

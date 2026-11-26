@@ -51,7 +51,7 @@ describe('прогноз заботы для напоминаний', () => {
   it('яйцо — напомнит о вылуплении', () => {
     const attention = nextAttention(createPet('Пушок', T0, 1));
     expect(attention?.reason).toBe('hatch');
-    expect(attention?.inMs).toBe(5 * MINUTE);
+    expect(attention?.inMs).toBe(10 * MINUTE);
   });
 
   it('сытый питомец проголодается, и прогноз совпадает с симуляцией', () => {
@@ -66,7 +66,7 @@ describe('прогноз заботы для напоминаний', () => {
   });
 
   it('яйцо, которому осталось 2 минуты, — напоминание через 2 минуты', () => {
-    const egg = { ...createPet('Пушок', T0, 1), ageMs: 3 * MINUTE };
+    const egg = { ...createPet('Пушок', T0, 1), ageMs: 8 * MINUTE };
     expect(nextAttention(egg)).toEqual({ inMs: 2 * MINUTE, reason: 'hatch' });
   });
 

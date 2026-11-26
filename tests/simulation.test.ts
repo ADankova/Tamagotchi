@@ -33,7 +33,7 @@ describe('tick: базовые правила', () => {
   });
 
   it('в старости энергия падает вдвое быстрее', () => {
-    const { pet } = tick(makePet({ stage: 'elder', ageMs: 15 * DAY }), HOUR);
+    const { pet } = tick(makePet({ stage: 'elder', ageMs: 26 * DAY }), HOUR);
     expect(pet.stats.energy).toBeCloseTo(90);
   });
 
@@ -52,8 +52,8 @@ describe('tick: яйцо', () => {
     expect(events).toEqual([]);
   });
 
-  it('через 5 минут вылупляется малыш', () => {
-    const { pet, events } = tick(createPet('Пушок', T0, 1), 5 * MINUTE);
+  it('через 10 минут вылупляется малыш', () => {
+    const { pet, events } = tick(createPet('Пушок', T0, 1), 10 * MINUTE);
     expect(pet.stage).toBe('baby');
     expect(events).toEqual([{ type: 'hatched' }, { type: 'stageChanged', stage: 'baby' }]);
   });
@@ -125,11 +125,11 @@ describe('tick: здоровье, болезнь, смерть', () => {
   });
 
   it('умирает от старости по достижении lifespan', () => {
-    const old = makePet({ stage: 'elder', ageMs: 18 * DAY - 30 * MINUTE, lifespanMs: 18 * DAY });
+    const old = makePet({ stage: 'elder', ageMs: 30 * DAY - 30 * MINUTE, lifespanMs: 30 * DAY });
     const { pet } = tick(old, HOUR);
     expect(pet.causeOfDeath).toBe('oldAge');
     expect(pet.stageAtDeath).toBe('elder');
-    expect(pet.ageMs).toBe(18 * DAY);
+    expect(pet.ageMs).toBe(30 * DAY);
   });
 });
 
@@ -159,7 +159,7 @@ describe('жизненный цикл целиком', () => {
     let pet = createPet('Пушок', T0, 7);
     const stages: LifeStage[] = [];
     const deaths: GameEvent[] = [];
-    for (let h = 0; h < 21 * 24 && pet.stage !== 'dead'; h++) {
+    for (let h = 0; h < 32 * 24 && pet.stage !== 'dead'; h++) {
       const result = tick(pet, HOUR);
       pet = result.pet;
       for (const e of result.events) {
@@ -169,17 +169,17 @@ describe('жизненный цикл целиком', () => {
       // «Идеальный игрок»: каждый час всё восстанавливает.
       if (pet.stage !== 'dead') pet = { ...pet, stats: { ...START_STATS, happiness: 100 }, poops: 0 };
     }
-    expect(stages).toEqual(['baby', 'child', 'teen', 'adult', 'elder']);
+    expect(stages).toEqual(['baby', 'child', 'adult', 'elder']);
     expect(deaths).toEqual([{ type: 'died', cause: 'oldAge' }]);
     expect(pet.form).toBe('good');
-    expect(pet.ageMs).toBeGreaterThanOrEqual(16 * DAY);
-    expect(pet.ageMs).toBeLessThanOrEqual(20 * DAY + HOUR);
+    expect(pet.ageMs).toBeGreaterThanOrEqual(30 * DAY);
+    expect(pet.ageMs).toBeLessThanOrEqual(31 * DAY);
   });
 
   it('при плохом уходе взрослый вырастает «вредным»', () => {
     const neglected = makePet({
-      stage: 'teen',
-      ageMs: 6 * DAY - MINUTE,
+      stage: 'child',
+      ageMs: 5 * DAY + 10 * MINUTE - MINUTE,
       care: { happinessMinutes: 20 * 1000, minutes: 1000, sicknessCount: 1 },
     });
     const { pet } = tick(neglected, MINUTE);

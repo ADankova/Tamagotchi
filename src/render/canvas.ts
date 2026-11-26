@@ -74,7 +74,8 @@ const BODY_OF = new Map<SpriteName, { species: Species; stage: BodyStage }>();
 const TAIL_NAMES = new Set<SpriteName>();
 for (const [species, look] of Object.entries(SPECIES_LOOKS) as [Species, (typeof SPECIES_LOOKS)[Species]][]) {
   for (const [stage, name] of Object.entries(look.bodies) as [BodyStage, SpriteName][]) {
-    BODY_OF.set(name, { species, stage });
+    // Взрослые используют рисунок подростка: берём первую (настоящую) стадию.
+    if (!BODY_OF.has(name)) BODY_OF.set(name, { species, stage });
   }
   look.tail?.forEach((n) => TAIL_NAMES.add(n));
 }

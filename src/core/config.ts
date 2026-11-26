@@ -63,17 +63,24 @@ export const HAPPY_MOOD_MIN_HAPPINESS = 70;
 export const HAPPY_MOOD_MIN_OTHER_STATS = 50;
 
 /** Возраст (от рождения), с которого начинается стадия. */
+export const EGG_MS = 10 * MINUTE;
+export const BABY_MS = 1 * DAY;
+export const CHILD_MS = 4 * DAY;
+export const ADULT_MS = 20 * DAY;
+export const ELDER_MS = 5 * DAY;
+
+/** Стадии: яйцо 10 минут, малыш 1 день, ребёнок 4 дня, взрослый 20 дней, старичок 5 дней. */
 export const STAGE_STARTS: ReadonlyArray<readonly [LifeStage, number]> = [
   ['egg', 0],
-  ['baby', 5 * MINUTE],
-  ['child', 1 * DAY],
-  ['teen', 3 * DAY],
-  ['adult', 6 * DAY],
-  ['elder', 14 * DAY],
+  ['baby', EGG_MS],
+  ['child', EGG_MS + BABY_MS],
+  ['adult', EGG_MS + BABY_MS + CHILD_MS],
+  ['elder', EGG_MS + BABY_MS + CHILD_MS + ADULT_MS],
 ];
 
-export const LIFESPAN_MIN_MS = 16 * DAY;
-export const LIFESPAN_MAX_MS = 20 * DAY;
+/** Жизнь заканчивается после старичка. */
+export const LIFESPAN_MIN_MS = EGG_MS + BABY_MS + CHILD_MS + ADULT_MS + ELDER_MS;
+export const LIFESPAN_MAX_MS = LIFESPAN_MIN_MS;
 
 /** Множитель падения сытости, счастья и чистоты по стадиям. */
 export const STAGE_DECAY_MULTIPLIER: Partial<Record<LifeStage, number>> = {
