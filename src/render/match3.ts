@@ -73,6 +73,7 @@ export class Match3Game implements GameScreen {
   private readonly movesChip = el('span', {});
   private readonly scoreChip = el('span', {});
   private readonly bar = el('span', { class: 'm3-bar-fill' });
+  private readonly help = el('div', { class: 'm3-help', hidden: '' });
   private readonly note = el('p', { class: 'm3-note', text: GAMES_TEXT.match3Hint });
   private readonly nodes = new Map<number, HTMLElement>();
   private selected: number | null = null;
@@ -89,11 +90,10 @@ export class Match3Game implements GameScreen {
     this.board.style.aspectRatio = `${M3_COLS} / ${M3_ROWS}`;
     this.root = el('div', { class: 'q-game m3-game' }, [
       cb.header(GAMES_TEXT.match3Title),
-      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.movesChip]), el('span', { class: 'q-chip' }, [this.scoreChip])]),
+      el('div', { class: 'q-top' }, [el('span', { class: 'q-chip' }, [this.movesChip]), el('span', { class: 'q-chip' }, [this.scoreChip]), this.helpButton()]),
       el('div', { class: 'm3-bar' }, [this.bar]),
-      this.board,
+      el('div', { class: 'm3-wrap' }, [this.board, this.help]),
       this.note,
-      this.legend(),
     ]);
     this.board.addEventListener('pointerdown', (e) => this.down(e));
     this.board.addEventListener('pointermove', (e) => this.move(e));
@@ -103,7 +103,23 @@ export class Match3Game implements GameScreen {
     this.renderStats();
   }
 
-  /** Памятка под полем: что получится из каждой комбинации, с примерами. */
+  /** Кнопка «?»: показывает и прячет памятку поверх поля, поле при этом не двигается. */
+  private helpButton(): HTMLElement {
+    const button = el('button', { type: 'button', class: 'm3-help-button', 'aria-label': GAMES_TEXT.match3Legend.title, text: '?' });
+    this.help.append(this.legend());
+    const toggle = (): void => {
+      const open = this.help.hasAttribute('hidden');
+      if (open) this.help.removeAttribute('hidden');
+      else this.help.setAttribute('hidden', '');
+      button.classList.toggle('on', open);
+      button.textContent = open ? '×' : '?';
+    };
+    button.addEventListener('click', toggle);
+    this.help.addEventListener('click', toggle);
+    return button;
+  }
+
+  /** Памятка: что получится из каждой комбинации, с примерами. */
   private legend(): HTMLElement {
     const L = GAMES_TEXT.match3Legend;
     // Пример комбинации: «#» — питомец одного вида, «.» — пусто.
