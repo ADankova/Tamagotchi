@@ -111,7 +111,7 @@ export const en: Dict = {
     stats: (played: number, won: number) => `Played: ${played} · Won: ${won}`,
     slideTitle: 'Pet Blocks',
     slideAbout:
-      'Drag blocks left and right. After every move a new row falls from the top. Fill a row completely and it disappears. Clear a block with a treat and the treat is yours. Do not let the stack reach the top!',
+      'Drag blocks left and right. After every move a new row falls from the top. Fill a row completely and it disappears. Clear a block with a treat and the treat is yours. Blocks can carry bonuses: freeze (3 moves without new rows), lightning (removes the blocks touching it above and below) and crumbs (break blocks inside a 3×3 area). Do not let the stack reach the top!',
     slidePlay: 'Play',
     slideStats: (played: number, best: number) => `Played: ${played} · Best: ${best} ${plural(best, 'row', 'rows')}`,
     slideLines: (n: number) => `${n} ${plural(n, 'row', 'rows')}`,
@@ -125,6 +125,12 @@ export const en: Dict = {
         : `${lines} ${plural(lines, 'row', 'rows')} cleared. ${name} had a great time.`,
     slideRecord: 'New record!',
     slideLeaveConfirm: 'Finish the game? The treats you collected are already yours.',
+    slideFreeze: 'Freeze',
+    slideCrumbs: 'Crumbs',
+    slideFrozen: (n: number) => `Frozen: ${n} ${plural(n, 'move', 'moves')}`,
+    slideBonusGot: { freeze: 'Freeze saved!', crumbs: 'Crumbs saved!', lightning: 'Lightning!' },
+    slideNoCrumbTarget: 'Nothing for the crumbs to break',
+    slideBonusHint: 'Bonuses on blocks: freeze, lightning, crumbs',
     slideBlock: (row: number, col: number, len: number) => `Block: row ${row}, cells ${col}–${col + len - 1}`,
     soon: 'More games coming soon',
     rules: {

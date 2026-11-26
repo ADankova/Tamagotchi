@@ -1734,6 +1734,136 @@ body.overlay-open {
   75% { transform: translateX(2px); }
 }
 
+/* Бонусы: кнопки под полем, заморозка, молния, крошки */
+.s-bonuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.s-bonuses[hidden],
+.s-bonus-button[hidden],
+.s-frozen[hidden] {
+  display: none;
+}
+
+.s-bonus-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 12px 4px 8px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  background: linear-gradient(#e6f6ff, #bfe6ff);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+
+.s-bonus-button.crumbs {
+  background: linear-gradient(#fff0d6, #ffd9a0);
+}
+
+.s-bonus-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.s-bonus-icon {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+
+.s-bonus-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.s-frozen {
+  padding: 6px 12px;
+  font-weight: 800;
+  color: #1c5f8f;
+  background: #e6f6ff;
+  border: 2px solid #1c5f8f;
+  border-radius: 999px;
+}
+
+/* Заморожено: поле подёрнуто льдом */
+.s-board.frozen {
+  box-shadow:
+    inset 0 0 0 3px #bfe6ff,
+    inset 0 0 28px 6px rgb(143 211 255 / 0.55);
+}
+
+.s-board.frozen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.35), rgb(143 211 255 / 0.18) 55%, rgb(255 255 255 / 0.3));
+  pointer-events: none;
+}
+
+.s-bonus.lightning {
+  animation: bolt-flash 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bolt-flash {
+  from {
+    filter: drop-shadow(0 0 1px #fff);
+  }
+  to {
+    filter: drop-shadow(0 0 4px #ffe14d);
+  }
+}
+
+/* Соседи молнии вспыхивают жёлтым перед исчезновением */
+.s-block.zapped .s-body {
+  background: #fff176;
+  animation: block-clear 0.36s ease-in forwards;
+  box-shadow: 0 0 10px 3px #ffe14d;
+}
+
+.s-crumb-area {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 3px dashed #c2762d;
+  border-radius: 10px;
+  background: rgb(255 217 160 / 0.45);
+  pointer-events: none;
+  animation: crumb-area 0.9s ease-out forwards;
+}
+
+@keyframes crumb-area {
+  from {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    opacity: 0.4;
+  }
+}
+
+.s-block.pop .s-body {
+  animation: block-pop 0.4s ease-out;
+}
+
+@keyframes block-pop {
+  from {
+    transform: scale(1.35);
+  }
+}
+
 .s-record {
   font-weight: 900;
   color: #c2362d;
@@ -1743,6 +1873,10 @@ body.overlay-open {
   .s-block,
   .s-block.spawn,
   .s-block.clearing .s-body,
+  .s-block.zapped .s-body,
+  .s-block.pop .s-body,
+  .s-crumb-area,
+  .s-bonus,
   .s-treat {
     transition: none;
     animation: none;
