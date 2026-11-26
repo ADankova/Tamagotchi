@@ -23,6 +23,31 @@ def clean(im, cell, rows, cols):
                 px[x, y] = (0, 0, 0, 0)
     return im
 
+def despeckle(frame, limit=14):
+    """Убирает мелкие отдельные пятнышки (искры, дымок) вокруг тела: связные куски не больше limit пикселей."""
+    px = frame.load()
+    w, h = frame.size
+    seen = set()
+    for y0 in range(h):
+        for x0 in range(w):
+            if (x0, y0) in seen or px[x0, y0][3] == 0:
+                continue
+            comp, stack = [], [(x0, y0)]
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                comp.append((x, y))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny][3] > 0:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+            if len(comp) <= limit:
+                for x, y in comp:
+                    px[x, y] = (0, 0, 0, 0)
+    return frame
+
 meta = {}
 EXTRA_COLS = 17
 for name, spec in MAP.items():
@@ -60,6 +85,8 @@ for name, spec in MAP.items():
             for c in range(EXTRA_COLS):
                 k = i * EXTRA_COLS + c
                 frame = ex.crop(((k % ex_cols) * cell, (k // ex_cols) * cell, (k % ex_cols + 1) * cell, (k // ex_cols + 1) * cell))
+                if nm in (extra.get('despeckle') or []):
+                    frame = despeckle(frame.copy())
                 full.paste(frame, (c * cell, (base_rows + i) * cell))
                 bb = frame.getbbox()
                 if bb:
