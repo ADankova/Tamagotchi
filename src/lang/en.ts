@@ -146,6 +146,7 @@ export const en: Dict = {
     mosaicInfo: (reward: number) => `Small picture · +${reward} ${plural(reward, 'treat', 'treats')}`,
     mosaicStats: (played: number, won: number) => `Played: ${played} · Won: ${won}`,
     mosaicLeft: (n: number) => `Cubes: ${n}`,
+    mosaicSpeed: (n: number) => `Speed ×${n}`,
     mosaicHint: 'Tap the jars below',
     mosaicJar: (n: number) => `Jar, ${n}`,
     mosaicWinTitle: 'Picture complete!',

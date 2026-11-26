@@ -137,6 +137,7 @@ const GAMES_TEXT = {
   mosaicInfo: (reward: number) => `Небольшая картинка · +${reward} ${treatWord(reward)}`,
   mosaicStats: (played: number, won: number) => `Сыграно: ${played} · Побед: ${won}`,
   mosaicLeft: (n: number) => `Кубиков: ${n}`,
+  mosaicSpeed: (n: number) => `Скорость ×${n}`,
   mosaicHint: 'Нажимай на баночки внизу',
   mosaicJar: (n: number) => `Баночка, ${n}`,
   mosaicWinTitle: 'Картинка готова!',
