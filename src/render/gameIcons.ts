@@ -26,6 +26,12 @@ const ICONS: Readonly<Record<string, string>> = {
     '<path d="M10 34q4-4 7 0t7 0 7 0 7 0" fill="none" stroke="#5aaef0" stroke-width="3" stroke-linecap="round"/>' +
     '<path d="M14 28h20l-3 6H17z" fill="#c98a52" stroke="#3b2a1e" stroke-width="2" stroke-linejoin="round"/>' +
     '<path d="M24 12v16" stroke="#3b2a1e" stroke-width="2.5"/><path d="M24 13l9 11H24z" fill="#fff" stroke="#3b2a1e" stroke-width="2" stroke-linejoin="round"/>',
+  // Три в ряд: три одинаковых кружка в ряд и бонус-звезда.
+  match3:
+    '<rect x="6" y="6" width="36" height="36" rx="6" fill="#ffe9f3" stroke="#3b2a1e" stroke-width="3"/>' +
+    '<circle cx="14" cy="17" r="5.5" fill="#ff9fc8" stroke="#3b2a1e" stroke-width="2"/><circle cx="24" cy="17" r="5.5" fill="#ff9fc8" stroke="#3b2a1e" stroke-width="2"/><circle cx="34" cy="17" r="5.5" fill="#ff9fc8" stroke="#3b2a1e" stroke-width="2"/>' +
+    '<circle cx="14" cy="30" r="5.5" fill="#5aaef0" stroke="#3b2a1e" stroke-width="2"/><circle cx="24" cy="30" r="5.5" fill="#f4b73f" stroke="#3b2a1e" stroke-width="2"/>' +
+    '<path d="M34 24l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6z" fill="#fff" stroke="#3b2a1e" stroke-width="1.8" stroke-linejoin="round" transform="translate(-3 0) scale(.95)"/>',
 };
 
 export function gameIcon(id: string): SVGSVGElement {

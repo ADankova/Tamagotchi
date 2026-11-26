@@ -1,3 +1,4 @@
+import { M3_MOVES } from '../core/match3';
 import { PET_PICTURE_NAMES } from '../core/mosaicPictures';
 import type { AbsenceNote } from '../core/absence';
 import type { ActionBlockReason } from '../core/actions';
@@ -162,6 +163,23 @@ const GAMES_TEXT = {
   harborStuckText: (name: string) => `Пристань заполнена, и ${name} некого отправить. Попробуем ещё раз?`,
   harborLeaveConfirm: 'Закончить игру? Партия не сохранится.',
   harborTreats: (n: number) => `Лакомств: ${n}`,
+  match3Title: 'Три в ряд',
+  match3About:
+    'Меняй местами соседних питомцев: три и больше в ряд или в столбце исчезают, а верхние падают вниз. Четыре в ряд дают бонус-линию: он сносит свою строку или столбец (нажми на него). Квадрат 2×2 даёт бомбу, которая сносит всё вокруг на 3 клетки. Пять в ряд или крест дают радугу: поменяй её с соседом — исчезнут все питомцы его вида. Набери очки, пока не кончились ходы.',
+  match3Level: 'Игра на ходы',
+  match3Info: (reward: number) => `Набери очки за ${M3_MOVES} ходов · +${reward} ${treatWord(reward)}`,
+  match3Stats: (played: number, won: number, best: number) => `Сыграно: ${played} · Побед: ${won} · Рекорд: ${best}`,
+  match3Moves: (n: number) => `Ходов: ${n}`,
+  match3Score: (score: number, goal: number) => `Очки: ${score} / ${goal}`,
+  match3Hint: 'Меняй соседних питомцев или нажми на бонус',
+  match3Tile: 'Питомец',
+  match3Special: { row: 'Бонус: строка', col: 'Бонус: столбец', bomb: 'Бомба', rainbow: 'Радуга' } as Record<'row' | 'col' | 'bomb' | 'rainbow', string>,
+  match3Shuffle: 'Ходов не осталось — питомцы перемешались',
+  match3WinTitle: 'Цель достигнута!',
+  match3WinText: (name: string, score: number, reward: number) => `${name} набрал ${score} очков и получает ${reward} ${treatWord(reward)}!`,
+  match3LoseTitle: 'Ходы кончились',
+  match3LoseText: (name: string, score: number, goal: number) => `Набрано ${score} из ${goal}. ${name} уверен, что получится лучше!`,
+  match3LeaveConfirm: 'Закончить игру? Партия не сохранится.',
   soon: 'Скоро здесь появятся новые игры',
   rules: {
     region: '1 питомец на цвет',
