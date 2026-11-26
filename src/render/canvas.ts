@@ -34,15 +34,6 @@ export const LCD: Palette = {
   light: '#e8eed9',
 };
 
-/** Притушенный экран во время сна. */
-export const LCD_DIM: Palette = {
-  bg: '#8f9a7e',
-  ghost: '#879277',
-  ink: '#1f271a',
-  shade: '#55614a',
-  light: '#a9b496',
-};
-
 /** Цвета мелких предметов (миска, мяч, сердечки…) на цветном экране. */
 const PROP_PALETTE: Palette = {
   bg: 'transparent',

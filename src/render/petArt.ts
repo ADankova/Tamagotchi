@@ -180,9 +180,6 @@ export function drawPet(
 }
 
 const EGG_FRAMES = 9;
-export function eggFrameCount(): number {
-  return EGG_FRAMES;
-}
 
 /** Яйцо (кадры покачивания 0–8), треснувшее яйцо (9) и надгробие (10) лежат в одном листе. */
 export function drawProp(

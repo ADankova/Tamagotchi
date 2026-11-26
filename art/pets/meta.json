@@ -6,14 +6,8 @@
    "idle",
    "sleep",
    "eat",
-   "sick",
-   "hungry",
-   "tired",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "roll",
    "sleep_twitch",
    "idle_calm",
@@ -25,32 +19,14 @@
   "left": 2,
   "right": 60,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "catch": {
     "feet": 62,
     "left": 2,
     "right": 60,
     "frames": 17
    },
-   "walk": {
-    "feet": 62,
-    "left": 0,
-    "right": 62,
-    "frames": 17
-   },
    "eat_side": {
     "feet": 62,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 58,
     "left": 2,
     "right": 64,
     "frames": 17
@@ -100,14 +76,8 @@
    "idle",
    "sleep",
    "eat",
-   "sick",
-   "hungry",
-   "tired",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "roll",
    "sleep_twitch",
    "idle_calm",
@@ -119,32 +89,14 @@
   "left": 4,
   "right": 60,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "catch": {
     "feet": 62,
     "left": 4,
     "right": 60,
     "frames": 17
    },
-   "walk": {
-    "feet": 56,
-    "left": 3,
-    "right": 60,
-    "frames": 17
-   },
    "eat_side": {
     "feet": 56,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 58,
     "left": 4,
     "right": 60,
     "frames": 17
@@ -194,14 +146,8 @@
    "idle",
    "sleep",
    "eat",
-   "sick",
-   "hungry",
-   "tired",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "roll",
    "sleep_twitch",
    "idle_calm",
@@ -213,34 +159,16 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "catch": {
     "feet": 64,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "walk": {
-    "feet": 60,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
    "eat_side": {
     "feet": 60,
     "left": 2,
     "right": 62,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 54,
-    "left": 6,
-    "right": 60,
     "frames": 17
    },
    "roll": {
@@ -288,17 +216,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "roll",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -312,72 +229,6 @@
   "left": 10,
   "right": 54,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 58,
-    "left": 12,
-    "right": 54,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 58,
-    "left": 8,
-    "right": 54,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 58,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 58,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 56,
-    "left": 4,
-    "right": 58,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 56,
-    "left": 4,
-    "right": 56,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 52,
-    "left": 8,
-    "right": 54,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 58,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 58,
-    "left": 6,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 56,
-    "left": 4,
-    "right": 58,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 56,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 58,
     "left": 12,
@@ -435,17 +286,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -459,72 +299,6 @@
   "left": 6,
   "right": 58,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 8,
-    "right": 60,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 62,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 60,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 51,
-    "left": 9,
-    "right": 56,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 62,
-    "left": 6,
-    "right": 60,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 60,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 60,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 60,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 62,
     "left": 8,
@@ -582,17 +356,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -606,72 +369,6 @@
   "left": 10,
   "right": 58,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 63,
-    "left": 12,
-    "right": 57,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 63,
-    "left": 12,
-    "right": 58,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 56,
-    "left": 2,
-    "right": 61,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 56,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 52,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 55,
-    "left": 3,
-    "right": 60,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 63,
-    "left": 12,
-    "right": 58,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 56,
-    "left": 1,
-    "right": 61,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 52,
-    "left": 2,
-    "right": 63,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 52,
-    "left": 2,
-    "right": 63,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 52,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 63,
     "left": 13,
@@ -729,11 +426,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -745,19 +439,7 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "catch": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
     "feet": 62,
     "left": 2,
     "right": 60,
@@ -767,12 +449,6 @@
     "feet": 62,
     "left": 2,
     "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 56,
-    "left": 4,
-    "right": 64,
     "frames": 17
    },
    "sleep_twitch": {
@@ -820,17 +496,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -844,72 +509,6 @@
   "left": 2,
   "right": 58,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 60,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 60,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 54,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 56,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 60,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 54,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 56,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 54,
-    "left": 1,
-    "right": 62,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 62,
     "left": 2,
@@ -967,11 +566,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -983,19 +579,7 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "catch": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
     "feet": 62,
     "left": 2,
     "right": 60,
@@ -1005,12 +589,6 @@
     "feet": 62,
     "left": 2,
     "right": 62,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 54,
-    "left": 2,
-    "right": 64,
     "frames": 17
    },
    "sleep_twitch": {
@@ -1058,17 +636,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1082,72 +649,6 @@
   "left": 17,
   "right": 47,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 52,
-    "left": 18,
-    "right": 46,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 52,
-    "left": 18,
-    "right": 46,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 52,
-    "left": 12,
-    "right": 64,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 52,
-    "left": 12,
-    "right": 53,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 52,
-    "left": 14,
-    "right": 48,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 52,
-    "left": 18,
-    "right": 46,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 52,
-    "left": 18,
-    "right": 51,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 52,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 52,
-    "left": 14,
-    "right": 48,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 52,
-    "left": 14,
-    "right": 49,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 52,
-    "left": 11,
-    "right": 49,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 52,
     "left": 18,
@@ -1205,17 +706,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1229,72 +719,6 @@
   "left": 10,
   "right": 54,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 52,
-    "left": 14,
-    "right": 50,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 54,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 52,
-    "left": 10,
-    "right": 54,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 52,
-    "left": 10,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 52,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 52,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 52,
-    "left": 14,
-    "right": 50,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 52,
-    "left": 10,
-    "right": 54,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 52,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 52,
-    "left": 10,
-    "right": 54,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 52,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 52,
     "left": 14,
@@ -1352,17 +776,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1376,72 +789,6 @@
   "left": 10,
   "right": 54,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 10,
-    "right": 54,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 62,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 62,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 62,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 56,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 54,
-    "left": 6,
-    "right": 58,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 62,
-    "left": 10,
-    "right": 54,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 62,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 56,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 56,
-    "left": 6,
-    "right": 58,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 56,
-    "left": 6,
-    "right": 56,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 62,
     "left": 10,
@@ -1499,11 +846,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -1515,19 +859,7 @@
   "left": 4,
   "right": 60,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "catch": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
     "feet": 62,
     "left": 4,
     "right": 60,
@@ -1537,12 +869,6 @@
     "feet": 62,
     "left": 4,
     "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 58,
-    "left": 2,
-    "right": 62,
     "frames": 17
    },
    "sleep_twitch": {
@@ -1590,17 +916,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1614,72 +929,6 @@
   "left": 4,
   "right": 60,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 62,
-    "left": 4,
-    "right": 62,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 62,
     "left": 4,
@@ -1737,11 +986,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -1753,20 +999,8 @@
   "left": 4,
   "right": 60,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "catch": {
     "feet": 62,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 54,
     "left": 4,
     "right": 60,
     "frames": 17
@@ -1775,12 +1009,6 @@
     "feet": 54,
     "left": 4,
     "right": 62,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
     "frames": 17
    },
    "sleep_twitch": {
@@ -1828,17 +1056,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1852,72 +1069,6 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 64,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 56,
-    "left": 5,
-    "right": 56,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 56,
-    "left": 6,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 53,
-    "left": 10,
-    "right": 57,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 52,
-    "left": 5,
-    "right": 58,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 64,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 56,
-    "left": 6,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 53,
-    "left": 10,
-    "right": 56,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 50,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 53,
-    "left": 9,
-    "right": 55,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 64,
     "left": 4,
@@ -1975,17 +1126,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -1999,72 +1139,6 @@
   "left": 11,
   "right": 53,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 55,
-    "left": 12,
-    "right": 52,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 55,
-    "left": 8,
-    "right": 56,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 55,
-    "left": 8,
-    "right": 55,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 55,
-    "left": 7,
-    "right": 57,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 54,
-    "left": 7,
-    "right": 55,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 48,
-    "left": 7,
-    "right": 56,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 55,
-    "left": 13,
-    "right": 52,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 55,
-    "left": 8,
-    "right": 55,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 54,
-    "left": 7,
-    "right": 53,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 54,
-    "left": 7,
-    "right": 55,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 54,
-    "left": 7,
-    "right": 57,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 55,
     "left": 13,
@@ -2122,17 +1196,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -2146,72 +1209,6 @@
   "left": 8,
   "right": 56,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 64,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 60,
-    "left": 0,
-    "right": 62,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 60,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 54,
-    "left": 6,
-    "right": 62,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 56,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 64,
-    "left": 8,
-    "right": 58,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 60,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 54,
-    "left": 4,
-    "right": 62,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 54,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 54,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 64,
     "left": 8,
@@ -2269,11 +1266,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -2285,34 +1279,16 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 2,
-    "right": 64,
-    "frames": 17
-   },
    "catch": {
     "feet": 64,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "walk": {
-    "feet": 60,
-    "left": 4,
-    "right": 58,
-    "frames": 17
-   },
    "eat_side": {
     "feet": 60,
     "left": 4,
     "right": 59,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 56,
-    "left": 4,
-    "right": 63,
     "frames": 17
    },
    "sleep_twitch": {
@@ -2360,17 +1336,6 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
-   "catch",
-   "walk",
-   "eat_side",
-   "lie_wag",
-   "sleep_twitch",
-   "idle_calm",
-   "walk_calm",
-   "lie_calm",
-   "lie_sad",
-   "roll",
    "idle_v3",
    "catch_v3",
    "walk_v3",
@@ -2384,72 +1349,6 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "catch": {
-    "feet": 64,
-    "left": 1,
-    "right": 63,
-    "frames": 17
-   },
-   "walk": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "eat_side": {
-    "feet": 58,
-    "left": 8,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 57,
-    "left": 6,
-    "right": 60,
-    "frames": 17
-   },
-   "sleep_twitch": {
-    "feet": 51,
-    "left": 7,
-    "right": 57,
-    "frames": 17
-   },
-   "idle_calm": {
-    "feet": 64,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
-   "walk_calm": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
-   "lie_calm": {
-    "feet": 57,
-    "left": 6,
-    "right": 57,
-    "frames": 17
-   },
-   "lie_sad": {
-    "feet": 57,
-    "left": 6,
-    "right": 58,
-    "frames": 17
-   },
-   "roll": {
-    "feet": 57,
-    "left": 4,
-    "right": 60,
-    "frames": 17
-   },
    "idle_v3": {
     "feet": 64,
     "left": 2,
@@ -2507,11 +1406,8 @@
    "idle",
    "sleep",
    "eat",
-   "idle_smooth",
    "catch",
-   "walk",
    "eat_side",
-   "lie_wag",
    "sleep_twitch",
    "idle_calm",
    "walk_calm",
@@ -2523,34 +1419,16 @@
   "left": 2,
   "right": 62,
   "rowInfo": {
-   "idle_smooth": {
-    "feet": 64,
-    "left": 2,
-    "right": 62,
-    "frames": 17
-   },
    "catch": {
     "feet": 64,
     "left": 2,
     "right": 62,
     "frames": 17
    },
-   "walk": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
-    "frames": 17
-   },
    "eat_side": {
     "feet": 62,
     "left": 0,
     "right": 62,
-    "frames": 17
-   },
-   "lie_wag": {
-    "feet": 56,
-    "left": 8,
-    "right": 60,
     "frames": 17
    },
    "sleep_twitch": {
