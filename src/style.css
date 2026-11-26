@@ -2847,3 +2847,66 @@ button.m-jar:active {
   line-height: 1.25;
   opacity: 0.8;
 }
+
+.m3-wrap {
+  position: relative;
+}
+.m3-help {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff6e4 94%, transparent);
+  box-shadow: 0 0 0 3px #3b2a1e;
+}
+.m3-help[hidden] {
+  display: none;
+}
+.m3-help .m3-legend {
+  border: none;
+  background: none;
+  min-height: 100%;
+  box-sizing: border-box;
+  justify-content: space-around;
+}
+.m3-help-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid #3b2a1e;
+  background: #ffd25e;
+  color: #3b2a1e;
+  font: inherit;
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #3b2a1e;
+}
+.m3-help-button.on {
+  background: #ff9fc8;
+}
+.m3-help {
+  background: #fff6e4;
+}
+.m3-help .m3-legend {
+  gap: 2px;
+  padding: 6px;
+  justify-content: flex-start;
+}
+.m3-help .m3-legend-row {
+  padding: 2px;
+}
+.m3-help .m3-legend-icon {
+  width: 34px;
+  height: 34px;
+}
+.m3-help .m3-legend-text {
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+.m3-help .m3-legend-tip {
+  font-size: 0.66rem;
+}
