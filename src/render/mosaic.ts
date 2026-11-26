@@ -39,6 +39,8 @@ export class MosaicGame implements GameScreen {
   private readonly queues = el('div', { class: 'm-queues' });
   private readonly left = el('span', {});
   private readonly cubes: HTMLElement[] = [];
+  /** Кубик ещё виден на поле (его уже «взяли» в расчёте, но питомец ещё не добежал): обходить нужно и такие. */
+  private readonly solid: boolean[] = [];
   private timer = 0;
   private seen = false;
   private finished = false;
@@ -51,12 +53,14 @@ export class MosaicGame implements GameScreen {
     private readonly cb: MosaicCallbacks,
   ) {
     this.state = newMosaic(randomSeed(), picture);
+    this.stage.style.setProperty('--ar', String(this.state.w / this.state.h));
     this.board.style.gridTemplateColumns = `repeat(${this.state.w}, 1fr)`;
     this.board.style.aspectRatio = `${this.state.w} / ${this.state.h}`;
     this.state.cells.forEach((color) => {
       const cube = el('div', { class: 'm-cube' });
       cube.style.background = COLOR_CSS[color] ?? '#ccc';
       if (color < 0) cube.classList.add('gone');
+      this.solid.push(color >= 0);
       this.cubes.push(cube);
       this.board.append(cube);
     });
@@ -217,6 +221,7 @@ export class MosaicGame implements GameScreen {
     cubeBadge.style.visibility = 'hidden';
     window.setTimeout(() => {
       cube.classList.add('gone');
+      this.solid[c.cell] = false;
       cubeBadge.style.visibility = 'visible';
     }, duration * turnOffset);
     const anim = runner.animate(frames, { duration, easing: 'linear', fill: 'forwards' });
@@ -226,7 +231,8 @@ export class MosaicGame implements GameScreen {
 
   /** Кратчайший путь по пустым клеткам (с запасом в одну клетку вокруг доски и рядом внизу) с минимумом поворотов. */
   private freePath(sx: number, sy: number, gx: number, gy: number): Array<[number, number]> {
-    const { w, h, cells } = this.state;
+    const { w, h } = this.state;
+    const solid = this.solid;
     const X0 = -1;
     const Y0 = -1;
     const W = w + 2;
@@ -234,7 +240,7 @@ export class MosaicGame implements GameScreen {
     const free = (x: number, y: number): boolean => {
       if (x < X0 || y < Y0 || x >= X0 + W || y >= Y0 + H) return false;
       if (x < 0 || y < 0 || x >= w || y >= h) return true;
-      return (cells[y * w + x] ?? -1) < 0 || (x === sx && y === sy);
+      return !solid[y * w + x] || (x === sx && y === sy);
     };
     const dirs: Array<[number, number]> = [[0, 1], [1, 0], [-1, 0], [0, -1]];
     const key = (x: number, y: number, d: number): number => ((y - Y0) * W + (x - X0)) * 4 + d;

@@ -12,7 +12,7 @@ import {
 import { randomSeed } from '../core/rng';
 import type { LevelStats } from '../core/stats';
 import { SLIDE_MODES, type SlideMode } from '../core/slide';
-import { MOSAIC_COLOR_HEX, MOSAIC_COLORS, MOSAIC_PICTURE_NAMES, MOSAIC_PICTURES, type MosaicPicture } from '../core/mosaic';
+import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core/mosaic';
 import { MosaicGame } from './mosaic';
 import { HarborGame } from './harbor';
 import { SlideGame } from './slide';
@@ -126,18 +126,22 @@ export class GamesOverlay {
       return button;
     });
     const slideCard = this.gameCard('slide', GAMES_TEXT.slideTitle, GAMES_TEXT.slideAbout, slideButtons);
-    const mosaicButtons = MOSAIC_PICTURE_NAMES.map((picture) => {
-      const st = this.host.mosaicStats(picture);
-      const button = el('button', { type: 'button', class: 'chunky level-button mosaic-pick' }, [
-        mosaicThumb(picture),
-        el('span', { class: 'level-name', text: GAMES_TEXT.mosaicPicture[picture] ?? picture }),
-        el('span', { class: 'level-stats', text: GAMES_TEXT.mosaicStats(st.played, st.won) }),
-      ]);
-      button.addEventListener('click', () => this.startMosaic(picture));
-      return button;
-    });
+    // Картинку не выбирают: при каждой партии она берётся случайно. Счёт общий по всем картинкам.
+    const mosaicTotal = MOSAIC_PICTURE_NAMES.reduce(
+      (acc, picture) => {
+        const st = this.host.mosaicStats(picture);
+        return { played: acc.played + st.played, won: acc.won + st.won };
+      },
+      { played: 0, won: 0 },
+    );
+    const mosaicButton = el('button', { type: 'button', class: 'chunky level-button' }, [
+      el('span', { class: 'level-name', text: GAMES_TEXT.mosaicLevel }),
+      el('span', { class: 'level-info', text: GAMES_TEXT.mosaicInfo(MOSAIC_REWARD) }),
+      el('span', { class: 'level-stats', text: GAMES_TEXT.mosaicStats(mosaicTotal.played, mosaicTotal.won) }),
+    ]);
+    mosaicButton.addEventListener('click', () => this.startMosaic());
+    const mosaicButtons = [mosaicButton];
     const mosaicCard = this.gameCard('mosaic', GAMES_TEXT.mosaicTitle, GAMES_TEXT.mosaicAbout, mosaicButtons);
-    mosaicCard.querySelector('.level-buttons')?.classList.add('mosaic-grid');
     const harborStats = this.host.harborStats();
     const harborButton = el('button', { type: 'button', class: 'chunky level-button' }, [
       el('span', { class: 'level-name', text: GAMES_TEXT.harborLevel }),
@@ -199,7 +203,9 @@ export class GamesOverlay {
     this.body.replaceChildren(this.game.root);
   }
 
-  private startMosaic(picture: MosaicPicture): void {
+  private startMosaic(previous?: MosaicPicture): void {
+    const others = MOSAIC_PICTURE_NAMES.filter((name) => name !== previous);
+    const picture = others[Math.floor(Math.random() * others.length)] ?? MOSAIC_PICTURE_NAMES[0]!;
     this.game = new MosaicGame(this.host, picture, {
       header: (title) => this.header(title, () => this.back(), '←'),
       replay: () => this.startMosaic(picture),
@@ -513,26 +519,4 @@ class QueensGame implements GameScreen {
     this.root.append(card);
     primary.focus();
   }
-}
-
-/** Маленькая картинка мозаики для кнопки выбора. */
-function mosaicThumb(picture: MosaicPicture): HTMLElement {
-  const rows = MOSAIC_PICTURES[picture];
-  const canvas = document.createElement('canvas');
-  canvas.className = 'mosaic-thumb';
-  canvas.width = rows[0]!.length;
-  canvas.height = rows.length;
-  canvas.setAttribute('aria-hidden', 'true');
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    rows.forEach((row, y) =>
-      [...row].forEach((ch, x) => {
-        const at = MOSAIC_COLORS.indexOf(ch as (typeof MOSAIC_COLORS)[number]);
-        if (at < 0) return;
-        ctx.fillStyle = MOSAIC_COLOR_HEX[at]!;
-        ctx.fillRect(x, y, 1, 1);
-      }),
-    );
-  }
-  return canvas;
 }
