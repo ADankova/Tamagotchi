@@ -5,6 +5,10 @@ import { nextRandom } from './rng';
 // вправо по свободным клеткам; блоки, под которыми пусто, падают; заполненная полоса исчезает;
 // затем сверху падает новая полоса. Если стопка дорастает до верхней полосы — игра окончена.
 // Раз в 15–20 полос на одном из блоков новой полосы лежит лакомство: убери этот блок — получишь его.
+// Раз в 4–7 полос на блоке лежит случайный бонус:
+//  · заморозка и крошки уходят в запас (кнопки под полем): заморозка на 3 хода останавливает новые полосы,
+//    крошки разбивают блоки внутри поля 3×3 на одиночные клетки;
+//  · молния срабатывает, когда исчезает её полоса: вместе с ней пропадают блоки, касавшиеся её сверху и снизу.
 // Здесь только логика, без DOM. Всё детерминировано по seed.
 
 export const SLIDE_SIZE = 10;
@@ -12,6 +16,15 @@ export const SLIDE_START_ROWS = 3;
 export const TREAT_EVERY_MIN = 15;
 export const TREAT_EVERY_MAX = 20;
 export const BLOCK_COLORS = 6;
+export const BONUS_EVERY_MIN = 4;
+export const BONUS_EVERY_MAX = 7;
+/** Сколько ходов не падают новые полосы после заморозки. */
+export const FREEZE_MOVES = 3;
+/** Сторона поля, которое разбивают крошки. */
+export const CRUMB_SIZE = 3;
+
+export type Bonus = 'freeze' | 'lightning' | 'crumbs';
+export const BONUSES: readonly Bonus[] = ['freeze', 'lightning', 'crumbs'];
 
 export interface Block {
   id: number;
@@ -21,6 +34,7 @@ export interface Block {
   len: number;
   color: number;
   treat: boolean;
+  bonus?: Bonus;
 }
 
 /** Будущая полоса: блоки без строки. */
@@ -36,6 +50,13 @@ export interface SlideState {
   rowsMade: number;
   /** На какой по счёту полосе будет следующее лакомство. */
   treatAt: number;
+  /** На какой по счёту полосе будет следующий бонус. */
+  bonusAt: number;
+  /** Запас бонусов: кнопки под полем. */
+  freezes: number;
+  crumbs: number;
+  /** Сколько ходов ещё не будут падать новые полосы. */
+  frozen: number;
   lines: number;
   treats: number;
   moves: number;
@@ -49,6 +70,16 @@ export interface SlideFrame {
   /** Новая полоса только что появилась сверху. */
   spawned: number[];
   treatsEarned: number;
+  /** Сколько полос исчезло в этом кадре (соседи молнии — не полосы). */
+  lines: number;
+  /** Бонусы, полученные в этом кадре (в запас идут заморозка и крошки). */
+  bonusesEarned: Bonus[];
+  /** Блоки с молнией, которая сработала. */
+  bolts: number[];
+  /** Соседи молнии, исчезнувшие вместе с полосой. */
+  zapped: number[];
+  /** Поле, разбитое крошками: левый верхний угол. */
+  crumbArea?: { row: number; col: number };
 }
 
 class Rng {
@@ -77,7 +108,7 @@ export function occupancy(blocks: readonly Block[]): number[][] {
 }
 
 /** Случайная полоса: 3–6 занятых клеток, всегда хотя бы одна дырка. */
-function makeRow(rng: Rng, withTreat: boolean): RowTemplate {
+function makeRow(rng: Rng, withTreat: boolean, bonus?: Bonus): RowTemplate {
   for (;;) {
     const row: Array<Omit<Block, 'id' | 'row'>> = [];
     let c = 0;
@@ -93,6 +124,11 @@ function makeRow(rng: Rng, withTreat: boolean): RowTemplate {
     const filled = row.reduce((s, b) => s + b.len, 0);
     if (filled < 3 || filled > 6) continue;
     if (withTreat) row[rng.int(row.length)]!.treat = true;
+    if (bonus) {
+      const free = row.filter((b) => !b.treat);
+      if (free.length === 0) continue;
+      free[rng.int(free.length)]!.bonus = bonus;
+    }
     return row;
   }
 }
@@ -101,7 +137,12 @@ function nextTemplate(state: SlideState, rng: Rng): RowTemplate {
   state.rowsMade++;
   const withTreat = state.rowsMade >= state.treatAt;
   if (withTreat) state.treatAt = state.rowsMade + TREAT_EVERY_MIN + rng.int(TREAT_EVERY_MAX - TREAT_EVERY_MIN + 1);
-  return makeRow(rng, withTreat);
+  let bonus: Bonus | undefined;
+  if (state.rowsMade >= state.bonusAt) {
+    bonus = BONUSES[rng.int(BONUSES.length)];
+    state.bonusAt = state.rowsMade + BONUS_EVERY_MIN + rng.int(BONUS_EVERY_MAX - BONUS_EVERY_MIN + 1);
+  }
+  return makeRow(rng, withTreat, bonus);
 }
 
 function place(state: SlideState, template: RowTemplate, row: number): number[] {
@@ -151,16 +192,38 @@ function resolve(state: SlideState, frames: SlideFrame[]): void {
     const rows = fullRows(state.blocks);
     if (rows.length === 0) return;
     const gone = state.blocks.filter((b) => rows.includes(b.row));
-    const earned = gone.filter((b) => b.treat).length;
+    // Молния в исчезающей полосе уносит блоки, которые её касались сверху и снизу.
+    const bolts = gone.filter((b) => b.bonus === 'lightning');
+    const hit = new Set(gone.map((b) => b.id));
+    for (const bolt of bolts) {
+      for (const other of state.blocks) {
+        const touches =
+          Math.abs(other.row - bolt.row) === 1 && other.col < bolt.col + bolt.len && other.col + other.len > bolt.col;
+        if (touches) hit.add(other.id);
+      }
+    }
+    const all = state.blocks.filter((b) => hit.has(b.id));
+    const earned = all.filter((b) => b.treat).length;
+    const bonuses = all.flatMap((b) => (b.bonus === 'freeze' || b.bonus === 'crumbs' ? [b.bonus] : []));
     state.lines += rows.length;
     state.treats += earned;
-    frames.push({ ...frame(state), clearing: gone.map((b) => b.id), treatsEarned: earned });
-    state.blocks = state.blocks.filter((b) => !rows.includes(b.row));
+    state.freezes += bonuses.filter((b) => b === 'freeze').length;
+    state.crumbs += bonuses.filter((b) => b === 'crumbs').length;
+    frames.push({
+      ...frame(state),
+      clearing: all.map((b) => b.id),
+      treatsEarned: earned,
+      lines: rows.length,
+      bonusesEarned: bonuses,
+      bolts: bolts.map((b) => b.id),
+      zapped: all.filter((b) => !gone.includes(b)).map((b) => b.id),
+    });
+    state.blocks = state.blocks.filter((b) => !hit.has(b.id));
   }
 }
 
 function frame(state: SlideState, spawned: number[] = []): SlideFrame {
-  return { blocks: copy(state.blocks), clearing: [], spawned, treatsEarned: 0 };
+  return { blocks: copy(state.blocks), clearing: [], spawned, treatsEarned: 0, lines: 0, bonusesEarned: [], bolts: [], zapped: [] };
 }
 
 /** Новая партия: три нижние полосы и следующая полоса наготове. */
@@ -174,6 +237,10 @@ export function newSlideGame(seed: number): SlideState {
       nextId: 1,
       rowsMade: 0,
       treatAt: TREAT_EVERY_MIN + rng.int(TREAT_EVERY_MAX - TREAT_EVERY_MIN + 1),
+      bonusAt: BONUS_EVERY_MIN + rng.int(BONUS_EVERY_MAX - BONUS_EVERY_MIN + 1),
+      freezes: 0,
+      crumbs: 0,
+      frozen: 0,
       lines: 0,
       treats: 0,
       moves: 0,
@@ -224,6 +291,13 @@ export function slide(prev: SlideState, id: number, col: number): { state: Slide
   const frames: SlideFrame[] = [frame(state)];
   resolve(state, frames);
 
+  // Пока действует заморозка, новые полосы не падают (если поле не пусто).
+  if (state.frozen > 0 && state.blocks.length > 0) {
+    state.frozen--;
+    state.rng = rng.state;
+    return { state, frames };
+  }
+
   // Новая полоса падает сверху. Если стопка дошла до верха — места нет, конец игры.
   for (let guard = 0; guard < 5; guard++) {
     if (state.blocks.some((b) => b.row === 0)) {
@@ -243,4 +317,69 @@ export function slide(prev: SlideState, id: number, col: number): { state: Slide
   }
   state.rng = rng.state;
   return { state, frames };
+}
+
+/** Бонус «заморозка»: следующие FREEZE_MOVES ходов новые полосы не падают. */
+export function useFreeze(prev: SlideState): SlideState | null {
+  if (prev.over || prev.freezes <= 0) return null;
+  return { ...prev, freezes: prev.freezes - 1, frozen: prev.frozen + FREEZE_MOVES };
+}
+
+/** Поле 3×3, где крошки разобьют больше всего клеток длинных блоков (при равенстве — случайное). */
+function crumbWindow(blocks: readonly Block[], rng: Rng): { row: number; col: number } | null {
+  let best = 0;
+  let spots: Array<{ row: number; col: number }> = [];
+  for (let row = 0; row + CRUMB_SIZE <= SLIDE_SIZE; row++) {
+    for (let col = 0; col + CRUMB_SIZE <= SLIDE_SIZE; col++) {
+      let score = 0;
+      for (const b of blocks) {
+        if (b.len < 2 || b.row < row || b.row >= row + CRUMB_SIZE) continue;
+        score += Math.max(0, Math.min(b.col + b.len, col + CRUMB_SIZE) - Math.max(b.col, col));
+      }
+      if (score > best) {
+        best = score;
+        spots = [];
+      }
+      if (score === best && best > 0) spots.push({ row, col });
+    }
+  }
+  return spots.length > 0 ? spots[rng.int(spots.length)]! : null;
+}
+
+/**
+ * Бонус «крошки»: внутри поля 3×3 все блоки разбиваются на одиночные клетки.
+ * Часть блока вне поля остаётся целой; лакомство или бонус остаются на левом куске.
+ * null — разбивать нечего (нет длинных блоков) или нет крошек в запасе.
+ */
+export function useCrumbs(prev: SlideState): { state: SlideState; frames: SlideFrame[] } | null {
+  if (prev.over || prev.crumbs <= 0) return null;
+  const rng = new Rng(prev.rng);
+  const area = crumbWindow(prev.blocks, rng);
+  if (!area) return null;
+  const state: SlideState = { ...prev, crumbs: prev.crumbs - 1, rng: rng.state, nextId: prev.nextId };
+  const out: Block[] = [];
+  for (const b of prev.blocks) {
+    const inRows = b.row >= area.row && b.row < area.row + CRUMB_SIZE;
+    const from = Math.max(b.col, area.col);
+    const to = Math.min(b.col + b.len, area.col + CRUMB_SIZE);
+    if (!inRows || b.len < 2 || to <= from) {
+      out.push({ ...b });
+      continue;
+    }
+    const pieces: Array<{ col: number; len: number }> = [];
+    if (from > b.col) pieces.push({ col: b.col, len: from - b.col });
+    for (let c = from; c < to; c++) pieces.push({ col: c, len: 1 });
+    if (to < b.col + b.len) pieces.push({ col: to, len: b.col + b.len - to });
+    pieces.forEach((p, i) => {
+      if (i === 0) {
+        out.push({ ...b, ...p });
+        return;
+      }
+      const piece: Block = { ...b, ...p, id: state.nextId++, treat: false };
+      delete piece.bonus;
+      out.push(piece);
+    });
+  }
+  state.blocks = out;
+  return { state, frames: [{ ...frame(state), crumbArea: area }] };
 }

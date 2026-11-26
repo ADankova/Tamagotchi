@@ -1,15 +1,19 @@
 import { randomSeed } from '../core/rng';
 import {
+  CRUMB_SIZE,
   moveRange,
   newSlideGame,
   slide,
   SLIDE_SIZE,
+  useCrumbs,
+  useFreeze,
   type Block,
   type RowTemplate,
   type SlideFrame,
   type SlideState,
 } from '../core/slide';
 import { GAMES_TEXT } from '../strings';
+import { ART } from './artData';
 import { el } from './dom';
 import type { GameScreen, MiniGameHost } from './minigames';
 
@@ -49,6 +53,10 @@ export class SlideGame implements GameScreen {
   private readonly nodes = new Map<number, HTMLElement>();
   private readonly lines = el('span', { class: 's-lines' });
   private readonly treats = el('span', {});
+  private readonly bonusBar = el('div', { class: 's-bonuses' });
+  private readonly freezeButton = this.bonusButton('freeze', GAMES_TEXT.slideFreeze, () => this.freeze());
+  private readonly crumbsButton = this.bonusButton('crumbs', GAMES_TEXT.slideCrumbs, () => void this.crumble());
+  private readonly frozenChip = el('span', { class: 's-frozen' });
   private readonly status = el('p', { class: 'q-status', role: 'status', 'aria-live': 'polite' });
   private drag: Drag | null = null;
   private busy = false;
@@ -67,13 +75,27 @@ export class SlideGame implements GameScreen {
       ]),
       el('div', { class: 's-next-wrap' }, [el('span', { class: 's-next-label', text: GAMES_TEXT.slideNext }), this.preview]),
       el('div', { class: 'q-board-wrap' }, [this.board]),
+      this.bonusBar,
       this.status,
       el('p', { class: 'q-hint', text: GAMES_TEXT.slideHint }),
+      el('p', { class: 'q-hint', text: GAMES_TEXT.slideBonusHint }),
     ]);
+    this.bonusBar.append(this.freezeButton, this.crumbsButton, this.frozenChip);
     this.sync(this.state.blocks);
     this.renderPreview(this.state.next);
     this.renderScore();
     this.bindDrag();
+  }
+
+  private bonusButton(kind: 'freeze' | 'crumbs', label: string, onClick: () => void): HTMLButtonElement {
+    const icon = el('img', { class: 's-bonus-icon', src: ART[kind === 'freeze' ? 'bonus_freeze' : 'bonus_crumbs'], alt: '' });
+    const button = el('button', { type: 'button', class: `s-bonus-button ${kind}`, 'aria-label': label }, [
+      icon,
+      el('span', { class: 's-bonus-label', text: label }),
+      el('span', { class: 's-bonus-count' }),
+    ]);
+    button.addEventListener('click', onClick);
+    return button;
   }
 
   hasProgress(): boolean {
@@ -89,11 +111,13 @@ export class SlideGame implements GameScreen {
 
   // --- Отрисовка ---
 
-  private blockNode(b: Pick<Block, 'len' | 'color' | 'treat'>): HTMLElement {
+  private blockNode(b: Pick<Block, 'len' | 'color' | 'treat' | 'bonus'>): HTMLElement {
     const body = el('div', { class: 's-body' }, [el('img', { class: 's-pet', src: this.host.petImage, alt: '', draggable: 'false' })]);
     if (b.treat) body.append(el('img', { class: 's-treat', src: this.host.treatImage, alt: '', draggable: 'false' }));
+    if (b.bonus) {
+      body.append(el('img', { class: `s-treat s-bonus ${b.bonus}`, src: ART[`bonus_${b.bonus}`], alt: '', draggable: 'false' }));
+    }
     const node = el('div', { class: 's-block', 'data-color': String(b.color) }, [body]);
-    if (b.len === 1) node.classList.add('single');
     return node;
   }
 
@@ -101,11 +125,18 @@ export class SlideGame implements GameScreen {
     node.style.left = pct(b.col);
     node.style.top = pct(b.row);
     node.style.width = pct(b.len);
+    node.classList.toggle('single', b.len === 1);
     node.setAttribute('aria-label', GAMES_TEXT.slideBlock(b.row + 1, b.col + 1, b.len));
   }
 
   /** Привести DOM к раскладке блоков: новые создать, лишние убрать, остальные сдвинуть (с анимацией). */
-  private sync(blocks: readonly Block[], clearing: readonly number[] = [], spawned: readonly number[] = []): void {
+  private sync(
+    blocks: readonly Block[],
+    clearing: readonly number[] = [],
+    spawned: readonly number[] = [],
+    zapped: readonly number[] = [],
+    pop = false,
+  ): void {
     const alive = new Set(blocks.map((b) => b.id));
     for (const [id, node] of this.nodes) {
       if (!alive.has(id)) {
@@ -120,10 +151,15 @@ export class SlideGame implements GameScreen {
         node.dataset.id = String(b.id);
         this.nodes.set(b.id, node);
         this.board.append(node);
+        if (pop) {
+          node.classList.add('pop');
+          window.setTimeout(() => node?.classList.remove('pop'), 500);
+        }
       }
       this.place(node, b);
       node.classList.toggle('spawn', spawned.includes(b.id));
       node.classList.toggle('clearing', clearing.includes(b.id));
+      node.classList.toggle('zapped', zapped.includes(b.id));
     }
   }
 
@@ -142,6 +178,56 @@ export class SlideGame implements GameScreen {
     this.lines.textContent = GAMES_TEXT.slideLines(this.state.lines);
     this.treats.textContent = String(this.state.treats);
     this.treats.parentElement?.setAttribute('aria-label', GAMES_TEXT.slideTreats(this.state.treats));
+    this.renderBonuses();
+  }
+
+  private renderBonuses(): void {
+    const { freezes, crumbs, frozen } = this.state;
+    this.freezeButton.hidden = freezes === 0;
+    this.crumbsButton.hidden = crumbs === 0;
+    this.freezeButton.querySelector('.s-bonus-count')!.textContent = `×${freezes}`;
+    this.crumbsButton.querySelector('.s-bonus-count')!.textContent = `×${crumbs}`;
+    this.frozenChip.hidden = frozen === 0;
+    this.frozenChip.textContent = GAMES_TEXT.slideFrozen(frozen);
+    this.board.classList.toggle('frozen', frozen > 0);
+    this.bonusBar.hidden = freezes === 0 && crumbs === 0 && frozen === 0;
+  }
+
+  // --- Бонусы-кнопки ---
+
+  private freeze(): void {
+    if (this.busy || this.finished) return;
+    const next = useFreeze(this.state);
+    if (!next) return;
+    this.state = next;
+    this.host.playSound('place');
+    this.status.textContent = GAMES_TEXT.slideFrozen(next.frozen);
+    this.renderScore();
+  }
+
+  private async crumble(): Promise<void> {
+    if (this.busy || this.finished) return;
+    const result = useCrumbs(this.state);
+    if (!result) {
+      this.status.textContent = GAMES_TEXT.slideNoCrumbTarget;
+      return;
+    }
+    this.busy = true;
+    const area = result.frames[0]!.crumbArea!;
+    const zone = el('div', { class: 's-crumb-area' });
+    zone.style.left = pct(area.col);
+    zone.style.top = pct(area.row);
+    zone.style.width = pct(CRUMB_SIZE);
+    zone.style.height = pct(CRUMB_SIZE);
+    this.board.append(zone);
+    this.host.playSound('place');
+    await wait(480);
+    this.state = result.state;
+    this.sync(this.state.blocks, [], [], [], true);
+    this.renderScore();
+    await wait(420);
+    zone.remove();
+    this.busy = false;
   }
 
   // --- Перетаскивание ---
@@ -220,18 +306,22 @@ export class SlideGame implements GameScreen {
     let lines = this.state.lines;
     let treats = this.state.treats;
     for (const f of frames) {
-      this.sync(f.blocks, f.clearing, f.spawned);
+      this.sync(f.blocks, f.clearing, f.spawned, f.zapped);
       if (f.spawned.length > 0) this.preview.replaceChildren();
       if (f.clearing.length > 0) {
         this.host.playSound('place');
-        lines += new Set(f.blocks.filter((b) => f.clearing.includes(b.id)).map((b) => b.row)).size;
+        lines += f.lines;
         this.lines.textContent = GAMES_TEXT.slideLines(lines);
+        const notes: string[] = [];
         if (f.treatsEarned > 0) {
           treats += f.treatsEarned;
           this.treats.textContent = String(treats);
           this.host.earnTreats(f.treatsEarned);
-          this.status.textContent = GAMES_TEXT.earned(f.treatsEarned);
+          notes.push(GAMES_TEXT.earned(f.treatsEarned));
         }
+        if (f.bolts.length > 0) notes.push(GAMES_TEXT.slideBonusGot.lightning);
+        for (const kind of new Set(f.bonusesEarned)) notes.push(GAMES_TEXT.slideBonusGot[kind]);
+        if (notes.length > 0) this.status.textContent = notes.join(' ');
       }
       await wait(f.clearing.length > 0 ? CLEAR_MS : STEP_MS);
     }
