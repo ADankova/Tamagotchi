@@ -137,6 +137,19 @@
      "lie_calm",
      "lie_sad"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715647281-umiij5-f0e00e0a.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -170,6 +183,19 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715639474-ox8dv9-b4174747.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -202,6 +228,19 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715615125-pxx31x-5c5ef16e.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
     ]
    }
   ]
@@ -268,6 +307,19 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795716111163-1w9gjv-d218b5be.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
     ]
    }
   ]
@@ -339,6 +391,27 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795716291920-9c5h32-2aff08c3.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ],
+    "despeckle": [
+     "idle_v3",
+     "catch_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -372,6 +445,19 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715693784-2nba4s-734bb144.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -404,6 +490,19 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715688150-ibr5sw-2e165d79.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
     ]
    }
   ]
@@ -471,6 +570,19 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795716120282-rnsd1k-ef8ca033.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -537,6 +649,19 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715667120-7j3omh-1f9c2971.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -570,6 +695,19 @@
      "lie_sad",
      "roll"
     ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795715660995-jc2a88-831195f7.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
+    ]
    }
   ]
  },
@@ -602,6 +740,19 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795716287293-dojc5i-9e85c30e.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
     ]
    }
   ]
@@ -668,6 +819,19 @@
      "lie_calm",
      "lie_sad",
      "roll"
+    ]
+   },
+   {
+    "file": "mcp-remote-devices-blob-1795716116329-eb6spo-f0cb75e8.png",
+    "names": [
+     "idle_v3",
+     "catch_v3",
+     "walk_v3",
+     "eat_v3",
+     "lie_v3",
+     "roll_v3",
+     "sleep_v3",
+     "sad_v3"
     ]
    }
   ]

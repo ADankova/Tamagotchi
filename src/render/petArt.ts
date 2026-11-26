@@ -137,13 +137,17 @@ const ROW_FALLBACK: Readonly<Record<AnimRow, readonly AnimRow[]>> = {
  * Спокойные строки (без движения рта) и грустное лежание. Если у стадии они есть — играются вместо
  * одноимённых прежних; больной, голодный и уставший питомец лежит грустным.
  */
-const PREFERRED: Readonly<Partial<Record<AnimRow, string>>> = {
-  idle_smooth: 'idle_calm',
-  walk: 'walk_calm',
-  lie_wag: 'lie_calm',
-  sick: 'lie_sad',
-  hungry: 'lie_sad',
-  tired: 'lie_sad',
+const PREFERRED: Readonly<Partial<Record<AnimRow, readonly string[]>>> = {
+  idle_smooth: ['idle_v3', 'idle_calm'],
+  walk: ['walk_v3', 'walk_calm'],
+  lie_wag: ['lie_v3', 'lie_calm'],
+  roll: ['roll_v3'],
+  eat_side: ['eat_v3'],
+  catch: ['catch_v3'],
+  sleep_twitch: ['sleep_v3'],
+  sick: ['sad_v3', 'lie_sad'],
+  hungry: ['sad_v3', 'lie_sad'],
+  tired: ['sad_v3', 'lie_sad'],
 };
 
 /** Тело питомца: строка анимации и кадр. Если такой строки у стадии нет — играется ближайшая прежняя. */
@@ -161,9 +165,9 @@ export function drawPet(
   const key = `${species}_${body}`;
   const meta = PET_META[key];
   if (!meta) return;
-  const preferred = PREFERRED[anim];
+  const preferred = PREFERRED[anim] ?? [];
   let used: string = anim;
-  for (const candidate of [...(preferred ? [preferred] : []), anim, ...ROW_FALLBACK[anim]]) {
+  for (const candidate of [...preferred, anim, ...ROW_FALLBACK[anim]]) {
     if (meta.rows.includes(candidate)) {
       used = candidate;
       break;
