@@ -108,13 +108,19 @@ describe('bonuses', () => {
     expect(res.steps[0]!.afterClear.some((p) => p?.special === 'rainbow')).toBe(true);
   });
 
-  it('a T or cross shape makes a rainbow', () => {
+  it('a T or an L of five makes a bomb', () => {
     const s = board([]);
     for (const [r, c] of [[5, 1], [5, 3], [6, 2], [7, 2], [4, 2]] as const) s.cells[m3Index(r, c)] = { id: 400 + r * 10 + c, kind: 1 };
     s.cells[m3Index(5, 2)] = { id: 450, kind: 2 };
     const res = m3Swap(s, m3Index(4, 2), m3Index(5, 2))!;
     expect(res !== null).toBe(true);
-    expect(res.steps[0]!.afterClear.some((p) => p?.special === 'rainbow')).toBe(true);
+    expect(res.steps[0]!.afterClear.some((p) => p?.special === 'bomb')).toBe(true);
+    const l = board([]);
+    for (const [r, c] of [[5, 2], [6, 2], [7, 2], [5, 3], [5, 4]] as const) l.cells[m3Index(r, c)] = { id: 460 + r * 10 + c, kind: 1 };
+    l.cells[m3Index(5, 2)] = { id: 470, kind: 2 };
+    l.cells[m3Index(4, 2)] = { id: 471, kind: 1 };
+    const res2 = m3Swap(l, m3Index(4, 2), m3Index(5, 2))!;
+    expect(res2.steps[0]!.afterClear.some((p) => p?.special === 'bomb')).toBe(true);
   });
 
   it('rainbow swapped with a neighbour clears every pet of that kind', () => {

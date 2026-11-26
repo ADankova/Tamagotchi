@@ -132,8 +132,8 @@ export class Match3Game implements GameScreen {
       row(['###', '#/#/#'], null, L.threeTitle, L.threeText),
       row(['####'], BONUS_ART.row, L.rowTitle, L.rowText),
       row(['#/#/#/#'], BONUS_ART.col, L.colTitle, L.colText),
-      row(['##/##'], BONUS_ART.bomb, L.bombTitle, L.bombText),
-      row(['#####', '.#./###/.#.', '###/.#./.#.', '#../#../###'], BONUS_ART.rainbow, L.rainbowTitle, L.rainbowText),
+      row(['##/##', '###/.#./.#.', '#../#../###'], BONUS_ART.bomb, L.bombTitle, L.bombText),
+      row(['#####', '.#./###/.#.'], BONUS_ART.rainbow, L.rainbowTitle, L.rainbowText),
       el('p', { class: 'm3-legend-tip', text: L.tip }),
     ]);
   }
