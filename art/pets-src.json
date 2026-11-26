@@ -249,7 +249,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655542740-p9ocg9-d8c1f364.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "dog_child": {
   "file": "mcp-remote-devices-blob-1795650573539-xff8mg-7f97d629.png",
@@ -259,7 +270,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655546920-r7cffo-11954bc9.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "dog_teen": {
   "file": "mcp-remote-devices-blob-1795650576247-dg6q21-56cb925c.png",
@@ -269,7 +291,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655551382-xeiu5z-5aee2a6c.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "dog_adultNaughty": {
   "file": "mcp-remote-devices-blob-1795650578338-7zzhz1-a833e791.png",
@@ -299,7 +332,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795655556086-q244hs-bd00c168.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "props_egg": {
   "file": "mcp-remote-devices-blob-1795650589336-tcz7m1-4ef7e823.png",
