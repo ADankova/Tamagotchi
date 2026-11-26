@@ -105,6 +105,7 @@ export const en: Dict = {
     menuIntro: 'Play with your pet and earn treats.',
     close: 'Close',
     rulesButton: (game: string) => `Rules of “${game}”`,
+    favourite: (game: string, on: boolean) => (on ? `Remove “${game}” from favourites` : `Add “${game}” to favourites`),
     queensTitle: 'Pet Sudoku',
     queensAbout: 'Place the pets: exactly one in every row, column and colour zone. Pets must not touch each other — not even diagonally.',
     level: (size: number, reward: number) => `${size}×${size} · +${reward} ${treatWord(reward)}`,

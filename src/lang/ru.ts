@@ -96,6 +96,7 @@ const GAMES_TEXT = {
   menuIntro: 'Играй с питомцем и зарабатывай лакомства.',
   close: 'Закрыть',
   rulesButton: (game: string) => `Правила игры «${game}»`,
+  favourite: (game: string, on: boolean) => (on ? `Убрать «${game}» из избранного` : `Добавить «${game}» в избранное`),
   queensTitle: 'Судоку с питомцем',
   queensAbout: 'Расставь питомцев: по одному в каждой строке, столбце и цветной зоне. Питомцы не должны касаться друг друга — даже углами.',
   level: (size: number, reward: number) => `${size}×${size} · +${reward} ${treatWord(reward)}`,
