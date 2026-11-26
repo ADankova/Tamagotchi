@@ -58,7 +58,19 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654887600-ytn5gm-ea81e689.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "roll",
+    "sleep_twitch"
+   ]
+  }
  },
  "cat_child": {
   "file": "mcp-remote-devices-blob-1795650529240-1zpfxa-7182b6ed.png",
@@ -68,7 +80,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654892483-8bw9lc-86623656.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "cat_teen": {
   "file": "mcp-remote-devices-blob-1795650531658-qd41bq-b7ccc4a6.png",
@@ -78,7 +101,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654909610-ujac04-63b0e0b9.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "cat_adultNaughty": {
   "file": "mcp-remote-devices-blob-1795650534081-3vati9-fe18f68e.png",
@@ -88,7 +122,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654920131-mqwokp-3a4a0ef5.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "cat_elder": {
   "file": "mcp-remote-devices-blob-1795650536058-f2jua3-837c5f80.png",
@@ -98,7 +143,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654924337-pnkpq6-1e75805a.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "cat_adultNormal": {
   "file": "mcp-remote-devices-blob-1795650538241-qnf790-d2662b3e.png",
@@ -108,7 +164,18 @@
    "idle",
    "sleep",
    "eat"
-  ]
+  ],
+  "extra": {
+   "file": "mcp-remote-devices-blob-1795654914190-l6kouf-2b6a18f8.png",
+   "names": [
+    "idle_smooth",
+    "catch",
+    "walk",
+    "eat_side",
+    "lie_wag",
+    "sleep_twitch"
+   ]
+  }
  },
  "blob_baby": {
   "file": "mcp-remote-devices-blob-1795650548605-74k9qj-07324464.png",
