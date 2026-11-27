@@ -3793,3 +3793,7 @@ body:has(.fr-game) {
 /* Характеристики оружия: таблица без линий */
 .fr-wstats { display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.9rem; justify-content: start; font-size: 0.9rem; }
 .fr-wstats b { font-weight: 800; }
+
+/* Бонусы блюда справа в списке рецептов: таблица без линий, мелкий шрифт */
+.fr-rfx { flex: none; display: grid; grid-template-columns: auto auto; gap: 0 0.5rem; font-size: 0.68rem; line-height: 1.3; align-items: baseline; }
+.fr-rfx b { font-weight: 800; text-align: right; }

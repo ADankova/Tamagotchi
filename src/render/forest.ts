@@ -1483,6 +1483,7 @@ export class ForestGame implements GameScreen {
       const row = el('button', { type: 'button', class: ok ? 'fr-recipe fr-recipe-pick' : 'fr-recipe fr-recipe-pick dim' }, [
         el('span', { class: 'fr-slot' }, [this.iconCanvas(r.to)]),
         el('div', { class: 'fr-recipe-info' }, [el('b', { text: GAMES_TEXT.forestItems[r.to] ?? r.to }), el('div', { class: 'fr-mats' }, mats)]),
+        el('div', { class: 'fr-rfx' }, Object.entries(FR_EFFECTS[r.to] ?? {}).flatMap(([k, v]) => [el('span', { text: GAMES_TEXT.forestStatNames[k] ?? k }), el('b', { text: `+${v}` })])),
       ]);
       if (!ok) row.setAttribute('disabled', '');
       row.addEventListener('click', () => {
