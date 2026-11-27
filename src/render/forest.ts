@@ -93,7 +93,7 @@ import type { SoundName } from '../audio/tunes';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
 import type { GameScreen, MiniGameHost } from './minigames';
-import { cellHash, drawSprite, groundTile, natureCount } from './nature';
+import { cellHash, drawIcon, drawSprite, groundTile, natureCount } from './nature';
 import { drawPet } from './petArt';
 import { animFrame, type AnimRow } from './scene';
 
@@ -2488,6 +2488,10 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
   if (kind === 'crystal' || kind === 'glowcap') {
     if (drawSprite(ctx, kind, phase, cx, cy + size * 0.42, { w: size * 0.95 })) return;
   }
+  if (kind === 'reed' || kind === 'grass') {
+    if (drawIcon(ctx, kind === 'reed' ? 'reed' : 'grass', cx, cy, size * 0.95)) return;
+  }
+  if (drawIcon(ctx, `item-${kind}`, cx, cy, size * 0.95)) return;
   outline(ctx, size);
   switch (kind) {
     case 'pickaxe':
