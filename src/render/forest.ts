@@ -17,7 +17,11 @@ import {
   frCanCraft,
   frCraft,
   frChestPut,
-  frChestSpots,
+  frPlaceSpots,
+  frAttack,
+  frMobAt,
+  FR_MOBS,
+  type FrMob,
   frCapacity,
   frBedCell,
   frLoomDone,
@@ -80,8 +84,9 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
+const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe'];
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -220,6 +225,12 @@ export class ForestGame implements GameScreen {
       this.tapPlacing(x, y);
       return;
     }
+    const mob = frMobAt(this.state, fx, fy);
+    if (mob) {
+      this.closeMenu();
+      this.handle(frAttack(this.state, mob.id));
+      return;
+    }
     const hadMenu = this.menuAt !== null;
     this.closeMenu();
     const target = frTargetAt(this.state, x, y);
@@ -276,7 +287,7 @@ export class ForestGame implements GameScreen {
   private tapPlacing(x: number, y: number): void {
     const i = frIndex(x, y);
     this.closeMenu();
-    if (!frChestSpots(this.state).includes(i)) {
+    if (!frPlaceSpots(this.state, this.placing?.id ?? 'chest').includes(i)) {
       this.stopPlacing();
       return;
     }
@@ -422,6 +433,23 @@ export class ForestGame implements GameScreen {
           break;
         case 'tooWet':
           this.say(M.tooWet, 'blocked');
+          break;
+        case 'petHit':
+          break;
+        case 'hurt':
+          this.say(M.hurt.replace('{mob}', GAMES_TEXT.forestMobs[ev.kind] ?? ev.kind).replace('{n}', String(ev.dmg)), 'blocked');
+          break;
+        case 'mobKilled':
+          this.say(M.mobKilled.replace('{mob}', GAMES_TEXT.forestMobs[ev.kind] ?? ev.kind), 'win');
+          break;
+        case 'mobAppeared':
+          this.say(M.wolfNear, 'blocked');
+          break;
+        case 'trapped':
+          this.say(M.trapped.replace('{mob}', (GAMES_TEXT.forestMobs[ev.kind] ?? ev.kind).toLowerCase()), 'win');
+          break;
+        case 'trapEmptied':
+          this.say(M.trapEmptied, 'win');
           break;
         case 'worn':
           this.say(M.worn, 'win');
@@ -613,7 +641,7 @@ export class ForestGame implements GameScreen {
         el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: String(n) })]),
       );
       const tile = el('button', { type: 'button', class: can ? 'fr-ctile can' : 'fr-ctile', 'aria-label': GAMES_TEXT.forestItems[r.id] ?? r.id }, [
-        FR_BUILDINGS.includes(r.id) ? el('span', { class: 'fr-chest-ico', text: r.id === 'loom' ? '🧶' : '📦' }) : this.iconCanvas(r.id as FrItem, 72),
+        FR_BUILDINGS.includes(r.id) ? el('span', { class: 'fr-chest-ico', text: BUILD_ICON[r.id] ?? '📦' }) : this.iconCanvas(r.id as FrItem, 72),
       ]);
       tile.addEventListener('click', () => this.renderCraftDetail(r.id));
       return el('div', { class: 'fr-citem' }, [
@@ -635,7 +663,7 @@ export class ForestGame implements GameScreen {
   private renderCraftDetail(id: (typeof FR_CRAFT)[number]['id']): void {
     const s = this.state;
     const r = FR_CRAFT.find((x) => x.id === id)!;
-    const owned = FR_BUILDINGS.includes(id) ? (s.tiles.includes(id as 'chest' | 'loom') ? 1 : 0) : s.inv[id as FrItem] ?? 0;
+    const owned = FR_BUILDINGS.includes(id) ? s.tiles.filter((k) => k === id).length : s.inv[id as FrItem] ?? 0;
     const mats = r.cost.map(([it, n]) =>
       el('div', { class: 'fr-dmat' }, [
         el('span', { class: 'fr-slot' }, [this.iconCanvas(it)]),
@@ -643,9 +671,9 @@ export class ForestGame implements GameScreen {
       ]),
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
-    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch')) make.setAttribute('disabled', '');
+    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'trap')) make.setAttribute('disabled', '');
     const why =
-      owned > 0 && id !== 'torch'
+      owned > 0 && id !== 'torch' && id !== 'trap'
         ? GAMES_TEXT.forestAlreadyBuilt
         : !frCanCraft(s, id)
           ? GAMES_TEXT.forestNeedMats
@@ -663,7 +691,7 @@ export class ForestGame implements GameScreen {
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-card' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
-        el('div', { class: 'fr-detail-icon' }, [FR_BUILDINGS.includes(id) ? el('span', { class: 'fr-chest-ico', text: id === 'loom' ? '🧶' : '📦' }) : this.iconCanvas(id as FrItem, 96)]),
+        el('div', { class: 'fr-detail-icon' }, [FR_BUILDINGS.includes(id) ? el('span', { class: 'fr-chest-ico', text: BUILD_ICON[id] ?? '📦' }) : this.iconCanvas(id as FrItem, 96)]),
         el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
@@ -1133,14 +1161,14 @@ export class ForestGame implements GameScreen {
     }
 
     if (this.placing) {
-      for (const i of frChestSpots(s)) {
+      for (const i of frPlaceSpots(s, this.placing.id)) {
         const px = Math.floor(sx(i % FR_W));
         const py = Math.floor(sy(Math.floor(i / FR_W)));
         ctx.fillStyle = i === this.placing.cell ? 'rgba(255,255,120,0.6)' : 'rgba(60,220,80,0.5)';
         ctx.fillRect(px + 1, py + 1, Math.ceil(tile) - 2, Math.ceil(tile) - 2);
       }
       if (this.placing.cell !== null) {
-        const draw = this.placing.id === 'loom' ? drawLoom : drawChest;
+        const draw = this.placing.id === 'loom' ? drawLoom : this.placing.id === 'trap' ? drawTrap : drawChest;
         draw(ctx, sx((this.placing.cell % FR_W) + 0.5), sy(Math.floor(this.placing.cell / FR_W) + 0.5), tile);
       }
     }
@@ -1171,11 +1199,13 @@ export class ForestGame implements GameScreen {
         else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
+        else if (kind === 'trap' || kind === 'trapfull') items.push({ y: y + 0.2, draw: () => drawTrap(ctx, cx, cy, tile, kind === 'trapfull') });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
         if (d) items.push({ y: y + 0.4, draw: () => drawItem(ctx, d.kind, cx, cy, tile * 0.7, t, d.id) });
       }
     }
+    for (const m of s.mobs) items.push({ y: m.y + 0.3, draw: () => drawMob(ctx, m, sx(m.x), sy(m.y), tile, t) });
     items.push({ y: s.y + 0.2, draw: () => this.drawPetAt(ctx, sx(s.x), sy(s.y) + tile * 0.35, tile, t) });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -1341,6 +1371,7 @@ export class ForestGame implements GameScreen {
         if (d) labels.push({ x, y, text: GAMES_TEXT.forestItems[d.kind] ?? d.kind });
         else if (kind === 'bush' && s.berries.includes(i)) labels.push({ x, y, text: GAMES_TEXT.forestPlaces.bush ?? '' });
         else if (kind === 'rock') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
+        else if (kind === 'trapfull') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.trapfull ?? '' });
         else if (kind === 'loom') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.loom ?? '' });
         else if (kind === 'chest') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.chest ?? '' });
         else if (kind === 'pit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[s.fire > 0 ? 'fire' : 'pit'] ?? '' });
@@ -1461,6 +1492,91 @@ function drawRock(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   ctx.lineTo(cx - tile * 0.04, cy - tile * 0.02);
   ctx.closePath();
   ctx.fill();
+}
+
+function drawTrap(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, full = false): void {
+  const w = tile * 0.8;
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(cx - w / 2, cy - w / 2, w, w);
+  ctx.strokeStyle = '#7a4d2b';
+  ctx.lineWidth = Math.max(2, tile * 0.08);
+  ctx.strokeRect(cx - w / 2, cy - w / 2, w, w);
+  ctx.strokeStyle = '#e9d9b6';
+  ctx.lineWidth = Math.max(1, tile * 0.04);
+  for (let k = 1; k < 4; k++) {
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2 + (k * w) / 4, cy - w / 2);
+    ctx.lineTo(cx - w / 2 + (k * w) / 4, cy + w / 2);
+    ctx.moveTo(cx - w / 2, cy - w / 2 + (k * w) / 4);
+    ctx.lineTo(cx + w / 2, cy - w / 2 + (k * w) / 4);
+    ctx.stroke();
+  }
+  if (full) {
+    ctx.fillStyle = '#d96c6c';
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3b2a1e';
+    ctx.lineWidth = Math.max(1, tile * 0.05);
+    ctx.stroke();
+  }
+}
+
+/** Мышь, кролик и волк рисуются кодом; у раненого над головой полоска здоровья. */
+function drawMob(ctx: CanvasRenderingContext2D, m: FrMob, x: number, y: number, tile: number, t: number): void {
+  const bob = Math.sin(t / 120 + m.id) * tile * 0.03;
+  const k = m.kind;
+  const s = k === 'wolf' ? 0.95 : k === 'rabbit' ? 0.7 : 0.5;
+  ctx.save();
+  ctx.translate(x, y + tile * 0.2 + bob);
+  ctx.strokeStyle = '#3b2a1e';
+  ctx.lineWidth = Math.max(1.5, tile * 0.05);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, tile * 0.12, tile * 0.3 * s + 2, tile * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const body = k === 'wolf' ? '#7d828c' : k === 'rabbit' ? '#f2ebe0' : '#a88f7a';
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(0, -tile * 0.15 * s, tile * 0.36 * s, tile * 0.25 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // голова
+  ctx.beginPath();
+  ctx.arc(tile * 0.3 * s, -tile * 0.28 * s, tile * 0.19 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // уши
+  ctx.fillStyle = body;
+  if (k === 'rabbit') {
+    ctx.fillRect(tile * 0.22 * s, -tile * 0.75 * s, tile * 0.08 * s, tile * 0.38 * s);
+    ctx.fillRect(tile * 0.36 * s, -tile * 0.75 * s, tile * 0.08 * s, tile * 0.38 * s);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(tile * 0.2 * s, -tile * 0.4 * s);
+    ctx.lineTo(tile * 0.26 * s, -tile * (k === 'wolf' ? 0.68 : 0.55) * s);
+    ctx.lineTo(tile * 0.34 * s, -tile * 0.42 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // хвост
+  ctx.strokeStyle = k === 'mouse' ? '#d9a0a0' : '#3b2a1e';
+  ctx.beginPath();
+  ctx.moveTo(-tile * 0.34 * s, -tile * 0.15 * s);
+  ctx.quadraticCurveTo(-tile * 0.55 * s, -tile * 0.3 * s, -tile * 0.5 * s, -tile * 0.05 * s);
+  ctx.stroke();
+  // глаз
+  ctx.fillStyle = m.angry || m.provoked ? '#e0443e' : '#222';
+  ctx.fillRect(tile * 0.36 * s, -tile * 0.32 * s, Math.max(2, tile * 0.05), Math.max(2, tile * 0.05));
+  ctx.restore();
+  if (m.hp < FR_MOBS[k].hp) {
+    const w = tile * 0.6;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x - w / 2, y - tile * (k === 'wolf' ? 0.75 : 0.55), w, 5);
+    ctx.fillStyle = '#e0443e';
+    ctx.fillRect(x - w / 2, y - tile * (k === 'wolf' ? 0.75 : 0.55), (w * Math.max(0, m.hp)) / FR_MOBS[k].hp, 5);
+  }
 }
 
 function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
@@ -1819,6 +1935,27 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.fillStyle = '#e6c06a';
       ctx.fillRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
       ctx.strokeRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
+      break;
+    case 'meat':
+    case 'steak':
+      ctx.fillStyle = kind === 'meat' ? '#d96c6c' : '#a8603a';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, size * 0.32, size * 0.22, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f4e3c1';
+      ctx.fillRect(cx + size * 0.18, cy - size * 0.26, size * 0.1, size * 0.2);
+      break;
+    case 'broth':
+    case 'meatporridge':
+      ctx.fillStyle = '#c98a4b';
+      ctx.beginPath();
+      ctx.arc(cx, cy + size * 0.05, size * 0.32, 0, Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = kind === 'broth' ? '#e8c477' : '#d9b27a';
+      ctx.fillRect(cx - size * 0.3, cy - size * 0.02, size * 0.6, size * 0.1);
       break;
     case 'berries':
       ctx.fillStyle = '#e8505b';

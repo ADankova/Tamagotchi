@@ -601,4 +601,64 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(m.frWeave(s3, 'bed')).toContainEqual({ type: 'crafted', item: 'bed' });
     expect(s3.bed).toBe(true);
   });
+
+  it('монстры: мышь убегает, после удара дерётся; волк нападает; к костру не подходят', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    expect(s.mobs.filter((x) => x.kind === 'mouse').length).toBe(3);
+    expect(s.mobs.filter((x) => x.kind === 'rabbit').length).toBe(2);
+    const c = frCenter();
+    s.mobs = [];
+    s.fire = 600_000;
+    s.x = c.x + 0.5;
+    s.y = c.y + 0.5;
+    s.stats.health = 100;
+    // волк рядом с кругом света: к костру не заходит
+    s.mobs.push({ id: 900, kind: 'wolf', x: c.x + 6.5, y: c.y + 0.5, hp: 30, provoked: false, angry: true, cd: 0, wx: 0, wy: 0 });
+    run(s, 6000);
+    const w = s.mobs[0]!;
+    expect(Math.hypot(w.x - (c.x + 0.5), w.y - (c.y + 0.5))).toBeGreaterThan(m.FR_FIRE_RADIUS - 0.2);
+    expect(s.stats.health).toBe(100);
+    // мышь: убегает от питомца
+    const s2 = newForest(7);
+    s2.mobs = [{ id: 901, kind: 'mouse', x: s2.x + 3, y: s2.y, hp: 6, provoked: false, angry: false, cd: 0, wx: 0, wy: 0 }];
+    s2.tiles = s2.tiles.map((k) => (k === 'tree' || k === 'rock' || k === 'bush' ? 'grass' : k));
+    const d0 = 3;
+    run(s2, 1000);
+    expect(Math.hypot(s2.mobs[0]!.x - s2.x, s2.mobs[0]!.y - s2.y)).toBeGreaterThan(d0 - 0.5);
+    // удар: мышь умирает за два удара
+    const s3 = newForest(7);
+    s3.tiles = s3.tiles.map((k) => (k === 'tree' || k === 'rock' || k === 'bush' || k === 'water' ? 'grass' : k));
+    s3.mobs = [{ id: 902, kind: 'rabbit', x: s3.x + 1, y: s3.y, hp: 12, provoked: false, angry: false, cd: 0, wx: 0, wy: 0 }];
+    s3.fire = 0;
+    m.frAttack(s3, 902);
+    const ev = run(s3, 4000);
+    expect(ev).toContainEqual({ type: 'mobKilled', kind: 'rabbit' });
+    expect(s3.inv.meat).toBe(1);
+  });
+
+  it('ловушка: мышь попадается, мясо достаётся, рецепты мяса', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { cloth: 5, branch: 10 };
+    const spot = m.frTrapSpots(s)[0]!;
+    expect(m.frCraft(s, 'trap', spot)).toContainEqual({ type: 'crafted', item: 'trap' });
+    expect(s.tiles[spot]).toBe('trap');
+    s.inv = { cloth: 5, branch: 10 };
+    const spot2 = m.frTrapSpots(s)[1]!;
+    expect(m.frCraft(s, 'trap', spot2)).toContainEqual({ type: 'crafted', item: 'trap' });
+    // мышь бежит прямо по ловушке
+    s.mobs = [{ id: 903, kind: 'mouse', x: (spot % FR_W) + 0.5, y: Math.floor(spot / FR_W) + 0.5 - 0.2, hp: 6, provoked: false, angry: false, cd: 0, wx: (spot % FR_W) + 0.5, wy: Math.floor(spot / FR_W) + 0.5 }];
+    s.x = (spot % FR_W) + 0.5 - 2;
+    s.y = Math.floor(spot / FR_W) + 0.5 - 0.2;
+    s.tiles[spot] = 'trap';
+    run(s, 800);
+    expect(s.tiles[spot]).toBe('trapfull');
+    expect(s.mobs.length).toBe(0);
+    s.inv = {};
+    expect(m.frActions(s, m.frTargetAt(s, spot % FR_W, Math.floor(spot / FR_W))!)).toEqual(['open']);
+    expect(m.frRecipe(['meat'])).toBe('steak');
+    expect(m.frRecipe(['fullflask', 'meat'])).toBe('broth');
+    expect(m.frRecipe(['meat', 'fullflask', 'seeds'])).toBe('meatporridge');
+  });
 });
