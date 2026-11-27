@@ -3614,6 +3614,7 @@ body:has(.fr-game) {
 
 .q-chip.fr-day {
   white-space: nowrap;
-  font-size: 0.9rem;
-  padding: 4px 9px;
+  font-size: 0.82rem;
+  padding: 4px 8px;
+  min-width: 0;
 }

@@ -995,3 +995,22 @@ describe('озеро и пещера: новое', () => {
     expect(m.frCounter(s, 'visit:lake')).toBe(1);
   });
 });
+
+describe('редкий камень', () => {
+  it('фонарь горит дольше факела; камень удваивает прочность и один раз', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { crystal: 3, branch: 2, grass: 2 };
+    expect(m.frCraft(s, 'lantern')).toContainEqual({ type: 'crafted', item: 'lantern' });
+    expect(m.frLantern(s)).toContainEqual({ type: 'torchLit' });
+    expect(s.torch).toBe(m.FR_LANTERN_MS);
+    expect(s.torchMax).toBe(m.FR_LANTERN_MS);
+    s.inv.axe = 1;
+    expect(m.frCanUpgrade(s, 'axe')).toBe(true);
+    expect(m.frUpgrade(s, 'axe')).toContainEqual({ type: 'upgraded', item: 'axe' });
+    expect(m.frDurability(s, 'axe')).toBe(40);
+    expect(m.frToolMax(s, 'axe')).toBe(40);
+    expect(m.frCanUpgrade(s, 'axe')).toBe(false);
+    expect(s.inv.crystal).toBe(1);
+  });
+});
