@@ -52,8 +52,8 @@ export function drawSprite(ctx: CanvasRenderingContext2D, kind: string, v: numbe
 }
 
 /** Иконка предмета: вписывается в квадрат size по центру (cx, cy); false — нет картинки. */
-export function drawIcon(ctx: CanvasRenderingContext2D, kind: string, cx: number, cy: number, size: number): boolean {
-  const img = sprite(kind, 0);
+export function drawIcon(ctx: CanvasRenderingContext2D, kind: string, cx: number, cy: number, size: number, v = 0): boolean {
+  const img = sprite(kind, v);
   if (!img) return false;
   const k = size / Math.max(img.naturalWidth, img.naturalHeight);
   const w = img.naturalWidth * k;
