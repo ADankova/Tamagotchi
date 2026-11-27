@@ -2943,7 +2943,7 @@ button.m-jar:active {
 .fr-canvas {
   display: block;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  height: 420px;
   background: #76bd65;
   touch-action: none;
   cursor: pointer;
@@ -2954,7 +2954,8 @@ html:has(.fr-game),
 body:has(.fr-game) {
   overscroll-behavior: none;
 }
-@media (min-height: 760px) {
+@media (min-height: 520px) {
+  .overlay:has(.fr-game),
   html:has(.fr-game),
   body:has(.fr-game) {
     overflow: hidden;

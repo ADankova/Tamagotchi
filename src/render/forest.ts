@@ -1041,8 +1041,23 @@ export class ForestGame implements GameScreen {
 
   private resize(): void {
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.round(this.canvas.clientWidth * dpr);
-    const h = Math.round((w * 4) / 3);
+    // Поле занимает всё доступное место: страница игры не должна листаться.
+    const cw = this.canvas.clientWidth;
+    const wrap = this.canvas.parentElement;
+    if (cw > 0 && wrap && this.root.isConnected) {
+      const sc = (this.root.closest('.overlay') as HTMLElement | null) ?? document.documentElement;
+      const fits = sc.clientHeight >= 520;
+      if (fits && sc.scrollTop) sc.scrollTop = 0;
+      const box = (this.root.closest('.overlay-body') as HTMLElement | null) ?? this.root;
+      const wr = wrap.getBoundingClientRect();
+      const top = wr.top - sc.getBoundingClientRect().top + sc.scrollTop;
+      const below = box.getBoundingClientRect().bottom - wr.bottom;
+      const avail = sc.clientHeight - top - below - 14;
+      const want = Math.round(Math.max(180, Math.min(avail, cw * 1.5)));
+      if (this.canvas.style.height !== `${want}px`) this.canvas.style.height = `${want}px`;
+    }
+    const w = Math.round(cw * dpr);
+    const h = Math.round(this.canvas.clientHeight * dpr);
     if (w > 0 && (this.canvas.width !== w || this.canvas.height !== h)) {
       this.canvas.width = w;
       this.canvas.height = h;
@@ -1054,7 +1069,7 @@ export class ForestGame implements GameScreen {
   private view(): { tile: number; rows: number; camX: number; camY: number } {
     const s = this.state;
     const tile = this.canvas.width / VIEW_W || 1;
-    const rows = (VIEW_W * 4) / 3;
+    const rows = this.canvas.height / tile;
     const camX = clamp(s.x - VIEW_W / 2, 0, FR_W - VIEW_W);
     const camY = clamp(s.y - rows / 2, 0, FR_H - rows);
     return { tile, rows, camX, camY };
