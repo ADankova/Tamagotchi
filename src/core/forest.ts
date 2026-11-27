@@ -32,6 +32,8 @@ export const FR_NIGHT_REWARD = 2;
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull';
 export const FR_DRY_FIRST_MS = 150_000;
 export const FR_SHELTER_RAINS = 30;
+/** Сколько первых ночей дождя нет. */
+export const FR_CALM_DAYS = 2;
 export const FR_BED_HEAL = 3;
 
 export type FrTool = 'knife' | 'axe' | 'pickaxe';
@@ -1032,9 +1034,15 @@ function tick(s: FrState, dt: number): FrEvent[] {
     if (before[k] >= LOW && s.stats[k] < LOW) events.push({ type: 'low', stat: k });
   }
 
-  // Погода.
+  // Погода. Первые две ночи дождя не бывает: время подготовить шалаш.
+  const calm = s.day <= FR_CALM_DAYS && s.clock >= FR_EVENING_AT;
+  if (calm && s.weather.rain) {
+    s.weather = { rain: false, left: 60_000 };
+    events.push({ type: 'rainEnd' });
+  }
   s.weather.left -= gdt;
-  if (s.weather.left <= 0) {
+  if (s.weather.left <= 0 && calm) s.weather.left = 1000;
+  else if (s.weather.left <= 0) {
     const n = (s.count.rainCycle ?? 0) + 1;
     s.count.rainCycle = n;
     const r = rand(s.seed + 31_000 + n * 101)();
@@ -1288,7 +1296,7 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'porridge', kind: 'regular', reward: 0, items: { egg: 2 }, parts: [{ key: 'made:porridge', need: 1 }] },
   { id: 'loom', kind: 'regular', reward: 0, items: { stone: 2, branch: 3 }, parts: [{ key: 'craft:loom', need: 1 }] },
   { id: 'purse', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'craft:purse', need: 1 }] },
-  { id: 'shelter', kind: 'regular', reward: 0, items: { branch: 4, grass: 4 }, parts: [{ key: 'craft:shelter', need: 1 }] },
+  { id: 'shelter', kind: 'regular', reward: 1, parts: [{ key: 'craft:shelter', need: 1 }] },
   { id: 'hunt', kind: 'regular', reward: 0, items: { cooked: 1 }, parts: [{ key: 'kill', need: 2 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },

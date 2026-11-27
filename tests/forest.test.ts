@@ -694,4 +694,20 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(mk(true, 2.5)).toBe(false);
     expect(mk(true, 1.8)).toBe(true);
   });
+
+  it('первые две ночи дождя нет, с третьей возможен; задание про шалаш даёт конфету', async () => {
+    const m = await import('../src/core/forest');
+    const night = (day: number) => {
+      const s = newForest(7);
+      s.day = day;
+      s.clock = m.FR_NIGHT_AT + 1000;
+      s.weather = { rain: false, left: 500 };
+      return run(s, 3000);
+    };
+    expect(night(1)).not.toContainEqual({ type: 'rainStart' });
+    expect(night(2)).not.toContainEqual({ type: 'rainStart' });
+    expect(night(3)).toContainEqual({ type: 'rainStart' });
+    const q = m.FR_QUESTS.find((x) => x.id === 'shelter')!;
+    expect(q.reward).toBe(1);
+  });
 });
