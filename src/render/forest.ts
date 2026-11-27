@@ -1665,7 +1665,7 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: TOOLS.includes(item) || (s.inv[item] ?? 0) <= 1 ? (GAMES_TEXT.forestItems[item] ?? item) : `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
-          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('div', { class: 'fr-stats' }, [
+          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('div', { class: 'fr-wstats' }, [
             el('span', { text: GAMES_TEXT.forestStatDmg }), el('b', { text: String(frWeaponDmg(s, item as FrTool)) }),
             el('span', { text: GAMES_TEXT.forestStatSpeed }), el('b', { text: GAMES_TEXT.forestStatSpeedVal(FR_WEAPONS[item as FrTool]!.ms) }),
           ])] : []),
