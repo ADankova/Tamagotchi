@@ -54,9 +54,9 @@ export interface FrPlaceState {
 }
 
 export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife' | 'spear';
-export const FR_TOOL_USES = 20;
+export const FR_TOOL_USES = 30;
 export const FR_IRON_USES = 60;
-export const FR_SPEAR_USES = 30;
+export const FR_SPEAR_USES = 80;
 export const FISH_CHANCE = 0.55;
 export function frToolUses(tool: FrTool): number {
   if (tool === 'spear') return FR_SPEAR_USES;
