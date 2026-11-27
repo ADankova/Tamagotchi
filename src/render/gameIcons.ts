@@ -26,6 +26,12 @@ const ICONS: Readonly<Record<string, string>> = {
     '<path d="M10 34q4-4 7 0t7 0 7 0 7 0" fill="none" stroke="#5aaef0" stroke-width="3" stroke-linecap="round"/>' +
     '<path d="M14 28h20l-3 6H17z" fill="#c98a52" stroke="#3b2a1e" stroke-width="2" stroke-linejoin="round"/>' +
     '<path d="M24 12v16" stroke="#3b2a1e" stroke-width="2.5"/><path d="M24 13l9 11H24z" fill="#fff" stroke="#3b2a1e" stroke-width="2" stroke-linejoin="round"/>',
+  // Дикий лес: ёлка и костёр.
+  forest:
+    '<rect x="6" y="6" width="36" height="36" rx="6" fill="#d9f2c9" stroke="#3b2a1e" stroke-width="3"/>' +
+    '<path d="M17 10l8 11h-4l6 8H7l6-8H9z" fill="#2f8a57" stroke="#3b2a1e" stroke-width="2" stroke-linejoin="round"/><rect x="15" y="29" width="4" height="6" fill="#8a5a35" stroke="#3b2a1e" stroke-width="1.5"/>' +
+    '<path d="M27 36l12-4M27 32l12 4" stroke="#6b3f22" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M29 32q0-7 4-11q4 4 4 11z" fill="#ff7a2f" stroke="#3b2a1e" stroke-width="1.8" stroke-linejoin="round"/><path d="M31.5 32q0-4 1.5-6q1.5 2 1.5 6z" fill="#ffd25e"/>',
   // Три в ряд: три одинаковых кружка в ряд и бонус-звезда.
   match3:
     '<rect x="6" y="6" width="36" height="36" rx="6" fill="#ffe9f3" stroke="#3b2a1e" stroke-width="3"/>' +

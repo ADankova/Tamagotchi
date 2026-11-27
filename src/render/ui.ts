@@ -568,6 +568,8 @@ export class UI {
         finishHarbor: (won) =>
           this.game.finishMiniGame(won, 0, { game: 'harbor', key: 'bay' }),
         treatImage: ART.snack,
+        petSpecies: pet.species,
+        petBody: pet.stage === 'egg' || pet.stage === 'dead' ? 'baby' : bodyStage(pet.stage, pet.form),
       },
       () => {
         this.overlay = null;

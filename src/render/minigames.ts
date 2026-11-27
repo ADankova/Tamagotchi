@@ -16,6 +16,9 @@ import { MOSAIC_PICTURE_NAMES, MOSAIC_REWARD, type MosaicPicture } from '../core
 import { MosaicGame } from './mosaic';
 import { HarborGame } from './harbor';
 import { Match3Game, match3Collected } from './match3';
+import { ForestGame, forestBest } from './forest';
+import type { Species } from '../core/types';
+import type { BodyStage } from './species';
 import { SlideGame } from './slide';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
@@ -48,6 +51,9 @@ export interface MiniGameHost {
   finishHarbor: (won: boolean) => void;
   /** Картинка лакомства (data URL). */
   treatImage: string;
+  /** Вид и облик питомца — для игр, где он ходит сам («Дикий лес»). */
+  petSpecies: Species;
+  petBody: BodyStage;
 }
 
 /** Экран одной игры внутри окна. */
@@ -163,6 +169,13 @@ export class GamesOverlay {
     ]);
     m3Button.addEventListener('click', () => this.startMatch3());
     const m3Card = this.gameCard('match3', GAMES_TEXT.match3Title, GAMES_TEXT.match3About, [m3Button]);
+    const forestButton = el('button', { type: 'button', class: 'chunky level-button' }, [
+      el('span', { class: 'level-name', text: GAMES_TEXT.forestLevel }),
+      el('span', { class: 'level-info', text: GAMES_TEXT.forestInfo }),
+      el('span', { class: 'level-stats', text: GAMES_TEXT.forestStats(forestBest()) }),
+    ]);
+    forestButton.addEventListener('click', () => this.startForest());
+    const forestCard = this.gameCard('forest', GAMES_TEXT.forestTitle, GAMES_TEXT.forestAbout, [forestButton]);
     this.body.replaceChildren(
       this.header(GAMES_TEXT.menuTitle, () => this.close(), GAMES_TEXT.close),
       el('p', { class: 'intro overlay-intro', text: GAMES_TEXT.menuIntro }),
@@ -172,6 +185,7 @@ export class GamesOverlay {
         { id: 'mosaic', node: mosaicCard },
         { id: 'harbor', node: harborCard },
         { id: 'match3', node: m3Card },
+        { id: 'forest', node: forestCard },
       ]),
       el('p', { class: 'game-card soon', text: GAMES_TEXT.soon }),
     );
@@ -270,6 +284,15 @@ export class GamesOverlay {
     this.game = new Match3Game(this.host, {
       header: (title) => this.header(title, () => this.back(), '←'),
       replay: () => this.startMatch3(),
+      done: () => this.close(),
+    });
+    this.body.replaceChildren(this.game.root);
+  }
+
+  private startForest(): void {
+    this.game = new ForestGame(this.host, {
+      header: (title) => this.header(title, () => this.back(), '←'),
+      replay: () => this.startForest(),
       done: () => this.close(),
     });
     this.body.replaceChildren(this.game.root);
