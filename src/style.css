@@ -2930,3 +2930,126 @@ button.m-jar:active {
 .m3-help .m3-legend h3 {
   font-size: 0.82rem;
 }
+
+/* --- «Дикий лес» --- */
+.fr-game {
+  gap: 8px;
+}
+.fr-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px var(--ink, #3b2a1e);
+}
+.fr-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #76bd65;
+  touch-action: manipulation;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+.fr-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+}
+.fr-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.fr-stat-name {
+  width: 5.5em;
+  flex: none;
+}
+.fr-bar {
+  flex: 1;
+  height: 10px;
+  border: 2px solid #3b2a1e;
+  border-radius: 999px;
+  background: #f3e8d8;
+  overflow: hidden;
+}
+.fr-bar.low {
+  animation: fr-blink 0.9s infinite alternate;
+}
+.fr-bar-fill {
+  display: block;
+  height: 100%;
+  transition: width 0.3s;
+}
+@keyframes fr-blink {
+  to { background: #ffb3b3; }
+}
+.fr-note {
+  min-height: 1.3em;
+  transition: opacity 0.3s;
+}
+.fr-note.on {
+  opacity: 1;
+  font-weight: 800;
+}
+.fr-actions {
+  display: flex;
+  gap: 10px;
+}
+.fr-action {
+  flex: 1;
+  padding: 10px;
+  font-weight: 900;
+}
+.fr-action.ready {
+  background: #c9b8ff;
+}
+.fr-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, #2a1f17 45%, transparent);
+  box-shadow: none;
+}
+.fr-panel[hidden] {
+  display: none;
+}
+.fr-bag {
+  width: 86%;
+  max-height: 90%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: #fff6e4;
+  border: 3px solid #3b2a1e;
+  border-radius: 14px;
+  text-align: center;
+}
+.fr-bag h3,
+.fr-bag p {
+  margin: 0;
+}
+.fr-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font-weight: 800;
+}
+.fr-item-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.fr-item-name {
+  flex: 1;
+}
+.fr-eat {
+  width: auto;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  height: 30px;
+}
