@@ -573,6 +573,11 @@ export const FR_POT_SLOTS = 3;
 /** Рецепты: что положить в окошко готовки и что получится. Порядок не важен. */
 export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [{ from: ['mushroom'], to: 'cooked' }];
 
+/** Можно ли положить предмет в окошко: он входит хотя бы в один рецепт. */
+export function frCookable(item: FrItem): boolean {
+  return FR_RECIPES.some((r) => r.from.includes(item));
+}
+
 /** Что получится из того, что лежит в окошке (null — такого рецепта нет). */
 export function frRecipe(pot: readonly FrItem[]): FrItem | null {
   const key = [...pot].sort().join();
@@ -582,7 +587,7 @@ export function frRecipe(pot: readonly FrItem[]): FrItem | null {
 
 /** Переложить одну штуку из рюкзака в окошко готовки. */
 export function frPotAdd(s: FrState, item: FrItem): boolean {
-  if (s.pot.length >= FR_POT_SLOTS || !(s.inv[item] ?? 0) || !FR_FOOD[item]) return false;
+  if (s.pot.length >= FR_POT_SLOTS || !(s.inv[item] ?? 0) || !frCookable(item)) return false;
   take(s, item, 1);
   s.pot.push(item);
   return true;

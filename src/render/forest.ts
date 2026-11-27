@@ -14,6 +14,7 @@ import {
   frThrow,
   frCenter,
   frDarkness,
+  frCookable,
   frEat,
   frPotAdd,
   frPotCook,
@@ -386,13 +387,13 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-grid' }, this.bagCells((item) => {
           frPotAdd(s, item);
           this.renderCook();
-        })),
+        }, frCookable)),
       ]),
     );
   }
 
   /** Ячейки рюкзака: по нажатию вызывается onPick с видом предмета. */
-  private bagCells(onPick: (item: FrItem) => void): HTMLElement[] {
+  private bagCells(onPick: (item: FrItem) => void, enabled: (item: FrItem) => boolean = () => true): HTMLElement[] {
     const s = this.state;
     const stacks: Array<{ item: FrItem; n: number }> = [];
     for (const item of ITEM_ORDER) {
@@ -416,6 +417,10 @@ export class ForestGame implements GameScreen {
         icon,
         ...(st.n > 1 ? [el('span', { class: 'fr-slot-count', text: String(st.n) })] : []),
       ]);
+      if (!enabled(st.item)) {
+        slot.setAttribute('disabled', '');
+        slot.classList.add('dim');
+      }
       slot.addEventListener('click', () => onPick(st.item));
       cells.push(slot);
     }
