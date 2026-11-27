@@ -311,6 +311,7 @@ const BLOCK_REASONS: Record<ActionBlockReason, string> = {
   cooldown: 'Подожди пару секунд.',
   noTreats: 'Нет лакомств — заработай в «Поиграть»!',
   clean: 'Убирать нечего — всё чисто.',
+  healthy: 'Питомец здоров — лекарство не нужно.',
 };
 
 const EVENT_MESSAGES = {
