@@ -660,7 +660,7 @@ export class ForestGame implements GameScreen {
     const base = `${tpl.replace('{n}', String(p.need))} (${Math.min(value, p.need)}/${p.need})`;
     const cost = value >= p.need ? null : frPartCost(p.key);
     if (!cost) return base;
-    const names = cost.map(([it, n]) => `${GAMES_TEXT.forestItems[it] ?? it} ×${n}`).join(', ');
+    const names = cost.map(([it, n]) => `${GAMES_TEXT.forestItems[it] ?? it} (${Math.min(this.state.inv[it] ?? 0, n)}/${n})`).join(', ');
     return `${base}\n${GAMES_TEXT.forestNeeds}: ${names}`;
   }
 
