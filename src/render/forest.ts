@@ -79,6 +79,7 @@ import {
   frPotReturn,
   frRecipe,
   FR_POT_SLOTS,
+  FR_STACK,
   frIndex,
   frSleep,
   frSlotsUsed,
@@ -1377,8 +1378,8 @@ export class ForestGame implements GameScreen {
     for (const item of ITEM_ORDER) {
       let n = s.chest[item] ?? 0;
       while (n > 0) {
-        stacks.push({ item, n: Math.min(10, n) });
-        n -= 10;
+        stacks.push({ item, n: Math.min(FR_STACK, n) });
+        n -= FR_STACK;
       }
     }
     const cells: HTMLElement[] = [];
@@ -1497,8 +1498,8 @@ export class ForestGame implements GameScreen {
     for (const item of ITEM_ORDER) {
       let n = s.inv[item] ?? 0;
       while (n > 0) {
-        stacks.push({ item, n: Math.min(10, n) });
-        n -= 10;
+        stacks.push({ item, n: Math.min(FR_STACK, n) });
+        n -= FR_STACK;
       }
     }
     const cells: HTMLElement[] = [];
