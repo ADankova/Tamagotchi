@@ -280,7 +280,7 @@ export const en: Dict = {
     forestQClaim: 'Claim',
     forestQDone: 'Done',
     forestQuestReady: 'Quest complete! Claim your reward',
-    forestCraftTabs: { tools: 'Tools', build: 'Buildings' } as Record<string, string>,
+    forestCraftTabs: { fire: 'Fire', tools: 'Tools', make: 'Workshop', home: 'Storage & housing', weapon: 'Weapons' } as Record<string, string>,
     forestCraftLevel: 'Crafting',
     forestOwned: (n: number) => `Owned: ${n}`,
     forestClose: 'Close',

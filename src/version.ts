@@ -1,2 +1,2 @@
 /** Версия игры — показывается в настройках. Меняется вместе с package.json. */
-export const APP_VERSION = '1.58.3';
+export const APP_VERSION = '1.59.0';

@@ -271,7 +271,7 @@ const GAMES_TEXT = {
   forestQClaim: 'Получить',
   forestQDone: 'Готово',
   forestQuestReady: 'Задание выполнено! Забери награду',
-  forestCraftTabs: { tools: 'Инструмент', build: 'Постройки' } as Record<string, string>,
+  forestCraftTabs: { fire: 'Огонь', tools: 'Инструменты', make: 'Изготовление', home: 'Хранилище и жильё', weapon: 'Оружие' } as Record<string, string>,
   forestCraftLevel: 'Изготовление предмета',
   forestOwned: (n: number) => `Владение: ${n}`,
   forestClose: 'Закрыть',
