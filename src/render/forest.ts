@@ -103,7 +103,7 @@ const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife'];
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -530,6 +530,9 @@ export class ForestGame implements GameScreen {
           break;
         case 'noBite':
           this.say(M.noBite, 'blocked');
+          break;
+        case 'treasure':
+          this.say(ev.treat ? M.treasureTreat : M.treasure.replace('{item}', `${GAMES_TEXT.forestItems[ev.item ?? 'stone'] ?? ''} ×${ev.n ?? 0}`), 'snack');
           break;
         case 'tooDark':
           this.say(M.tooDark, 'blocked');
@@ -1643,7 +1646,7 @@ export class ForestGame implements GameScreen {
         }
       }
     }
-    if (water) labels.push({ x: water.x, y: water.y, text: GAMES_TEXT.forestPlaces.water ?? '' });
+    if (water) labels.push({ x: water.x, y: water.y, text: (s.loc === 'cave' ? GAMES_TEXT.forestPlaces.cavewater : GAMES_TEXT.forestPlaces.water) ?? '' });
     ctx.font = `800 ${Math.round(tile * 0.27)}px Nunito, sans-serif`;
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
@@ -1788,6 +1791,39 @@ function drawTrap(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
 function drawMob(ctx: CanvasRenderingContext2D, m: FrMob, x: number, y: number, tile: number, t: number): void {
   const bob = Math.sin(t / 120 + m.id) * tile * 0.03;
   const k = m.kind;
+  if (k === 'bat') {
+    const flap = Math.sin(t / 70 + m.id) * 0.5;
+    ctx.save();
+    ctx.translate(x, y - tile * 0.25 + bob * 3);
+    ctx.fillStyle = '#4b3f5c';
+    ctx.strokeStyle = '#1d1726';
+    ctx.lineWidth = Math.max(1.5, tile * 0.04);
+    for (const dir of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(dir * tile * 0.3, -tile * (0.25 + flap * 0.3), dir * tile * 0.42, tile * (0.02 - flap * 0.1));
+      ctx.quadraticCurveTo(dir * tile * 0.22, tile * 0.08, 0, tile * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.ellipse(0, tile * 0.03, tile * 0.11, tile * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = m.angry ? '#e0443e' : '#f2e27a';
+    ctx.fillRect(-tile * 0.06, 0, Math.max(2, tile * 0.04), Math.max(2, tile * 0.04));
+    ctx.fillRect(tile * 0.03, 0, Math.max(2, tile * 0.04), Math.max(2, tile * 0.04));
+    ctx.restore();
+    if (m.hp < FR_MOBS[k].hp) {
+      const w = tile * 0.6;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(x - w / 2, y - tile * 0.7, w, 5);
+      ctx.fillStyle = '#e0443e';
+      ctx.fillRect(x - w / 2, y - tile * 0.7, (w * Math.max(0, m.hp)) / FR_MOBS[k].hp, 5);
+    }
+    return;
+  }
   const s = k === 'wolf' ? 0.95 : k === 'rabbit' ? 0.7 : 0.5;
   ctx.save();
   ctx.translate(x, y + tile * 0.2 + bob);
@@ -2334,6 +2370,30 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.stroke();
       ctx.fillStyle = '#e8a23c';
       ctx.fillRect(cx - size * 0.1, cy - size * 0.1, size * 0.16, size * 0.16);
+      break;
+    case 'glowcap':
+      ctx.fillStyle = '#5be3d0';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.5, size * 0.05);
+      ctx.beginPath();
+      ctx.arc(cx, cy - size * 0.05, size * 0.3, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#d8f7f0';
+      ctx.fillRect(cx - size * 0.07, cy - size * 0.05, size * 0.14, size * 0.3);
+      break;
+    case 'glowsoup':
+      ctx.fillStyle = '#6a625a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.5, size * 0.05);
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.32, 0, Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#5be3d0';
+      ctx.fillRect(cx - size * 0.28, cy - size * 0.03, size * 0.56, size * 0.07);
       break;
     case 'salt':
       ctx.fillStyle = '#f4f1ea';
