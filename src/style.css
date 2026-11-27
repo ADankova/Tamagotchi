@@ -3178,3 +3178,29 @@ button.m-jar:active {
   flex: none;
   align-self: center;
 }
+
+.fr-cook-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.fr-cook-row .fr-slot {
+  width: 64px;
+  aspect-ratio: 1;
+}
+.fr-result {
+  width: 80px !important;
+  background: #fff3c4;
+}
+.fr-result-q {
+  font-size: 2rem;
+  font-weight: 900;
+  opacity: 0.5;
+}
+.fr-cook .fr-action:disabled {
+  opacity: 0.45;
+}
+.fr-cook {
+  max-height: 100%;
+  overflow-y: auto;
+}
