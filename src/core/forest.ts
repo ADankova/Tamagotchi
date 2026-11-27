@@ -33,7 +33,7 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry' | 'dryer' | 'lighthouse';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry' | 'dryer' | 'lighthouse' | 'ruins';
 export type FrPlace = 'home' | 'lake' | 'cave';
 export const FR_DRY_FIRST_MS = 150_000;
 export const FR_SHELTER_RAINS = 30;
@@ -173,6 +173,7 @@ export type FrEvent =
   | { type: 'smelted' }
   | { type: 'openDryer' }
   | { type: 'openLighthouse' }
+  | { type: 'openRuins' }
   | { type: 'beaconLit' }
   | { type: 'storyDone'; id: string }
   | { type: 'dried' }
@@ -476,6 +477,7 @@ export function newForest(seed: number): FrState {
     over: false,
     treats: 0,
   };
+  s.count.introPending = 1;
   // Всё, до чего нельзя дойти, превращается в деревья — так на карте нет недостижимых мест.
   const reach = reachable(s, c.x, c.y + 1);
   for (let i = 0; i < tiles.length; i++) {
@@ -664,6 +666,20 @@ function savePlace(s: FrState): void {
   s.places[s.loc] = { tiles: s.tiles, drops: s.drops, berries: s.berries, mobs: s.mobs, fire: s.fire, shelter: s.shelter, bed: s.bed, pit: s.pit, day: s.day };
 }
 
+/** На озере стоят остатки старой башни (и в старых сохранениях тоже). */
+function ensureRuins(s: FrState): void {
+  if (s.loc !== 'lake' || s.tiles.includes('ruins')) return;
+  const reach = reachable(s, 15, 27);
+  const taken = new Set(s.drops.map((d) => frIndex(d.x, d.y)));
+  const spots = [...reach].filter((i) => {
+    const x = i % FR_W;
+    const y = Math.floor(i / FR_W);
+    return s.tiles[i] === 'grass' && !taken.has(i) && Math.hypot(x - 15, y - 27) >= 7 && Math.hypot(x - 15, y - 27) <= 14;
+  });
+  const r = rand(s.seed + 31_500);
+  if (spots.length) s.tiles[spots[Math.floor(r() * spots.length)]!] = 'ruins';
+}
+
 /** Перейти в другую локацию: прежняя замирает, пока питомца в ней нет. */
 export function frTravel(s: FrState, to: FrPlace): FrEvent[] {
   if (s.over || to === s.loc) return [];
@@ -710,6 +726,7 @@ export function frTravel(s: FrState, to: FrPlace): FrEvent[] {
     spawnDay(s);
   }
   bump(s, `visit:${to}`);
+  ensureRuins(s);
   ensureAlpha(s, r);
   return withQuest(s, [{ type: 'traveled', to }]);
 }
@@ -847,6 +864,7 @@ export type FrTarget =
   | { kind: 'foundry' }
   | { kind: 'dryer' }
   | { kind: 'lighthouse' }
+  | { kind: 'ruins' }
   | { kind: 'reed' }
   | { kind: 'ore' }
   | { kind: 'trap' }
@@ -891,6 +909,7 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
     case 'foundry':
     case 'dryer':
     case 'lighthouse':
+    case 'ruins':
     case 'trapfull':
       return ['open'];
     case 'trap':
@@ -922,7 +941,7 @@ function doAction(s: FrState, x: number, y: number, action: FrAction | null, poi
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'foundry' || tile === 'dryer' || tile === 'lighthouse' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'foundry' || tile === 'dryer' || tile === 'lighthouse' || tile === 'ruins' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush' || tile === 'rock' || tile === 'ore') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -1082,7 +1101,11 @@ function arriveInner(s: FrState): FrEvent[] {
         let spill = give(s, 'meat', 1, goal.cell);
         return spill ? [{ type: 'trapEmptied' }, { type: 'spilled' }] : [{ type: 'trapEmptied' }];
       }
-      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : s.tiles[goal.cell] === 'foundry' ? 'openFoundry' : s.tiles[goal.cell] === 'dryer' ? 'openDryer' : s.tiles[goal.cell] === 'lighthouse' ? 'openLighthouse' : 'openChest' }];
+      if (s.tiles[goal.cell] === 'ruins') {
+        bump(s, 'ruins');
+        return withQuest(s, [{ type: 'openRuins' }]);
+      }
+      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : s.tiles[goal.cell] === 'foundry' ? 'openFoundry' : s.tiles[goal.cell] === 'dryer' ? 'openDryer' : s.tiles[goal.cell] === 'lighthouse' ? 'openLighthouse' : s.tiles[goal.cell] === 'ruins' ? 'openRuins' : 'openChest' }];
     case 'mine': {
       if (!hasTool(s, 'pickaxe')) return [{ type: 'needPickaxe' }];
       if (!frLit(s)) return [{ type: 'tooDark' }];
@@ -1596,6 +1619,7 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!s.up) s.up = {};
   if (!s.weather || typeof s.weather.left !== 'number') s.weather = { rain: false, left: FR_DRY_FIRST_MS };
   frFixDrops(s);
+  ensureRuins(s);
   if (typeof s.shelter !== 'number') s.shelter = 0;
   if (typeof s.bed !== 'boolean') s.bed = false;
   if (!Array.isArray(s.worn)) s.worn = [];
@@ -1834,7 +1858,7 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'trapmouse', kind: 'regular', reward: 0, items: { cloth: 2 }, parts: [{ key: 'trapped:mouse', need: 1 }] },
   { id: 'wolf', kind: 'regular', reward: 1, parts: [{ key: 'kill:wolf', need: 1 }] },
   { id: 'cavenight', kind: 'regular', reward: 2, parts: [{ key: 'caveNight', need: 1 }] },
-  { id: 'ch1', kind: 'story', reward: 0, items: { berries: 4 }, parts: [{ key: 'visit:lake', need: 1 }] },
+  { id: 'ch1', kind: 'story', reward: 0, items: { berries: 4 }, parts: [{ key: 'ruins', need: 1 }] },
   { id: 'ch2', kind: 'story', reward: 0, items: { cloth: 2 }, parts: [{ key: 'treasure', need: 1 }] },
   { id: 'ch3', kind: 'story', reward: 1, parts: [{ key: 'visit:cave', need: 1 }, { key: 'kill:bat', need: 2 }] },
   { id: 'ch4', kind: 'story', reward: 0, items: { ingot: 2 }, parts: [{ key: 'pick:crystal', need: 3 }] },

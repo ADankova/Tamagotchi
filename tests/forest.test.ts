@@ -1022,7 +1022,7 @@ describe('сюжет «Потерянный маяк»', () => {
     const ch = m.FR_QUESTS.filter((q) => q.kind === 'story');
     expect(ch.length).toBe(9);
     expect(m.frQuestState(s, ch[1]!)).toBe('locked');
-    s.count['visit:lake'] = 1;
+    s.count.ruins = 1;
     expect(m.frQuestState(s, ch[0]!)).toBe('ready');
     s.count.treasure = 1;
     expect(m.frQuestState(s, ch[1]!)).toBe('locked');
@@ -1048,5 +1048,23 @@ describe('сюжет «Потерянный маяк»', () => {
     expect(m.frIsNight(s)).toBe(true);
     expect(m.frLightBeacon(s)).toContainEqual({ type: 'beaconLit' });
     expect(m.frCanLightBeacon(s)).toBe(false);
+  });
+});
+
+describe('остатки башни и вступление', () => {
+  it('на озере есть остатки башни; нажатие засчитывает главу 1', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    expect(s.count.introPending).toBe(1);
+    m.frTravel(s, 'lake');
+    const ri = s.tiles.findIndex((x) => x === 'ruins');
+    expect(ri).toBeGreaterThan(-1);
+    const rx = ri % 30;
+    const ry = Math.floor(ri / 30);
+    expect(m.frActions(s, m.frTargetAt(s, rx, ry)!)).toEqual(['open']);
+    const ev = [...frDo(s, rx, ry, 'open'), ...run(s, 30_000)];
+    expect(ev).toContainEqual({ type: 'openRuins' });
+    expect(ev).toContainEqual({ type: 'questReady', id: 'ch1' });
+    expect(m.frQuestState(s, m.FR_QUESTS.find((q) => q.id === 'ch1')!)).toBe('ready');
   });
 });
