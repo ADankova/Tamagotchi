@@ -33,7 +33,6 @@ import {
   frMobAt,
   FR_MOBS,
   type FrMob,
-  frCapacity,
   frPartCost,
   frRainSoon,
   FR_TORCH_MS,
@@ -49,6 +48,9 @@ import {
   frEquip,
   frWeaponDmg,
   frWeaponStats,
+  frHeld,
+  frBagSize,
+  frBagUsed,
   FR_WEAPONS,
   FR_BUILDINGS,
   FR_LOOM,
@@ -86,7 +88,6 @@ import {
   FR_STACK,
   frIndex,
   frSleep,
-  frSlotsUsed,
   frTick,
   newForest,
   restoreForest,
@@ -1138,14 +1139,11 @@ export class ForestGame implements GameScreen {
       });
       slots.push(slot);
     }
-    // Оружие в руках: нажатие убирает его (тогда бьёт лучшее из имеющегося).
+    // Оружие в руках: нажатие открывает его карточку (там «Убрать из рук» и усиление камнем).
     const held = s.weapon && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
     if (held) {
-      const w = el('button', { type: 'button', class: 'fr-slot fr-gear-slot fr-weapon-slot', 'aria-label': GAMES_TEXT.forestUnequip }, [this.iconCanvas(held)]);
-      w.addEventListener('click', () => {
-        frEquip(s, held);
-        this.renderBag();
-      });
+      const w = el('button', { type: 'button', class: 'fr-slot fr-gear-slot fr-weapon-slot', 'aria-label': GAMES_TEXT.forestItems[held] ?? held }, [this.iconCanvas(held)]);
+      w.addEventListener('click', () => this.renderItem(held));
       slots.push(w);
     } else {
       slots.push(el('span', { class: 'fr-slot empty fr-gear-slot fr-weapon-slot', 'aria-label': GAMES_TEXT.forestWeapon }, [el('span', { class: 'fr-gear-hint', text: '⚔️' })]));
@@ -1407,7 +1405,7 @@ export class ForestGame implements GameScreen {
       }
     }
     const cells: HTMLElement[] = [];
-    for (let k = 0; k < frCapacity(s); k++) {
+    for (let k = 0; k < frBagSize(s); k++) {
       const st = stacks[k];
       if (!st) {
         cells.push(el('span', { class: 'fr-slot empty' }));
@@ -1427,7 +1425,7 @@ export class ForestGame implements GameScreen {
       el('div', { class: 'fr-bag fr-cook' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestChestTitle }), close]),
         el('div', { class: 'fr-grid' }, cells),
-        el('h3', { class: 'fr-sub', text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), frCapacity(s)) }),
+        el('h3', { class: 'fr-sub', text: GAMES_TEXT.forestBagTitle(frBagUsed(s), frBagSize(s)) }),
         el('div', { class: 'fr-grid' }, this.bagCells((item) => this.moveItems(item, s.inv[item] ?? 0, true))),
       ]),
     );
@@ -1519,15 +1517,16 @@ export class ForestGame implements GameScreen {
   private bagCells(onPick: (item: FrItem) => void, enabled: (item: FrItem) => boolean = () => true): HTMLElement[] {
     const s = this.state;
     const stacks: Array<{ item: FrItem; n: number }> = [];
+    const held = frHeld(s);
     for (const item of ITEM_ORDER) {
-      let n = s.inv[item] ?? 0;
+      let n = (s.inv[item] ?? 0) - (item === held ? 1 : 0);
       while (n > 0) {
         stacks.push({ item, n: Math.min(FR_STACK, n) });
         n -= FR_STACK;
       }
     }
     const cells: HTMLElement[] = [];
-    for (let k = 0; k < frCapacity(s); k++) {
+    for (let k = 0; k < frBagSize(s); k++) {
       const st = stacks[k];
       if (!st) {
         cells.push(el('span', { class: 'fr-slot empty' }));
@@ -1558,7 +1557,7 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.toggleBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), frCapacity(s)) }), close]),
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestBagTitle(frBagUsed(s), frBagSize(s)) }), close]),
         this.gearRow(),
         el('div', { class: 'fr-grid' }, cells),
       ]),
@@ -1616,7 +1615,7 @@ export class ForestGame implements GameScreen {
       const on = s.weapon === item;
       const equip = el('button', { type: 'button', class: 'chunky fr-action', text: on ? GAMES_TEXT.forestUnequip : GAMES_TEXT.forestEquip });
       equip.addEventListener('click', () => {
-        frEquip(s, item as FrTool);
+        this.handle(frEquip(s, item as FrTool));
         this.renderItem(item);
       });
       buttons.push(equip);

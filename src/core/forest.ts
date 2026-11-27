@@ -421,7 +421,21 @@ export function frTrimBag(s: FrState): number {
 export const FR_PURSE_BONUS = 4;
 export const FR_GEAR_SLOTS = 3;
 export function frCapacity(s: FrState): number {
-  return FR_SLOTS + FR_PURSE_BONUS * s.worn.length;
+  // Оружие в руках не занимает ячейку рюкзака, хотя остаётся в инвентаре и годится для работы.
+  return FR_SLOTS + FR_PURSE_BONUS * s.worn.length + (frHeld(s) ? 1 : 0);
+}
+
+/** Оружие, которое сейчас в руках (выбрано и лежит в инвентаре). */
+export function frHeld(s: FrState): FrTool | null {
+  return s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
+}
+
+/** Размер рюкзака на экране и занятые ячейки: без оружия в руках. */
+export function frBagSize(s: FrState): number {
+  return frCapacity(s) - (frHeld(s) ? 1 : 0);
+}
+export function frBagUsed(s: FrState): number {
+  return frSlotsUsed(s.inv) - (frHeld(s) ? 1 : 0);
 }
 
 // --- Карта ---
@@ -2148,15 +2162,20 @@ export function frWeaponDmg(s: FrState, item: FrTool): number {
 
 /** Чем питомец бьёт сейчас: выбранное оружие (если оно есть в рюкзаке), иначе кулаки. */
 export function frWeaponStats(s: FrState): { item: FrTool | null; dmg: number; ms: number } {
-  const item = s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
+  const item = frHeld(s);
   const w = item ? FR_WEAPONS[item] : undefined;
   return { item, dmg: item ? frWeaponDmg(s, item) : FR_PET_DMG, ms: w?.ms ?? PET_HIT_MS };
 }
 
 /** Взять оружие в руки (или убрать, если оно уже в руках). */
-export function frEquip(s: FrState, item: FrTool): void {
-  if (!FR_WEAPONS[item] || !(s.inv[item] ?? 0)) return;
-  s.weapon = s.weapon === item ? null : item;
+export function frEquip(s: FrState, item: FrTool): FrEvent[] {
+  if (!FR_WEAPONS[item] || !(s.inv[item] ?? 0)) return [];
+  if (s.weapon === item) {
+    // Убрать из рук: оружие снова занимает ячейку, нужно место.
+    if (frSlotsUsed(s.inv) > frCapacity(s) - 1) return [{ type: 'noRoom' }];
+    s.weapon = null;
+  } else s.weapon = item;
+  return [];
 }
 
 /** Монстры к костру не подходят: рядом с горящим костром — весь круг света. */
