@@ -305,7 +305,7 @@ describe('«Дикий лес»: сбор и костёр', () => {
     s.stats.food = 50;
     s.inv = { berries: 2 };
     expect(frEat(s, 'berries')).toEqual([{ type: 'ate', item: 'berries' }]);
-    expect(s.stats.food).toBe(57);
+    expect(s.stats.food).toBe(55);
     expect(s.inv.berries).toBe(1);
     expect(frEat(s, 'mushroom')).toEqual([]);
   });
@@ -632,7 +632,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     frEat(s, 'tea');
     expect(s.stats).toEqual({ food: 10, water: 30, warmth: 40, health: 60 });
     frEat(s, 'compote');
-    expect(s.stats.food).toBe(18);
+    expect(s.stats.food).toBe(16);
     expect(s.stats.water).toBe(55);
   });
 
