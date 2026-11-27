@@ -12,7 +12,6 @@ import {
   frCanSmelt,
   FR_SMELT_ORE,
   frHasPit,
-  frToolUses,
   type FrPlace,
   FR_NIGHT_AT,
   FR_EFFECTS,
@@ -60,6 +59,10 @@ import {
   type FrQuest,
   frEat,
   frTorch,
+  frLantern,
+  frUpgrade,
+  frCanUpgrade,
+  frToolMax,
   frPotAdd,
   frRecipeAvailable,
   frRecipeFill,
@@ -103,7 +106,7 @@ const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife'];
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -462,6 +465,9 @@ export class ForestGame implements GameScreen {
         case 'torchLit':
           this.say(M.torchLit, 'win');
           break;
+        case 'upgraded':
+          this.say(M.upgraded, 'win');
+          break;
         case 'torchOut':
           this.say(M.torchOut, 'miss');
           break;
@@ -776,7 +782,7 @@ export class ForestGame implements GameScreen {
       ]),
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
-    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'trap')) make.setAttribute('disabled', '');
+    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'trap')) make.setAttribute('disabled', '');
     const homeOnly = (id === 'chest' || id === 'loom' || id === 'foundry' || id === 'dryer') && s.loc !== 'home';
     const campOnly = id === 'campfire' && s.loc === 'home';
     if (homeOnly || campOnly) make.setAttribute('disabled', '');
@@ -785,7 +791,7 @@ export class ForestGame implements GameScreen {
         ? GAMES_TEXT.forestHomeOnly
         : campOnly
           ? GAMES_TEXT.forestCampOnly
-          : owned > 0 && id !== 'torch' && id !== 'trap'
+          : owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'trap'
         ? GAMES_TEXT.forestAlreadyBuilt
         : !frCanCraft(s, id)
           ? GAMES_TEXT.forestNeedMats
@@ -1163,7 +1169,7 @@ export class ForestGame implements GameScreen {
   /** Полоска прочности инструмента. */
   private durBar(tool: FrTool): HTMLElement {
     const left = frDurability(this.state, tool);
-    const uses = frToolUses(tool);
+    const uses = frToolMax(this.state, tool);
     const pct = Math.round((left / uses) * 100);
     const color = pct > 50 ? '#4caf50' : pct > 25 ? '#f0b429' : '#e0443e';
     const fill = el('i', { style: `width:${pct}%;background:${color}` });
@@ -1188,6 +1194,23 @@ export class ForestGame implements GameScreen {
         this.renderItem(item);
       });
       buttons.push(light);
+    }
+    if (item === 'lantern') {
+      const light = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestLight });
+      light.addEventListener('click', () => {
+        this.handle(frLantern(s));
+        this.renderItem(item);
+      });
+      buttons.push(light);
+    }
+    if (TOOLS.includes(item)) {
+      const up = el('button', { type: 'button', class: 'chunky fr-action', text: s.up[item as FrTool] ? GAMES_TEXT.forestUpgraded : `${GAMES_TEXT.forestUpgrade} (${s.inv.crystal ?? 0})` });
+      if (!frCanUpgrade(s, item as FrTool)) up.setAttribute('disabled', '');
+      up.addEventListener('click', () => {
+        this.handle(frUpgrade(s, item as FrTool));
+        this.renderItem(item);
+      });
+      buttons.push(up);
     }
     if (item === 'purse') {
       const wear = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWear });
@@ -1217,7 +1240,7 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.renderBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: TOOLS.includes(item) || (s.inv[item] ?? 0) <= 1 ? (GAMES_TEXT.forestItems[item] ?? item) : `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
           el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : []),
@@ -1320,7 +1343,7 @@ export class ForestGame implements GameScreen {
     const s = this.state;
     const torchOn = s.torch > 0;
     this.torchBox.hidden = !torchOn;
-    if (torchOn) this.torchFill.style.width = `${Math.max(0, Math.min(100, (s.torch / FR_TORCH_MS) * 100))}%`;
+    if (torchOn) this.torchFill.style.width = `${Math.max(0, Math.min(100, (s.torch / (s.torchMax || FR_TORCH_MS)) * 100))}%`;
     const raining = frRainHere(s);
     const soon = frRainSoon(s);
     this.rainIcon.hidden = !raining && !soon;
@@ -1589,7 +1612,7 @@ export class ForestGame implements GameScreen {
       sh.fillRect(x - r, y - r, r * 2, r * 2);
     };
     if (s.fire > 0) hole(fx, fy, frFireRadius(s) * tile * (1 + Math.sin(t / 130) * 0.03), 1);
-    if (s.torch > 0) hole(sx(s.x), sy(s.y), tile * 3 * (1 + Math.sin(t / 110) * 0.04), 0.95);
+    if (s.torch > 0) hole(sx(s.x), sy(s.y), tile * (s.torchMax > FR_TORCH_MS ? 4.2 : 3) * (1 + Math.sin(t / 110) * 0.04), 0.95);
     // Немного видно вокруг самого питомца.
     hole(sx(s.x), sy(s.y), tile * 1.4, 0.55);
     sh.globalCompositeOperation = 'source-over';
@@ -2370,6 +2393,36 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.stroke();
       ctx.fillStyle = '#e8a23c';
       ctx.fillRect(cx - size * 0.1, cy - size * 0.1, size * 0.16, size * 0.16);
+      break;
+    case 'crystal':
+      ctx.fillStyle = '#8fd8ff';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.5, size * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size * 0.38);
+      ctx.lineTo(cx + size * 0.26, cy - size * 0.05);
+      ctx.lineTo(cx + size * 0.14, cy + size * 0.34);
+      ctx.lineTo(cx - size * 0.14, cy + size * 0.34);
+      ctx.lineTo(cx - size * 0.26, cy - size * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e8f8ff';
+      ctx.fillRect(cx - size * 0.06, cy - size * 0.2, size * 0.08, size * 0.28);
+      break;
+    case 'lantern':
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.5, size * 0.05);
+      ctx.beginPath();
+      ctx.arc(cx, cy - size * 0.3, size * 0.14, Math.PI, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#8a5a2b';
+      ctx.fillRect(cx - size * 0.2, cy - size * 0.2, size * 0.4, size * 0.08);
+      ctx.fillRect(cx - size * 0.2, cy + size * 0.24, size * 0.4, size * 0.08);
+      ctx.fillStyle = '#8fd8ff';
+      ctx.fillRect(cx - size * 0.16, cy - size * 0.12, size * 0.32, size * 0.36);
+      ctx.fillStyle = '#fff3b0';
+      ctx.fillRect(cx - size * 0.07, cy - size * 0.02, size * 0.14, size * 0.16);
       break;
     case 'glowcap':
       ctx.fillStyle = '#5be3d0';
