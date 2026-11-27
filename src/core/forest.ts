@@ -1092,7 +1092,7 @@ function arriveInner(s: FrState): FrEvent[] {
       }
       if (s.tiles[goal.cell] !== 'rock') return [];
       s.tiles[goal.cell] = 'grass';
-      const ns = frYield(s, 'pick:stone', 2);
+      const ns = Math.ceil(frYield(s, 'pick:stone', 2) / 2);
       let spill = give(s, 'stone', ns, goal.cell);
       if ((s.count.mine ?? 0) % 2 === 0) {
         spill += give(s, 'flint', 1, goal.cell);
