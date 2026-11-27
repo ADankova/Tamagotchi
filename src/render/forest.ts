@@ -1711,6 +1711,22 @@ export class ForestGame implements GameScreen {
     return { tile, rows, camX, camY };
   }
 
+  private readonly mobSeen = new Map<number, { x: number; y: number; t: number }>();
+
+  /** Показываемая позиция зверя с лёгким сглаживанием: мелкая дрожь позиции не мигает и не меняет порядок рисования с травой. */
+  private mobShown(m: FrMob, t: number): FrMob {
+    const p = this.mobSeen.get(m.id);
+    if (!p || Math.hypot(m.x - p.x, m.y - p.y) > 3) {
+      this.mobSeen.set(m.id, { x: m.x, y: m.y, t });
+      return m;
+    }
+    const k = 1 - Math.exp(-Math.max(0, Math.min(100, t - p.t)) / 90);
+    p.x += (m.x - p.x) * k;
+    p.y += (m.y - p.y) * k;
+    p.t = t;
+    return { ...m, x: p.x, y: p.y };
+  }
+
   private draw(t: number): void {
     const ctx = this.canvas.getContext('2d');
     if (!ctx || !this.canvas.width) return;
@@ -1808,7 +1824,10 @@ export class ForestGame implements GameScreen {
         if (d) items.push({ y: y + 0.4, draw: () => drawItem(ctx, d.kind, cx, cy, tile * 0.7, t, d.id) });
       }
     }
-    for (const m of s.mobs) items.push({ y: m.y + 0.3, draw: () => drawMob(ctx, m, sx(m.x), sy(m.y), tile, t) });
+    for (const m of s.mobs) {
+      const sm = this.mobShown(m, t);
+      items.push({ y: sm.y + 0.3, draw: () => drawMob(ctx, sm, sx(sm.x), sy(sm.y), tile, t) });
+    }
     items.push({ y: s.y + 0.2, draw: () => this.drawPetAt(ctx, sx(s.x), sy(s.y) + tile * 0.35, tile, t) });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
