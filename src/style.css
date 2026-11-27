@@ -3452,3 +3452,34 @@ button.m-jar:active {
 .fr-tabs {
   min-width: 0;
 }
+
+.fr-qty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+.fr-qty-btn {
+  min-width: 44px;
+  padding: 8px 10px;
+  font-size: 1.1rem;
+}
+.fr-qty-num {
+  min-width: 36px;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.fr-qitem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.fr-qitem canvas {
+  width: 26px;
+  height: 26px;
+}
+.fr-qreward {
+  flex-wrap: wrap;
+  max-width: 90px;
+}

@@ -18,6 +18,7 @@ import {
   frCanCraft,
   frCraft,
   frChestPut,
+  frChestSpots,
   frChestTake,
   frClaim,
   frCounter,
@@ -198,6 +199,10 @@ export class ForestGame implements GameScreen {
     const fy = view.camY + ((e.clientY - rect.top) / rect.height) * view.rows;
     const x = Math.floor(fx);
     const y = Math.floor(fy);
+    if (this.placing) {
+      this.tapPlacing(x, y);
+      return;
+    }
     const hadMenu = this.menuAt !== null;
     this.closeMenu();
     const target = frTargetAt(this.state, x, y);
@@ -229,6 +234,50 @@ export class ForestGame implements GameScreen {
     ]);
     close.addEventListener('click', () => this.closeMenu());
     this.menu.replaceChildren(...buttons, close);
+    this.menuAt = { x, y };
+    this.menu.removeAttribute('hidden');
+    this.placeMenu();
+  }
+
+  /** Выбор места для сундука: зелёные клетки у костра, нажатие ставит «призрак» с ✔ и ✕. */
+  private placing: { cell: number | null } | null = null;
+
+  private startPlacing(): void {
+    this.bag.setAttribute('hidden', '');
+    this.closeMenu();
+    this.placing = { cell: null };
+    this.say(GAMES_TEXT.forestPlaceHint);
+    this.messageLeft = 60_000;
+  }
+
+  private stopPlacing(): void {
+    this.placing = null;
+    this.closeMenu();
+    this.messageLeft = 1;
+  }
+
+  private tapPlacing(x: number, y: number): void {
+    const i = frIndex(x, y);
+    this.closeMenu();
+    if (!frChestSpots(this.state).includes(i)) {
+      this.stopPlacing();
+      return;
+    }
+    this.placing = { cell: i };
+    const ok = el('button', { type: 'button', class: 'fr-act', 'aria-label': GAMES_TEXT.forestPlaceOk }, [
+      el('span', { class: 'fr-act-icon', text: '✔' }),
+      el('span', { class: 'fr-act-name', text: GAMES_TEXT.forestPlaceOk }),
+    ]);
+    ok.addEventListener('click', () => {
+      const cell = this.placing?.cell;
+      this.stopPlacing();
+      if (cell !== null && cell !== undefined) this.handle(frCraft(this.state, 'chest', cell));
+    });
+    const no = el('button', { type: 'button', class: 'fr-act fr-act-close', 'aria-label': GAMES_TEXT.forestClose }, [
+      el('span', { class: 'fr-act-icon', text: '✕' }),
+    ]);
+    no.addEventListener('click', () => this.stopPlacing());
+    this.menu.replaceChildren(ok, no);
     this.menuAt = { x, y };
     this.menu.removeAttribute('hidden');
     this.placeMenu();
@@ -457,7 +506,9 @@ export class ForestGame implements GameScreen {
         });
         return el('div', { class: st === 'claimed' ? 'fr-qrow claimed' : 'fr-qrow' }, [
           el('div', { class: 'fr-qlines' }, this.questLines(q)),
-          el('div', { class: 'fr-qreward' }, [el('img', { src: this.host.treatImage, alt: '' }), el('b', { text: String(q.reward) })]),
+          el('div', { class: 'fr-qreward' }, q.items
+            ? (Object.entries(q.items) as Array<[FrItem, number]>).map(([it, n]) => el('span', { class: 'fr-qitem' }, [this.iconCanvas(it, 28), el('b', { text: String(n) })]))
+            : [el('img', { src: this.host.treatImage, alt: '' }), el('b', { text: String(q.reward) })]),
           btn,
         ]);
       });
@@ -526,6 +577,10 @@ export class ForestGame implements GameScreen {
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
     if (!frCanCraft(s, id) || owned > 0) make.setAttribute('disabled', '');
     make.addEventListener('click', () => {
+      if (id === 'chest') {
+        this.startPlacing();
+        return;
+      }
       this.handle(frCraft(s, id));
       this.renderCraftDetail(id);
     });
@@ -550,6 +605,49 @@ export class ForestGame implements GameScreen {
     this.bag.removeAttribute('hidden');
   }
 
+  /** Переложить предмет: одну штуку сразу, а если их больше — окошко «сколько». */
+  private moveItems(item: FrItem, have: number, toChest: boolean): void {
+    const s = this.state;
+    const run = (n: number): void => {
+      if (toChest) frChestPut(s, item, n);
+      else frChestTake(s, item, n);
+      this.renderChest();
+    };
+    if (have <= 1) {
+      run(have);
+      return;
+    }
+    let n = Math.min(have, 1);
+    const num = el('span', { class: 'fr-qty-num', text: String(n) });
+    const set = (v: number): void => {
+      n = Math.max(1, Math.min(have, v));
+      num.textContent = String(n);
+    };
+    const btn = (label: string, fn: () => void): HTMLElement => {
+      const b = el('button', { type: 'button', class: 'chunky fr-qty-btn', text: label });
+      b.addEventListener('click', fn);
+      return b;
+    };
+    const ok = el('button', { type: 'button', class: 'chunky fr-action', text: 'OK' });
+    ok.addEventListener('click', () => run(n));
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.renderChest());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestItems[item] ?? item }), close]),
+        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(item, 96)]),
+        el('div', { class: 'fr-qty' }, [
+          btn('«', () => set(1)),
+          btn('−', () => set(n - 1)),
+          num,
+          btn('+', () => set(n + 1)),
+          btn('»', () => set(have)),
+        ]),
+        ok,
+      ]),
+    );
+  }
+
   private renderChest(): void {
     const s = this.state;
     const stacks: Array<{ item: FrItem; n: number }> = [];
@@ -571,10 +669,7 @@ export class ForestGame implements GameScreen {
         this.iconCanvas(st.item),
         ...(st.n > 1 ? [el('span', { class: 'fr-slot-count', text: String(st.n) })] : []),
       ]);
-      slot.addEventListener('click', () => {
-        frChestTake(s, st.item);
-        this.renderChest();
-      });
+      slot.addEventListener('click', () => this.moveItems(st.item, s.chest[st.item] ?? 0, false));
       cells.push(slot);
     }
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
@@ -584,10 +679,7 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestChestTitle }), close]),
         el('div', { class: 'fr-grid' }, cells),
         el('h3', { class: 'fr-sub', text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), FR_SLOTS) }),
-        el('div', { class: 'fr-grid' }, this.bagCells((item) => {
-          frChestPut(s, item);
-          this.renderChest();
-        })),
+        el('div', { class: 'fr-grid' }, this.bagCells((item) => this.moveItems(item, s.inv[item] ?? 0, true))),
       ]),
     );
   }
@@ -870,6 +962,18 @@ export class ForestGame implements GameScreen {
           ctx.fillStyle = (x + y) % 2 ? '#7cc56b' : '#76bd65';
           ctx.fillRect(px, py, size, size);
         }
+      }
+    }
+
+    if (this.placing) {
+      for (const i of frChestSpots(s)) {
+        const px = Math.floor(sx(i % FR_W));
+        const py = Math.floor(sy(Math.floor(i / FR_W)));
+        ctx.fillStyle = i === this.placing.cell ? 'rgba(255,255,120,0.6)' : 'rgba(60,220,80,0.5)';
+        ctx.fillRect(px + 1, py + 1, Math.ceil(tile) - 2, Math.ceil(tile) - 2);
+      }
+      if (this.placing.cell !== null) {
+        drawChest(ctx, sx((this.placing.cell % FR_W) + 0.5), sy(Math.floor(this.placing.cell / FR_W) + 0.5), tile);
       }
     }
 
