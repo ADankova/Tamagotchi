@@ -2071,6 +2071,18 @@ function drawRock(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
 }
 
 function drawTrap(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, full = false): void {
+  if (drawSprite(ctx, 'trap', 0, cx, cy + tile * 0.4, { w: tile * 0.8 })) {
+    if (full) {
+      ctx.fillStyle = '#d96c6c';
+      ctx.beginPath();
+      ctx.arc(cx, cy, tile * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3b2a1e';
+      ctx.lineWidth = Math.max(1, tile * 0.04);
+      ctx.stroke();
+    }
+    return;
+  }
   const w = tile * 0.8;
   ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.fillRect(cx - w / 2, cy - w / 2, w, w);
@@ -2098,10 +2110,52 @@ function drawTrap(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   }
 }
 
-/** Мышь, кролик и волк рисуются кодом; у раненого над головой полоска здоровья. */
+const mobFace = new Map<number, number>();
+const MOB_LEFT: ReadonlySet<string> = new Set(['mouse']);
+
+/** Мышь, кролик, волк и летучая мышь — картинки, если загрузились, иначе кодом; у раненого над головой полоска здоровья. */
 function drawMob(ctx: CanvasRenderingContext2D, m: FrMob, x: number, y: number, tile: number, t: number): void {
   const bob = Math.sin(t / 120 + m.id) * tile * 0.03;
   const k = m.kind;
+  const prevX = mobFace.get(m.id * 1000) ?? m.x;
+  if (Math.abs(m.x - prevX) > 0.002) mobFace.set(m.id, m.x > prevX ? 1 : -1);
+  mobFace.set(m.id * 1000, m.x);
+  const face = mobFace.get(m.id) ?? 1;
+  const hpBar = (top: number): void => {
+    if (m.hp >= FR_MOBS[k].hp) return;
+    const w = tile * 0.6;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x - w / 2, y - tile * top, w, 5);
+    ctx.fillStyle = '#e0443e';
+    ctx.fillRect(x - w / 2, y - tile * top, (w * Math.max(0, m.hp)) / FR_MOBS[k].hp, 5);
+  };
+  if (k === 'bat') {
+    const flap = Math.sin(t / 70 + m.id) * 0.5;
+    ctx.save();
+    ctx.translate(x, y - tile * 0.25 + bob * 3);
+    ctx.scale(1, 1 + flap * 0.35);
+    const ok = drawSprite(ctx, 'bat', 0, 0, tile * 0.2, { w: tile * 0.75 });
+    ctx.restore();
+    if (ok) {
+      hpBar(0.7);
+      return;
+    }
+  } else {
+    const w = tile * (k === 'alpha' ? 1.5 : k === 'wolf' ? 1.2 : k === 'rabbit' ? 0.75 : 0.6);
+    ctx.save();
+    ctx.translate(x, y + tile * 0.3 + bob);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(0, -tile * 0.02, w * 0.38, tile * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.scale(MOB_LEFT.has(k) ? -face : face, 1);
+    const ok = drawSprite(ctx, k, 0, 0, 0, { w });
+    ctx.restore();
+    if (ok) {
+      hpBar(k === 'alpha' ? 1.05 : k === 'wolf' ? 0.75 : 0.55);
+      return;
+    }
+  }
   if (k === 'bat') {
     const flap = Math.sin(t / 70 + m.id) * 0.5;
     ctx.save();
@@ -2203,6 +2257,7 @@ function drawWall(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
 }
 
 function drawReed(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, seed: number, t: number): void {
+  if (drawSprite(ctx, 'reed', Math.abs(seed), cx, cy + tile * 0.42, { h: tile * 0.95 }, Math.sin(t / 700 + seed) * tile * 0.04)) return;
   ctx.strokeStyle = '#3f7d3a';
   ctx.lineWidth = Math.max(2, tile * 0.07);
   for (let k = 0; k < 4; k++) {
@@ -2263,6 +2318,13 @@ function drawLighthouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, t
     ctx.fillStyle = g;
     ctx.fillRect(cx - tile * 2.2, cy - tile * 2.8, tile * 4.4, tile * 4.4);
   }
+  if (drawSprite(ctx, 'lighthouse', 0, cx, cy + tile * 0.45, { h: tile * 1.95 })) {
+    if (lit) {
+      ctx.fillStyle = 'rgba(255,240,170,0.9)';
+      ctx.fillRect(cx - tile * 0.07, cy - tile * 1.18, tile * 0.14, tile * 0.12);
+    }
+    return;
+  }
   ctx.strokeStyle = INK;
   ctx.lineWidth = Math.max(1.5, tile * 0.05);
   ctx.fillStyle = '#e9e1d2';
@@ -2290,6 +2352,7 @@ function drawLighthouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, t
 }
 
 function drawDryer(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  if (drawSprite(ctx, 'dryer', 0, cx, cy + tile * 0.42, { w: tile * 0.95 })) return;
   ctx.strokeStyle = '#8a5a2b';
   ctx.lineWidth = Math.max(2, tile * 0.07);
   ctx.beginPath();
@@ -2305,6 +2368,7 @@ function drawDryer(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: 
 }
 
 function drawFoundry(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  if (drawSprite(ctx, 'foundry', 0, cx, cy + tile * 0.44, { w: tile * 0.9 })) return;
   const w = tile * 0.8;
   ctx.fillStyle = '#6b6560';
   ctx.fillRect(cx - w / 2, cy - tile * 0.35, w, tile * 0.7);
@@ -2331,6 +2395,7 @@ function drawCampGhost(ctx: CanvasRenderingContext2D, cx: number, cy: number, ti
 }
 
 function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  if (drawSprite(ctx, 'loom', 0, cx, cy + tile * 0.42, { w: tile * 0.85 })) return;
   outline(ctx, tile);
   const w = tile * 0.8;
   const h = tile * 0.7;
@@ -2353,6 +2418,7 @@ function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
 }
 
 function drawChest(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  if (drawSprite(ctx, 'chest', 0, cx, cy + tile * 0.36, { w: tile * 0.8 })) return;
   outline(ctx, tile);
   const w = tile * 0.7;
   const h = tile * 0.45;
@@ -2418,6 +2484,9 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
   if (kind === 'branch' || kind === 'stone' || kind === 'flint' || kind === 'mushroom') {
     const w = kind === 'mushroom' ? 0.85 : kind === 'flint' ? 0.7 : 0.95;
     if (drawSprite(ctx, kind, phase, cx, cy + size * 0.4, { w: size * w })) return;
+  }
+  if (kind === 'crystal' || kind === 'glowcap') {
+    if (drawSprite(ctx, kind, phase, cx, cy + size * 0.42, { w: size * 0.95 })) return;
   }
   outline(ctx, size);
   switch (kind) {
