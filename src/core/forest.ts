@@ -17,7 +17,7 @@ export const FR_TORCH_MS = 60_000;
 export const FR_LANTERN_MS = 180_000;
 const EGG_CHANCE = 0.35;
 const SEED_CHANCE = 0.3;
-export const FR_STACK = 10;
+export const FR_STACK = 20;
 /** Скорость ходьбы, клеток в секунду. */
 const SPEED = 3;
 /** Сколько длится сбор или еда, мс. */
@@ -1777,8 +1777,8 @@ export function frBuilt(s: FrState, id: FrCraftId): boolean {
 export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
-  if (!FR_BUILDINGS.includes(id) && id !== 'torch' && id !== 'lantern' && (s.inv[id as FrItem] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
-  if ((id === 'torch' || id === 'lantern') && !canTake(s.inv, id, frCapacity(s))) return [{ type: 'full' }];
+  if (!FR_BUILDINGS.includes(id) && id !== 'torch' && id !== 'lantern' && id !== 'flask' && (s.inv[id as FrItem] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if ((id === 'torch' || id === 'lantern' || id === 'flask') && !canTake(s.inv, id, frCapacity(s))) return [{ type: 'full' }];
   if (id === 'campfire') {
     if (s.loc === 'home') return [{ type: 'noPlace' }];
     if (frHasPit(s)) return [{ type: 'haveIt' }];
@@ -1789,7 +1789,7 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
   if (FR_BUILDINGS.includes(id) && (cell === undefined || !frPlaceSpots(s, id).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
-  if (id === 'torch' || id === 'lantern') s.inv[id] = (s.inv[id] ?? 0) + 1;
+  if (id === 'torch' || id === 'lantern' || id === 'flask') s.inv[id] = (s.inv[id] ?? 0) + 1;
   else if (!FR_BUILDINGS.includes(id)) {
     s.inv[id as FrItem] = 1;
     delete s.dur[id as FrTool];

@@ -114,7 +114,7 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(s.inv.branch).toBe(undefined);
   });
 
-  it('рюкзак: 12 ячеек по 10 штук', () => {
+  it('рюкзак: 12 ячеек по 20 штук', () => {
     const s = newForest(7);
     s.inv = { stone: FR_STACK * FR_SLOTS };
     expect(frSlotsUsed(s.inv)).toBe(FR_SLOTS);
@@ -473,12 +473,13 @@ describe('«Дикий лес»: еда, вода, факел', () => {
 
   it('факел и фляга делаются в крафте, факелов можно несколько', () => {
     const s = newForest(7);
-    s.inv = { branch: 4, grass: 9 };
+    s.inv = { branch: 8, grass: 20 };
     expect(frCraft(s, 'torch')).toContainEqual({ type: 'crafted', item: 'torch' });
     expect(frCraft(s, 'torch')).toContainEqual({ type: 'crafted', item: 'torch' });
     expect(s.inv.torch).toBe(2);
     expect(frCraft(s, 'flask')).toContainEqual({ type: 'crafted', item: 'flask' });
-    expect(frCraft(s, 'flask')).toContainEqual({ type: 'haveIt' });
+    expect(frCraft(s, 'flask')).toContainEqual({ type: 'crafted', item: 'flask' });
+    expect(s.inv.flask).toBe(2);
     s.inv = { fullflask: 1, berries: 1 };
     s.fire = 1000;
     frPotAdd(s, 'fullflask');
