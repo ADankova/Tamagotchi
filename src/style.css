@@ -3611,3 +3611,9 @@ body:has(.fr-game) {
 .fr-result:not(.empty) {
   cursor: default;
 }
+
+.q-chip.fr-day {
+  white-space: nowrap;
+  font-size: 0.9rem;
+  padding: 4px 9px;
+}

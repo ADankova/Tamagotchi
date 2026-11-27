@@ -937,3 +937,21 @@ describe('предметы не на постройках', () => {
     for (const d of s.drops) expect(s.tiles[d.y * 30 + d.x]).toBe('grass');
   });
 });
+
+describe('работа инструментами голодит', () => {
+  it('рубка топором уменьшает сытость', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { axe: 1 };
+    const t = s.tiles.findIndex((x) => x === 'tree');
+    const tx = t % 30;
+    const ty = Math.floor(t / 30);
+    s.x = tx + 0.5;
+    s.y = ty + 1.5;
+    s.stats.food = 80;
+    m.frDo(s, tx, ty, 'chop');
+    for (let i = 0; i < 80; i++) m.frTick(s, 100);
+    expect(s.stats.food).toBeLessThan(79.5);
+    expect(m.FR_TOOL_FOOD).toBeGreaterThan(0);
+  });
+});
