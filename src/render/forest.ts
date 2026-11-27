@@ -1658,7 +1658,8 @@ export class ForestGame implements GameScreen {
         else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => { if (!drawSprite(ctx, 'grass', cellHash(x, y, 4) % natureCount('grass'), cx, cy + tile * 0.42, { w: tile * 0.9 }, Math.sin(t / 650 + x * 1.7 + y) * tile * 0.07)) drawTall(ctx, cx, cy, tile, i, t); } });
         else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, false) });
         else if (kind === 'ore') items.push({ y: y + 0.6, draw: () => { if (!drawSprite(ctx, 'ore', cellHash(x, y, 3) % natureCount('ore'), cx, cy + tile * 0.46, { w: tile * 1.02 })) drawWall(ctx, cx, cy, tile, true); } });
-        else if (kind === 'exit') items.push({ y: y + 0.1, draw: () => drawExit(ctx, cx, cy, tile, s.loc, frExitAt(s, i)?.to ?? 'home', t) });
+        // Табличка перехода крупная и рисуется поверх деревьев, чтобы её было видно у края карты.
+        else if (kind === 'exit') items.push({ y: y + 3, draw: () => drawExit(ctx, cx, cy - tile * 0.2, tile * 1.5, s.loc, frExitAt(s, i)?.to ?? 'home', t) });
         else if (kind === 'reed') items.push({ y: y + 0.55, draw: () => drawReed(ctx, cx, cy, tile, i, t) });
         else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => { if (!drawSprite(ctx, 'rock', cellHash(x, y, 2) % natureCount('rock'), cx, cy + tile * 0.44, { w: tile * 1.05 })) drawRock(ctx, cx, cy, tile); } });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
