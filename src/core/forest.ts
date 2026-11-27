@@ -12,6 +12,11 @@ export const FR_NIGHT_AT = 210_000;
 /** Во сне у костра время идёт во столько раз быстрее. */
 export const FR_SLEEP_SPEED = 5.2;
 export const FR_SLOTS = 12;
+/** Сколько воды набирается фляжкой за раз. */
+export const FR_FILL = 3;
+export const FR_TORCH_MS = 60_000;
+const EGG_CHANCE = 0.35;
+const SEED_CHANCE = 0.3;
 export const FR_STACK = 10;
 /** Скорость ходьбы, клеток в секунду. */
 const SPEED = 3;
@@ -27,7 +32,7 @@ export const FR_FIRE_RADIUS = 3.5;
 export const FR_NIGHT_REWARD = 2;
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'water' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -56,6 +61,8 @@ export interface FrState {
   /** Идущее действие (сбор, еда) и сколько ему осталось. */
   busy: { kind: 'gather' | 'eat' | 'drink'; left: number } | null;
   inv: Partial<Record<FrItem, number>>;
+  /** Сколько ещё горит факел, мс (0 — не горит). */
+  torch: number;
   /** Что лежит в окошке готовки у костра (вынуто из рюкзака). */
   pot: FrItem[];
   /** Что лежит в сундуке (если он построен). */
@@ -113,6 +120,11 @@ export type FrEvent =
   | { type: 'fireOut' }
   | { type: 'needAxe' }
   | { type: 'needKnife' }
+  | { type: 'needFlask' }
+  | { type: 'filled' }
+  | { type: 'found'; item: FrItem }
+  | { type: 'torchLit' }
+  | { type: 'torchOut' }
   | { type: 'needPickaxe' }
   | { type: 'mined' }
   | { type: 'cut' }
@@ -287,6 +299,7 @@ export function newForest(seed: number): FrState {
     busy: null,
     inv: {},
     pot: [],
+    torch: 0,
     chest: {},
     count: {},
     claimed: [],
@@ -457,7 +470,7 @@ export type FrTarget =
   | { kind: 'rock' }
   | { kind: 'tall'; x: number; y: number };
 
-export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep' | 'open' | 'mine' | 'cut';
+export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep' | 'open' | 'mine' | 'cut' | 'fill';
 
 export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
   if (!inside(x, y)) return null;
@@ -479,7 +492,7 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
     case 'tree':
       return ['chop'];
     case 'water':
-      return ['drink'];
+      return ['drink', 'fill'];
     case 'pit':
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
     case 'chest':
@@ -575,6 +588,17 @@ function arrive(s: FrState): FrEvent[] {
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       return [{ type: 'picked', item: 'berries' }];
     }
+    case 'fill': {
+      if (!(s.inv.flask ?? 0)) return [{ type: 'needFlask' }];
+      let got = 0;
+      while (got < FR_FILL && canTake(s.inv, 'water')) {
+        s.inv.water = (s.inv.water ?? 0) + 1;
+        got++;
+      }
+      if (!got) return [{ type: 'full' }];
+      s.busy = { kind: 'drink', left: FR_ACTION_MS };
+      return [{ type: 'filled' }];
+    }
     case 'drink':
       s.stats.water = Math.min(100, s.stats.water + 30);
       s.busy = { kind: 'drink', left: FR_ACTION_MS };
@@ -587,7 +611,13 @@ function arrive(s: FrState): FrEvent[] {
       s.inv.branch = (s.inv.branch ?? 0) + 2;
       bump(s, 'chop');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
-      return [{ type: 'chopped' }];
+      const ev: FrEvent[] = [{ type: 'chopped' }];
+      if (rand(s.seed + 5000 + s.count.chop! * 13)() < EGG_CHANCE && canTake(s.inv, 'egg')) {
+        s.inv.egg = (s.inv.egg ?? 0) + 1;
+        bump(s, 'pick:egg');
+        ev.push({ type: 'found', item: 'egg' });
+      }
+      return ev;
     }
     case 'open':
       return [{ type: 'openChest' }];
@@ -614,7 +644,13 @@ function arrive(s: FrState): FrEvent[] {
       s.inv.grass = (s.inv.grass ?? 0) + 1;
       bump(s, 'pick:grass');
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
-      return [{ type: 'cut' }];
+      const ev: FrEvent[] = [{ type: 'cut' }];
+      if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE && canTake(s.inv, 'seeds')) {
+        s.inv.seeds = (s.inv.seeds ?? 0) + 1;
+        bump(s, 'pick:seeds');
+        ev.push({ type: 'found', item: 'seeds' });
+      }
+      return ev;
     }
     case 'light':
     case 'feed':
@@ -660,7 +696,14 @@ function take(s: FrState, item: FrItem, n: number): void {
 export const FR_POT_SLOTS = 3;
 
 /** Рецепты: что положить в окошко готовки и что получится. Порядок не важен. */
-export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [{ from: ['mushroom'], to: 'cooked' }];
+export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [
+  { from: ['mushroom'], to: 'cooked' },
+  { from: ['egg'], to: 'friedegg' },
+  { from: ['water', 'berries'], to: 'compote' },
+  { from: ['water', 'grass'], to: 'tea' },
+  { from: ['water', 'seeds'], to: 'porridge' },
+  { from: ['water', 'seeds', 'berries'], to: 'berryporridge' },
+];
 
 /** Можно ли положить предмет в окошко: он входит хотя бы в один рецепт. */
 export function frCookable(item: FrItem): boolean {
@@ -701,24 +744,48 @@ export function frPotCook(s: FrState): FrEvent[] {
   s.pot = [];
   s.inv[out] = (s.inv[out] ?? 0) + 1;
   bump(s, 'cook');
+  bump(s, `made:${out}`);
   return withQuest(s, [{ type: 'cooked', item: out }]);
 }
 
-/** Сколько сытости даёт еда из рюкзака. */
-export const FR_FOOD: Partial<Record<FrItem, number>> = { berries: 10, mushroom: 5, cooked: 25 };
+/** Что даёт еда и питьё: на сколько растут шкалы. */
+export const FR_EFFECTS: Partial<Record<FrItem, Partial<Record<FrStat, number>>>> = {
+  berries: { food: 10 },
+  mushroom: { food: 5 },
+  cooked: { food: 25 },
+  egg: { food: 5 },
+  friedegg: { food: 30, health: 5 },
+  water: { water: 30 },
+  tea: { water: 20, warmth: 30, health: 10 },
+  compote: { food: 12, water: 25 },
+  porridge: { food: 40 },
+  berryporridge: { food: 50, health: 5 },
+};
+
+/** Сколько сытости даёт еда (для старых мест кода). */
+export const FR_FOOD: Partial<Record<FrItem, number>> = Object.fromEntries(
+  Object.entries(FR_EFFECTS).flatMap(([k, v]) => (v?.food ? [[k, v.food]] : [])),
+);
 
 export function frEat(s: FrState, item: FrItem): FrEvent[] {
-  const value = FR_FOOD[item];
-  if (s.over || !value || !(s.inv[item] ?? 0)) return [];
+  const fx = FR_EFFECTS[item];
+  if (s.over || !fx || !(s.inv[item] ?? 0)) return [];
   take(s, item, 1);
-  s.stats.food = Math.min(100, s.stats.food + value);
+  for (const [k, v] of Object.entries(fx) as Array<[FrStat, number]>) s.stats[k] = Math.min(100, s.stats[k] + v);
   s.busy = { kind: 'eat', left: FR_ACTION_MS };
   s.path = [];
   s.goal = null;
   return [{ type: 'ate', item }];
 }
 
-/** Выбросить одну штуку: кладётся на землю рядом с питомцем (если есть свободное место). */
+/** Зажечь факел из рюкзака: освещает питомца и не даёт мёрзнуть. */
+export function frTorch(s: FrState): FrEvent[] {
+  if (s.over || !(s.inv.torch ?? 0)) return [];
+  take(s, 'torch', 1);
+  s.torch = FR_TORCH_MS;
+  return [{ type: 'torchLit' }];
+}
+
 export function frThrow(s: FrState, item: FrItem): FrEvent[] {
   if (s.over || !(s.inv[item] ?? 0)) return [];
   take(s, item, 1);
@@ -796,7 +863,12 @@ function tick(s: FrState, dt: number): FrEvent[] {
   s.stats.food = Math.max(0, s.stats.food - FOOD_PER_DAY * perDay);
   s.stats.water = Math.max(0, s.stats.water - WATER_PER_DAY * perDay);
   const sec = gdt / 1000;
+  if (s.torch > 0) {
+    s.torch = Math.max(0, s.torch - dt);
+    if (s.torch === 0) events.push({ type: 'torchOut' });
+  }
   if (frInFireLight(s)) s.stats.warmth = Math.min(100, s.stats.warmth + 5 * sec);
+  else if (s.torch > 0) s.stats.warmth = Math.min(100, s.stats.warmth + 1 * sec);
   else if (frIsNight(s)) s.stats.warmth = Math.max(0, s.stats.warmth - 2 * sec);
   else s.stats.warmth = Math.min(100, s.stats.warmth + 1 * sec);
   const starving = s.stats.food <= 0 || s.stats.water <= 0 || s.stats.warmth <= 0;
@@ -852,6 +924,7 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!Array.isArray(s.drops) || !Array.isArray(s.berries)) return null;
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
+  if (typeof s.torch !== 'number') s.torch = 0;
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
   // Старые сохранения (1.32–1.33) считали по-другому — переносим, что можно.
   const old = (s.count && typeof s.count === 'object' ? s.count : {}) as Record<string, number>;
@@ -870,11 +943,13 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'chest';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest';
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
   { id: 'pickaxe', cost: [['branch', 2], ['stone', 3], ['grass', 1]] },
+  { id: 'flask', cost: [['grass', 3], ['branch', 1]] },
+  { id: 'torch', cost: [['branch', 1], ['grass', 2]] },
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
   { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
 ];
@@ -907,12 +982,14 @@ export function frChestBuilt(s: FrState): boolean {
 export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
-  if (id !== 'chest' && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if (id !== 'chest' && id !== 'torch' && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if (id === 'torch' && !canTake(s.inv, 'torch')) return [{ type: 'full' }];
   if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
   if (id === 'chest' && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
-  if (id !== 'chest') s.inv[id] = 1;
+  if (id === 'torch') s.inv.torch = (s.inv.torch ?? 0) + 1;
+  else if (id !== 'chest') s.inv[id] = 1;
   else s.tiles[cell!] = 'chest';
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
@@ -971,6 +1048,9 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'chop', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'chop', need: 2 }] },
   { id: 'pickaxe', kind: 'regular', reward: 0, items: { stone: 2, grass: 2 }, parts: [{ key: 'craft:pickaxe', need: 1 }] },
   { id: 'mine', kind: 'regular', reward: 0, items: { mushroom: 3 }, parts: [{ key: 'mine', need: 1 }] },
+  { id: 'flask', kind: 'regular', reward: 0, items: { berries: 3 }, parts: [{ key: 'craft:flask', need: 1 }] },
+  { id: 'torch', kind: 'regular', reward: 0, items: { mushroom: 2 }, parts: [{ key: 'craft:torch', need: 1 }] },
+  { id: 'porridge', kind: 'regular', reward: 0, items: { egg: 2 }, parts: [{ key: 'made:porridge', need: 1 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },

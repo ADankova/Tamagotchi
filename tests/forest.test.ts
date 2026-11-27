@@ -13,6 +13,7 @@ import {
   frDo,
   frClaim,
   frCraft,
+  frTorch,
   frChestPut,
   frChestSpots,
   frChestTake,
@@ -267,7 +268,7 @@ describe('«Дикий лес»: окошко готовки', () => {
     s.inv = { berries: 2, mushroom: 2 };
     expect(frPotAdd(s, 'mushroom')).toBe(true);
     expect(s.inv.mushroom).toBe(1);
-    expect(frPotAdd(s, 'berries')).toBe(false);
+    expect(frPotAdd(s, 'stone')).toBe(false);
     expect(frPotAdd(s, 'stone')).toBe(false);
     expect(frRecipe(s.pot)).toBe('cooked');
     frPotAdd(s, 'mushroom');
@@ -412,5 +413,65 @@ describe('«Дикий лес»: трава и большие камни', () =>
     const y = Math.floor(ti / 30);
     s.x = x > 15 ? 3.5 : 25.5;
     expect(frActions(s, frTargetAt(s, x, y)!)).toEqual([]);
+  });
+});
+
+describe('«Дикий лес»: еда, вода, факел', () => {
+  it('фляга набирает воду у ручья, без неё нельзя', () => {
+    const s = newForest(7);
+    const near = (n: number): boolean => ['grass', 'tall'].includes(s.tiles[n - 1]!) || ['grass', 'tall'].includes(s.tiles[n + 1]!);
+    const wi = s.tiles.findIndex((k, n) => k === 'water' && n > 90 && n < 800 && n % 30 > 2 && n % 30 < 27 && near(n));
+    const wx = wi % 30;
+    const wy = Math.floor(wi / 30);
+    s.x = ['grass', 'tall'].includes(s.tiles[wi - 1]!) ? wx - 0.5 : wx + 1.5;
+    s.y = wy + 0.5;
+    expect([...frDo(s, wx, wy, 'fill'), ...run(s, 20_000)]).toContainEqual({ type: 'needFlask' });
+    s.inv = { flask: 1 };
+    expect([...frDo(s, wx, wy, 'fill'), ...run(s, 20_000)]).toContainEqual({ type: 'filled' });
+    expect(s.inv.water).toBe(3);
+  });
+
+  it('рецепты: яичница, компот, чай, каша и ягодная каша', () => {
+    expect(frRecipe(['egg'])).toBe('friedegg');
+    expect(frRecipe(['berries', 'water'])).toBe('compote');
+    expect(frRecipe(['grass', 'water'])).toBe('tea');
+    expect(frRecipe(['water', 'seeds'])).toBe('porridge');
+    expect(frRecipe(['berries', 'seeds', 'water'])).toBe('berryporridge');
+    expect(frRecipe(['berries', 'seeds'])).toBe(null);
+  });
+
+  it('напитки и блюда меняют сразу несколько шкал', () => {
+    const s = newForest(7);
+    s.stats = { food: 10, water: 10, warmth: 10, health: 50 };
+    s.inv = { tea: 1, compote: 1 };
+    frEat(s, 'tea');
+    expect(s.stats).toEqual({ food: 10, water: 30, warmth: 40, health: 60 });
+    frEat(s, 'compote');
+    expect(s.stats.food).toBe(22);
+    expect(s.stats.water).toBe(55);
+  });
+
+  it('факел горит около минуты и согревает ночью', () => {
+    const s = newForest(7);
+    s.inv = { torch: 1 };
+    s.clock = FR_NIGHT_AT;
+    s.x = 3.5;
+    s.y = 3.5;
+    s.stats.warmth = 50;
+    expect(frTorch(s)).toContainEqual({ type: 'torchLit' });
+    run(s, 10_000);
+    expect(s.stats.warmth).toBeGreaterThanOrEqual(50);
+    expect(run(s, 60_000)).toContainEqual({ type: 'torchOut' });
+    expect(s.torch).toBe(0);
+  });
+
+  it('факел и фляга делаются в крафте, факелов можно несколько', () => {
+    const s = newForest(7);
+    s.inv = { branch: 4, grass: 9 };
+    expect(frCraft(s, 'torch')).toContainEqual({ type: 'crafted', item: 'torch' });
+    expect(frCraft(s, 'torch')).toContainEqual({ type: 'crafted', item: 'torch' });
+    expect(s.inv.torch).toBe(2);
+    expect(frCraft(s, 'flask')).toContainEqual({ type: 'crafted', item: 'flask' });
+    expect(frCraft(s, 'flask')).toContainEqual({ type: 'haveIt' });
   });
 });
