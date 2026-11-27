@@ -121,6 +121,14 @@ function torchIcon(): HTMLCanvasElement {
   }
   return c;
 }
+/** Вкладки крафта: огонь, инструменты, изготовление, хранилище и жильё, оружие. */
+const CRAFT_TABS: ReadonlyArray<{ id: string; icon: string; emoji: string; items: readonly string[] }> = [
+  { id: 'fire', icon: 'act-flame', emoji: '🔥', items: ['torch', 'lantern', 'campfire'] },
+  { id: 'tools', icon: 'item-pickaxe', emoji: '⛏️', items: ['knife', 'axe', 'pickaxe', 'rod', 'ironknife', 'ironaxe', 'ironpick', 'trap', 'flask', 'purse'] },
+  { id: 'make', icon: 'loom', emoji: '🧶', items: ['foundry', 'dryer', 'loom'] },
+  { id: 'home', icon: 'chest', emoji: '📦', items: ['chest', 'shelter', 'bed', 'lighthouse'] },
+  { id: 'weapon', icon: 'item-spear', emoji: '🗡️', items: ['spear'] },
+];
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
@@ -846,20 +854,36 @@ export class ForestGame implements GameScreen {
     if (panel) panel.scrollTop = keepPanel;
   }
 
-  private craftTab: 'tools' | 'build' = 'tools';
+  private craftTab: string = 'fire';
 
-  /** Окно крафта: вкладки, плитки предметов с материалами; нажатие открывает подробности. */
+  /** Значок вкладки крафта: картинка по центру, иначе эмодзи. */
+  private tabIcon(kind: string, fallback: string): HTMLCanvasElement {
+    const c = el('canvas', { width: '64', height: '64' }) as HTMLCanvasElement;
+    c.style.cssText = 'width:32px;height:32px;display:block';
+    const g = c.getContext('2d');
+    if (g && !drawIcon(g, kind, 32, 32, 60)) {
+      g.font = '44px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(fallback, 32, 32);
+    }
+    return c;
+  }
+
+  /** Окно крафта: вкладки слева (только значки), плитки предметов с материалами; нажатие открывает подробности. */
   private renderCraft(): void {
     const s = this.state;
-    const tabs = (['tools', 'build'] as const).map((tab) => {
-      const b = el('button', { type: 'button', class: this.craftTab === tab ? 'fr-tab on' : 'fr-tab', text: GAMES_TEXT.forestCraftTabs[tab] });
+    const groups = CRAFT_TABS.map((t) => ({ ...t, recipes: FR_CRAFT.filter((r) => t.items.includes(r.id) && frCraftUnlocked(s, r.id)) })).filter((t) => t.recipes.length > 0);
+    if (!groups.some((t) => t.id === this.craftTab)) this.craftTab = groups[0]?.id ?? 'fire';
+    const tabs = groups.map((t) => {
+      const b = el('button', { type: 'button', class: this.craftTab === t.id ? 'fr-tab on' : 'fr-tab', 'aria-label': GAMES_TEXT.forestCraftTabs[t.id] ?? t.id, title: GAMES_TEXT.forestCraftTabs[t.id] ?? t.id }, [this.tabIcon(t.icon, t.emoji)]);
       b.addEventListener('click', () => {
-        this.craftTab = tab;
+        this.craftTab = t.id;
         this.renderCraft();
       });
       return b;
     });
-    const recipes = FR_CRAFT.filter((r) => frCraftUnlocked(s, r.id) && FR_BUILDINGS.includes(r.id) === (this.craftTab === 'build'));
+    const recipes = groups.find((t) => t.id === this.craftTab)?.recipes ?? [];
     const tiles = recipes.map((r) => {
       const can = frCanCraft(s, r.id);
       const mats = r.cost.map(([it, n]) =>
@@ -878,8 +902,8 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-craft' }, [
-        el('div', { class: 'fr-bag-head' }, [el('div', { class: 'fr-tabs' }, tabs), close]),
-        el('div', { class: 'fr-cgrid' }, tiles),
+        el('div', { class: 'fr-bag-head' }, [el('span'), close]),
+        el('div', { class: 'fr-cbody' }, [el('div', { class: 'fr-vtabs' }, tabs), el('div', { class: 'fr-cgrid' }, tiles)]),
       ]),
     );
   }
