@@ -1222,6 +1222,15 @@ export class ForestGame implements GameScreen {
       : [el('img', { src: this.host.treatImage, alt: '' }), el('b', { text: String(q?.reward ?? 0) })]);
   }
 
+  /** Окошко с текстом: прокручивается только текст, кнопки закреплены внизу. */
+  private splitCard(title: string, body: Array<HTMLElement | null>, actions: HTMLElement[]): HTMLElement {
+    return el('div', { class: 'fr-bag fr-card fr-split' }, [
+      el('div', { class: 'fr-bag-head' }, [el('h3', { text: title })]),
+      el('div', { class: 'fr-scroll' }, body.filter((x): x is HTMLElement => !!x)),
+      el('div', { class: 'fr-actions' }, actions),
+    ]);
+  }
+
   /** Начало главы: рассказ, задание и награда. */
   private renderStoryStart(id: string): void {
     const q = FR_QUESTS.find((x) => x.id === id);
@@ -1229,14 +1238,11 @@ export class ForestGame implements GameScreen {
     const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryGo });
     go.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: this.chapterTitle(id) })]),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestStory[id]?.text ?? '' }),
-        el('h4', { text: GAMES_TEXT.forestTaskLabel }),
-        ...this.questLines(q),
-        this.rewardRow(id),
-        el('div', { class: 'fr-actions' }, [go]),
-      ]),
+      this.splitCard(
+        this.chapterTitle(id),
+        [el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestStory[id]?.text ?? '' }), el('h4', { text: GAMES_TEXT.forestTaskLabel }), ...this.questLines(q), this.rewardRow(id)],
+        [go],
+      ),
     );
   }
 
@@ -1246,12 +1252,11 @@ export class ForestGame implements GameScreen {
     const take = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryTake });
     take.addEventListener('click', () => this.handle(frClaim(s, id)));
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: this.chapterTitle(id) })]),
-        el('p', { class: 'fr-card-desc', text: id === 'ch1' ? GAMES_TEXT.forestStory.ch1?.text ?? '' : GAMES_TEXT.forestTaskDone }),
-        this.rewardRow(id),
-        el('div', { class: 'fr-actions' }, [take]),
-      ]),
+      this.splitCard(
+        this.chapterTitle(id),
+        [el('p', { class: 'fr-card-desc', text: id === 'ch1' ? GAMES_TEXT.forestStory.ch1?.text ?? '' : GAMES_TEXT.forestTaskDone }), this.rewardRow(id)],
+        [take],
+      ),
     );
   }
 
@@ -1265,11 +1270,7 @@ export class ForestGame implements GameScreen {
     const ok = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryOk });
     ok.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestFinalTitle })]),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestFinal }),
-        el('div', { class: 'fr-actions' }, [ok]),
-      ]),
+      this.splitCard(GAMES_TEXT.forestFinalTitle, [el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestFinal })], [ok]),
     );
   }
 
@@ -1281,11 +1282,7 @@ export class ForestGame implements GameScreen {
     const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestIntroGo });
     go.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestTitle })]),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestIntro }),
-        el('div', { class: 'fr-actions' }, [go]),
-      ]),
+      this.splitCard(GAMES_TEXT.forestTitle, [el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestIntro })], [go]),
     );
     this.bag.removeAttribute('hidden');
   }
@@ -1332,12 +1329,11 @@ export class ForestGame implements GameScreen {
     const stay = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStay });
     stay.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestLocs[to] ?? '' })]),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelWarn[to] ?? '' }),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelCommon }),
-        el('div', { class: 'fr-actions' }, [go, stay]),
-      ]),
+      this.splitCard(
+        GAMES_TEXT.forestLocs[to] ?? '',
+        [el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelWarn[to] ?? '' }), el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelCommon })],
+        [go, stay],
+      ),
     );
   }
 

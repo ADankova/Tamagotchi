@@ -3759,3 +3759,27 @@ body:has(.fr-game) {
   background: #e0453a;
   border: 2px solid #fff6e4;
 }
+
+/* Окошки с текстом: листается только текст, кнопки закреплены внизу. */
+.fr-bag.fr-split {
+  overflow: hidden;
+  max-height: 90%;
+}
+.fr-split .fr-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fr-split .fr-bag-head,
+.fr-split .fr-actions {
+  flex: none;
+}
+.fr-split .fr-bag-head {
+  position: static;
+  margin: 0;
+  padding: 0;
+}
