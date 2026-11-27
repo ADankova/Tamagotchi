@@ -396,6 +396,9 @@ export class ForestGame implements GameScreen {
           this.renderLoom();
           this.bag.removeAttribute('hidden');
           break;
+        case 'cookDropped':
+          this.say(M.cookDropped, 'win');
+          break;
         case 'broke':
           this.say(M.broke.replace('{item}', (GAMES_TEXT.forestItems[ev.item] ?? ev.item).toLowerCase()), 'blocked');
           this.renderBag();
@@ -621,6 +624,12 @@ export class ForestGame implements GameScreen {
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
     if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch')) make.setAttribute('disabled', '');
+    const why =
+      owned > 0 && id !== 'torch'
+        ? GAMES_TEXT.forestAlreadyBuilt
+        : !frCanCraft(s, id)
+          ? GAMES_TEXT.forestNeedMats
+          : '';
     make.addEventListener('click', () => {
       if (FR_BUILDINGS.includes(id)) {
         this.startPlacing(id);
@@ -640,6 +649,7 @@ export class ForestGame implements GameScreen {
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
         el('div', { class: 'fr-dmats' }, mats),
         make,
+        ...(why ? [el('p', { class: 'fr-card-desc fr-why', text: why })] : []),
       ]),
     );
   }
