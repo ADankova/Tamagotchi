@@ -27,12 +27,12 @@ export const FR_FIRE_RADIUS = 3.5;
 export const FR_NIGHT_REWARD = 2;
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
   id: number;
-  kind: Exclude<FrItem, 'berries'>;
+  kind: FrItem;
   x: number;
   y: number;
 }
@@ -68,12 +68,12 @@ export interface FrState {
   treats: number;
 }
 
-export type FrGoal =
-  | { kind: 'pick'; id: number }
-  | { kind: 'bush'; cell: number }
-  | { kind: 'water'; cell: number }
-  | { kind: 'pit' }
-  | { kind: 'tree'; cell: number };
+export interface FrGoal {
+  action: FrAction;
+  cell: number;
+  /** Для «собрать» с земли — какой предмет. */
+  id?: number;
+}
 
 export type FrEvent =
   | { type: 'picked'; item: FrItem }
@@ -85,6 +85,11 @@ export type FrEvent =
   | { type: 'fireFed' }
   | { type: 'needForFire' }
   | { type: 'needBranch' }
+  | { type: 'cooked'; item: FrItem }
+  | { type: 'nothingToCook' }
+  | { type: 'sleepNo' }
+  | { type: 'fellAsleep' }
+  | { type: 'thrown'; item: FrItem }
   | { type: 'fireOut' }
   | { type: 'needAxe' }
   | { type: 'evening' }
@@ -145,7 +150,7 @@ function rand(seed: number): Rand {
   };
 }
 
-const DROP_COUNTS: Readonly<Record<FrDrop['kind'], number>> = { branch: 14, stone: 8, flint: 4, grass: 10, mushroom: 5 };
+const DROP_COUNTS: Readonly<Partial<Record<FrItem, number>>> = { branch: 14, stone: 8, flint: 4, grass: 10, mushroom: 5 };
 
 /** Новый поход: случайная поляна с ручьём, костровищем в центре и рассыпанными вещами. */
 export function newForest(seed: number): FrState {
@@ -268,9 +273,9 @@ function restock(s: FrState, r: Rand): void {
     const y = Math.floor(i / FR_W);
     if (!taken.has(i) && Math.abs(x - c.x) + Math.abs(y - c.y) > 1) free.push(i);
   }
-  for (const kind of Object.keys(DROP_COUNTS) as Array<FrDrop['kind']>) {
+  for (const kind of Object.keys(DROP_COUNTS) as FrItem[]) {
     const have = s.drops.filter((d) => d.kind === kind).length;
-    for (let k = have; k < DROP_COUNTS[kind] && free.length; k++) {
+    for (let k = have; k < (DROP_COUNTS[kind] ?? 0) && free.length; k++) {
       // Пару веток и камень кладём прямо у поляны, чтобы первое задание было рядом.
       const near = (kind === 'branch' && k < 3) || (kind === 'flint' && k < 1);
       const pool = near ? free.filter((i) => dist(i, c) <= 4) : free;
@@ -329,69 +334,113 @@ function neighbours(i: number): number[] {
   return DIRS.filter(([dx, dy]) => inside(x + dx, y + dy)).map(([dx, dy]) => frIndex(x + dx, y + dy));
 }
 
-/**
- * Нажатие на клетку карты: идти туда или к предмету, а дойдя — собрать, попить, разжечь костёр.
- * Возвращает события, которые случились сразу (например, «нужен топор»).
- */
-export function frTap(s: FrState, x: number, y: number): FrEvent[] {
+/** Что лежит или стоит в клетке. */
+export type FrTarget =
+  | { kind: 'ground' }
+  | { kind: 'drop'; drop: FrDrop }
+  | { kind: 'bush' }
+  | { kind: 'water' }
+  | { kind: 'tree' }
+  | { kind: 'pit' };
+
+export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep';
+
+export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
+  if (!inside(x, y)) return null;
+  const tile = s.tiles[frIndex(x, y)]!;
+  if (tile === 'grass') {
+    const drop = s.drops.find((d) => d.x === x && d.y === y);
+    return drop ? { kind: 'drop', drop } : { kind: 'ground' };
+  }
+  return { kind: tile === 'pit' ? 'pit' : tile };
+}
+
+/** Какие кнопки показать у предмета. */
+export function frActions(s: FrState, target: FrTarget): FrAction[] {
+  switch (target.kind) {
+    case 'drop':
+    case 'bush':
+      return ['pick'];
+    case 'tree':
+      return ['chop'];
+    case 'water':
+      return ['drink'];
+    case 'pit':
+      return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
+    case 'ground':
+      return [];
+  }
+}
+
+/** Пойти в клетку (или к ней, если на неё не встать) и, дойдя, сделать action. */
+export function frDo(s: FrState, x: number, y: number, action: FrAction | null): FrEvent[] {
   if (s.over || !inside(x, y)) return [];
   const i = frIndex(x, y);
-  const tile = s.tiles[i]!;
-  let goal: FrGoal | null = null;
-  let targets: Set<number>;
-  const drop = s.drops.find((d) => d.x === x && d.y === y);
-  if (tile === 'grass') {
-    targets = new Set([i]);
-    if (drop) goal = { kind: 'pick', id: drop.id };
-  } else {
-    targets = new Set(neighbours(i).filter((n) => frWalkable(s, n % FR_W, Math.floor(n / FR_W))));
-    if (tile === 'bush') goal = { kind: 'bush', cell: i };
-    else if (tile === 'water') goal = { kind: 'water', cell: i };
-    else if (tile === 'pit') goal = { kind: 'pit' };
-    else goal = { kind: 'tree', cell: i };
-  }
+  const walkable = frWalkable(s, x, y);
+  const targets = walkable
+    ? new Set([i])
+    : new Set(neighbours(i).filter((n) => frWalkable(s, n % FR_W, Math.floor(n / FR_W))));
   const path = frPath(s, petCell(s), targets);
   if (!path) return [];
   if (s.sleeping) s.sleeping = false;
+  const drop = s.drops.find((d) => d.x === x && d.y === y);
   s.path = path;
-  s.goal = goal;
+  s.goal = action ? { action, cell: i, ...(action === 'pick' && drop ? { id: drop.id } : {}) } : null;
   s.busy = null;
   return path.length === 0 ? arrive(s) : [];
+}
+
+/** Нажатие без меню: сразу первое действие у предмета (или просто пойти). */
+export function frTap(s: FrState, x: number, y: number): FrEvent[] {
+  const target = frTargetAt(s, x, y);
+  if (!target) return [];
+  return frDo(s, x, y, frActions(s, target)[0] ?? null);
 }
 
 function arrive(s: FrState): FrEvent[] {
   const goal = s.goal;
   s.goal = null;
   if (!goal) return [];
-  switch (goal.kind) {
+  if (!frWalkable(s, goal.cell % FR_W, Math.floor(goal.cell / FR_W))) faceTo(s, goal.cell);
+  switch (goal.action) {
     case 'pick': {
-      const d = s.drops.find((it) => it.id === goal.id);
-      if (!d) return [];
-      if (!canTake(s.inv, d.kind)) return [{ type: 'full' }];
-      s.drops = s.drops.filter((it) => it.id !== d.id);
-      s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
-      s.busy = { kind: 'gather', left: FR_ACTION_MS };
-      return [{ type: 'picked', item: d.kind }];
-    }
-    case 'bush': {
+      if (goal.id !== undefined) {
+        const d = s.drops.find((it) => it.id === goal.id);
+        if (!d) return [];
+        if (!canTake(s.inv, d.kind)) return [{ type: 'full' }];
+        s.drops = s.drops.filter((it) => it.id !== d.id);
+        s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+        s.busy = { kind: 'gather', left: FR_ACTION_MS };
+        return [{ type: 'picked', item: d.kind }];
+      }
+      if (s.tiles[goal.cell] !== 'bush') return [];
       if (!s.berries.includes(goal.cell)) return [{ type: 'empty' }];
       if (!canTake(s.inv, 'berries')) return [{ type: 'full' }];
       s.berries = s.berries.filter((b) => b !== goal.cell);
       s.inv.berries = (s.inv.berries ?? 0) + 2;
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
-      faceTo(s, goal.cell);
       return [{ type: 'picked', item: 'berries' }];
     }
-    case 'water':
+    case 'drink':
       s.stats.water = Math.min(100, s.stats.water + 30);
       s.busy = { kind: 'drink', left: FR_ACTION_MS };
-      faceTo(s, goal.cell);
       return [{ type: 'drank' }];
-    case 'pit':
-      return tendFire(s);
-    case 'tree':
-      faceTo(s, goal.cell);
+    case 'chop':
       return [{ type: 'needAxe' }];
+    case 'light':
+    case 'feed':
+      return tendFire(s);
+    case 'cook':
+      if (s.fire <= 0) return [{ type: 'needForFire' }];
+      if (!(s.inv.mushroom ?? 0)) return [{ type: 'nothingToCook' }];
+      take(s, 'mushroom', 1);
+      s.inv.cooked = (s.inv.cooked ?? 0) + 1;
+      s.busy = { kind: 'gather', left: FR_ACTION_MS };
+      return [{ type: 'cooked', item: 'cooked' }];
+    case 'sleep':
+      if (!frCanSleep(s)) return [{ type: 'sleepNo' }];
+      frSleep(s, true);
+      return [{ type: 'fellAsleep' }];
   }
 }
 
@@ -422,8 +471,8 @@ function take(s: FrState, item: FrItem, n: number): void {
   else delete s.inv[item];
 }
 
-/** Съесть из рюкзака: ягоды +10 сытости, гриб +5. */
-export const FR_FOOD: Partial<Record<FrItem, number>> = { berries: 10, mushroom: 5 };
+/** Сколько сытости даёт еда из рюкзака. */
+export const FR_FOOD: Partial<Record<FrItem, number>> = { berries: 10, mushroom: 5, cooked: 25 };
 
 export function frEat(s: FrState, item: FrItem): FrEvent[] {
   const value = FR_FOOD[item];
@@ -434,6 +483,19 @@ export function frEat(s: FrState, item: FrItem): FrEvent[] {
   s.path = [];
   s.goal = null;
   return [{ type: 'ate', item }];
+}
+
+/** Выбросить одну штуку: кладётся на землю рядом с питомцем (если есть свободное место). */
+export function frThrow(s: FrState, item: FrItem): FrEvent[] {
+  if (s.over || !(s.inv[item] ?? 0)) return [];
+  take(s, item, 1);
+  const here = petCell(s);
+  const spots = [here, ...neighbours(here)].filter(
+    (c) => frWalkable(s, c % FR_W, Math.floor(c / FR_W)) && !s.drops.some((d) => frIndex(d.x, d.y) === c),
+  );
+  const spot = spots[0];
+  if (spot !== undefined) s.drops.push({ id: s.nextId++, kind: item, x: spot % FR_W, y: Math.floor(spot / FR_W) });
+  return [{ type: 'thrown', item }];
 }
 
 /** Можно ли лечь спать: ночью или вечером, у горящего костра. */
