@@ -98,7 +98,7 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
   worn: FrItem[];
-  /** Оружие в руках: из рюкзака берётся нож, топор, кирка или копьё; null — лучшее из того, что есть. */
+  /** Оружие в руках: нож, топор, кирка или копьё из рюкзака (обычные и железные); null — бьёт кулаками. */
   weapon: FrTool | null;
   /** Где сейчас питомец и где в этой локации костровище. */
   loc: FrPlace;
@@ -2106,11 +2106,11 @@ export interface FrMob {
 }
 
 export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number; flee: boolean; meat: number }> = {
-  mouse: { hp: 6, dmg: 2, speed: 2.2, flee: true, meat: 0 },
-  rabbit: { hp: 12, dmg: 4, speed: 2.6, flee: true, meat: 1 },
-  wolf: { hp: 30, dmg: 9, speed: 2.8, flee: false, meat: 2 },
-  bat: { hp: 8, dmg: 3, speed: 3.2, flee: false, meat: 0 },
-  alpha: { hp: 70, dmg: 12, speed: 3, flee: false, meat: 4 },
+  mouse: { hp: 10, dmg: 2, speed: 2.2, flee: true, meat: 0 },
+  rabbit: { hp: 15, dmg: 4, speed: 2.6, flee: true, meat: 1 },
+  wolf: { hp: 25, dmg: 9, speed: 2.8, flee: false, meat: 2 },
+  bat: { hp: 15, dmg: 3, speed: 3.2, flee: false, meat: 0 },
+  alpha: { hp: 50, dmg: 12, speed: 3, flee: false, meat: 4 },
 };
 
 /** Летучие мыши замечают питомца с факелом за столько клеток. */
@@ -2137,11 +2137,9 @@ export const FR_WEAPONS: Partial<Record<FrTool, { dmg: number; ms: number }>> = 
   spear: { dmg: FR_SPEAR_DMG, ms: PET_HIT_MS },
 };
 
-/** Чем питомец бьёт сейчас: выбранное оружие, а если не выбрано (или его нет в рюкзаке) — лучшее из имеющегося, иначе кулаки. */
+/** Чем питомец бьёт сейчас: выбранное оружие (если оно есть в рюкзаке), иначе кулаки. */
 export function frWeaponStats(s: FrState): { item: FrTool | null; dmg: number; ms: number } {
-  const pick = s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
-  const auto: FrTool | null = (s.inv.spear ?? 0) > 0 ? 'spear' : (s.inv.ironaxe ?? 0) > 0 ? 'ironaxe' : (s.inv.axe ?? 0) > 0 ? 'axe' : null;
-  const item = pick ?? auto;
+  const item = s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
   const w = item ? FR_WEAPONS[item] : undefined;
   return { item, dmg: w?.dmg ?? FR_PET_DMG, ms: w?.ms ?? PET_HIT_MS };
 }
