@@ -678,4 +678,20 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     run(grass, 600);
     expect(grass.mobs[0]!.x - grass.x).toBeLessThan(2.7);
   });
+
+  it('волк замечает питомца за 4 клетки, а в высокой траве только за 2', () => {
+    const mk = (tall: boolean, dist: number) => {
+      const s = newForest(7);
+      s.tiles = s.tiles.map((k) => (k === 'tree' || k === 'rock' || k === 'bush' || k === 'water' || k === 'tall' ? 'grass' : k));
+      if (tall) s.tiles[frIndex(Math.floor(s.x), Math.floor(s.y))] = 'tall';
+      s.fire = 0;
+      s.mobs = [{ id: 960, kind: 'wolf', x: s.x + dist, y: s.y, hp: 30, provoked: false, angry: false, cd: 0, wx: s.x + dist, wy: s.y }];
+      run(s, 100);
+      return s.mobs[0]!.angry;
+    };
+    expect(mk(false, 3.8)).toBe(true);
+    expect(mk(false, 4.5)).toBe(false);
+    expect(mk(true, 2.5)).toBe(false);
+    expect(mk(true, 1.8)).toBe(true);
+  });
 });

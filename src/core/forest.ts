@@ -1436,7 +1436,8 @@ export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number
 
 const MOB_SCARE = 3;
 const MOB_HIT_MS = 1200;
-const WOLF_NOTICE = 2;
+const WOLF_NOTICE = 4;
+const WOLF_NOTICE_GRASS = 2;
 const PET_HIT_MS = 800;
 export const FR_PET_DMG = 5;
 export const FR_AXE_DMG = 8;
@@ -1589,7 +1590,7 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
     if (m.cd > 0) m.cd = Math.max(0, m.cd - dt);
     const d = Math.hypot(s.x - m.x, s.y - m.y);
     const safe = frInFireLight(s) || (s.fire <= 0 && frInShelter(s));
-    if (m.kind === 'wolf' && !m.angry && d <= WOLF_NOTICE && !safe) m.angry = true;
+    if (m.kind === 'wolf' && !m.angry && d <= (hidden ? WOLF_NOTICE_GRASS : WOLF_NOTICE) && !safe) m.angry = true;
     if (safe) m.angry = m.provoked = false;
     if (m.angry && d > 9) m.angry = false;
     const fights = (def.flee ? m.provoked : m.angry) && !safe;
