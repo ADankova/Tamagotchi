@@ -214,6 +214,7 @@ export const en: Dict = {
     forestBagTitle: (used: number, max: number) => `Backpack · ${used}/${max}`,
     forestBagEmpty: 'Empty for now',
     forestEat: 'Eat',
+    forestRecipes: 'Recipes',
     forestSmelt: 'Smelt',
     forestCampOnly: 'Only on a trip',
     forestGo: 'Go',

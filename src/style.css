@@ -3595,3 +3595,19 @@ body:has(.fr-game) {
 .fr-qline {
   white-space: pre-line;
 }
+
+.fr-recipe-pick {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.fr-recipe-pick.dim {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  cursor: default;
+}
+.fr-result:not(.empty) {
+  cursor: default;
+}
