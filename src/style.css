@@ -3483,3 +3483,27 @@ button.m-jar:active {
   flex-wrap: wrap;
   max-width: 90px;
 }
+
+.fr-gear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+.fr-gear-title {
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+.fr-gear-slot {
+  width: 52px;
+  border-style: dashed;
+}
+.fr-gear-hint {
+  opacity: 0.4;
+  font-size: 1.4rem;
+}
+.fr-recipe small {
+  display: block;
+  font-weight: 700;
+  opacity: 0.7;
+}
