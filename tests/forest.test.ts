@@ -193,13 +193,13 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(Object.keys(FR_WEAPONS)).not.toContain('rod');
   });
 
-  it('здоровье зверей считается в ударах кулаком: мышь 2, кролик 3, волк 5, летучая мышь 3, белый волк 10', () => {
+  it('здоровье зверей считается в ударах кулаком: мышь 2, кролик 3, волк 8, летучая мышь 3, белый волк 14', () => {
     const hits = (hp: number): number => Math.ceil(hp / FR_PET_DMG);
     expect(hits(FR_MOBS.mouse.hp)).toBe(2);
     expect(hits(FR_MOBS.rabbit.hp)).toBe(3);
-    expect(hits(FR_MOBS.wolf.hp)).toBe(5);
+    expect(hits(FR_MOBS.wolf.hp)).toBe(8);
     expect(hits(FR_MOBS.bat.hp)).toBe(3);
-    expect(hits(FR_MOBS.alpha.hp)).toBe(10);
+    expect(hits(FR_MOBS.alpha.hp)).toBe(14);
   });
 
   it('удар оружием изнашивает его так же, как добыча', () => {
@@ -1263,5 +1263,30 @@ describe('остатки башни и вступление', () => {
     expect(ev).toContainEqual({ type: 'openRuins' });
     expect(ev).toContainEqual({ type: 'questReady', id: 'ch1' });
     expect(m.frQuestState(s, m.FR_QUESTS.find((q) => q.id === 'ch1')!)).toBe('ready');
+  });
+});
+
+describe('пачки: выбросить и удалить с количеством', () => {
+  it('выброшенная пачка — одна куча в одной клетке, подбирается целиком', () => {
+    const s = newForest(7);
+    s.inv = { stone: 10 };
+    s.drops = [];
+    expect(frThrow(s, 'stone', 6)).toContainEqual({ type: 'thrown', item: 'stone' });
+    expect(s.inv.stone).toBe(4);
+    expect(s.drops.length).toBe(1);
+    expect(s.drops[0]!.n).toBe(6);
+    frThrow(s, 'stone', 1);
+    expect(s.drops[1]!.n ?? 1).toBe(1);
+  });
+
+  it('удаление части пачки оставляет остальное', () => {
+    const s = newForest(7);
+    s.inv = { stone: 9 };
+    expect(frDestroy(s, 'stone', 4)).toContainEqual({ type: 'destroyed', item: 'stone', n: 4 });
+    expect(s.inv.stone).toBe(5);
+  });
+
+  it('волк сильнее: 40 жизней', () => {
+    expect(FR_MOBS.wolf.hp).toBe(40);
   });
 });

@@ -1070,6 +1070,33 @@ export class ForestGame implements GameScreen {
     );
   }
 
+  /** Окошко «сколько»: выбор количества из пачки. */
+  private askCount(item: FrItem, have: number, title: string, run: (n: number) => void, back: () => void): void {
+    let n = 1;
+    const num = el('span', { class: 'fr-qty-num', text: '1' });
+    const set = (v: number): void => {
+      n = Math.max(1, Math.min(have, v));
+      num.textContent = String(n);
+    };
+    const btn = (label: string, fn: () => void): HTMLElement => {
+      const b = el('button', { type: 'button', class: 'chunky fr-qty-btn', text: label });
+      b.addEventListener('click', fn);
+      return b;
+    };
+    const ok = el('button', { type: 'button', class: 'chunky fr-action', text: title });
+    ok.addEventListener('click', () => run(n));
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', back);
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: `${GAMES_TEXT.forestItems[item] ?? item} ×${have}` }), close]),
+        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(item, 96)]),
+        el('div', { class: 'fr-qty' }, [btn('«', () => set(1)), btn('−', () => set(n - 1)), num, btn('+', () => set(n + 1)), btn('»', () => set(have))]),
+        ok,
+      ]),
+    );
+  }
+
   /** Верхние слоты рюкзака: надетые кошельки (+4 ячейки каждый). */
   private gearRow(): HTMLElement {
     const s = this.state;
@@ -1587,17 +1614,33 @@ export class ForestGame implements GameScreen {
     }
     const toss = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestThrow });
     toss.addEventListener('click', () => {
-      this.handle(frThrow(s, item));
-      this.renderItem(item);
+      const have = s.inv[item] ?? 0;
+      if (have <= 1) {
+        this.handle(frThrow(s, item));
+        this.renderItem(item);
+        return;
+      }
+      this.askCount(item, have, GAMES_TEXT.forestThrow, (n) => {
+        this.handle(frThrow(s, item, n));
+        this.renderItem(item);
+      }, () => this.renderItem(item));
     });
     buttons.push(toss);
-    // Удаление в два нажатия: первое просит подтвердить, второе уничтожает предмет (все штуки).
+    // Удаление: одну штуку — в два нажатия, пачку — с выбором количества.
     const destroy = el('button', { type: 'button', class: 'chunky fr-action fr-destroy', text: GAMES_TEXT.forestDestroy });
     let sure = false;
     destroy.addEventListener('click', () => {
+      const have = s.inv[item] ?? 0;
+      if (have > 1) {
+        this.askCount(item, have, GAMES_TEXT.forestDestroy, (n) => {
+          this.handle(frDestroy(s, item, n));
+          this.renderBag();
+        }, () => this.renderItem(item));
+        return;
+      }
       if (!sure) {
         sure = true;
-        destroy.textContent = GAMES_TEXT.forestDestroySure(s.inv[item] ?? 1);
+        destroy.textContent = GAMES_TEXT.forestDestroySure(1);
         destroy.classList.add('sure');
         return;
       }
@@ -1612,7 +1655,10 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: TOOLS.includes(item) || (s.inv[item] ?? 0) <= 1 ? (GAMES_TEXT.forestItems[item] ?? item) : `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
-          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('span', { text: GAMES_TEXT.forestWeaponStats(frWeaponDmg(s, item as FrTool), FR_WEAPONS[item as FrTool]!.ms) })] : []),
+          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('div', { class: 'fr-stats' }, [
+            el('span', { text: GAMES_TEXT.forestStatDmg }), el('b', { text: String(frWeaponDmg(s, item as FrTool)) }),
+            el('span', { text: GAMES_TEXT.forestStatSpeed }), el('b', { text: GAMES_TEXT.forestStatSpeedVal(FR_WEAPONS[item as FrTool]!.ms) }),
+          ])] : []),
         ]),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
         el('div', { class: 'fr-actions' }, buttons),
@@ -2118,7 +2164,7 @@ export class ForestGame implements GameScreen {
         const i = frIndex(x, y);
         const kind = s.tiles[i];
         const d = drops.get(i);
-        if (d) labels.push({ x, y, text: GAMES_TEXT.forestItems[d.kind] ?? d.kind });
+        if (d) labels.push({ x, y, text: `${GAMES_TEXT.forestItems[d.kind] ?? d.kind}${(d.n ?? 1) > 1 ? ` x${d.n}` : ''}` });
         else if (kind === 'bush' && s.berries.includes(i)) labels.push({ x, y, text: GAMES_TEXT.forestPlaces.bush ?? '' });
         else if (kind === 'rock' && s.loc !== 'cave') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
         else if (kind === 'ore') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ore ?? '' });

@@ -3789,3 +3789,7 @@ body:has(.fr-game) {
   border-color: #b3372b;
   color: #7a1d14;
 }
+
+/* Характеристики оружия: таблица без линий */
+.fr-stats { display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.9rem; justify-content: start; font-size: 0.9rem; }
+.fr-stats b { font-weight: 800; }
