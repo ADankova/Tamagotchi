@@ -139,71 +139,6 @@ const CRAFT_TABS: ReadonlyArray<{ id: string; icon: string; emoji: string; items
 ];
 const isLoomId = (id: string): id is FrLoomId => FR_LOOM.some((r) => r.id === id);
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
-/** Соломенный шалаш-конус в пиксельной сетке 40x46: рисуется один раз, потом масштабируется без сглаживания. */
-const hutCache = new Map<boolean, HTMLCanvasElement>();
-function hutSprite(worn: boolean): HTMLCanvasElement {
-  const cached = hutCache.get(worn);
-  if (cached) return cached;
-  const W = 40;
-  const H = 46;
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
-  const g = c.getContext('2d')!;
-  const px = (x: number, y: number, col: string): void => {
-    g.fillStyle = col;
-    g.fillRect(x, y, 1, 1);
-  };
-  const light = worn ? '#bfa66a' : '#e2c66f';
-  const mid = worn ? '#a98f55' : '#c9a54d';
-  const dark = worn ? '#86703f' : '#a5823a';
-  const shade = worn ? '#6b5731' : '#876a2c';
-  const ink = '#4a3118';
-  const apexY = 5;
-  const baseY = 43;
-  const hw = (y: number): number => 1.5 + (y - apexY) * (18 / (baseY - apexY));
-  const door = (y: number): number => (y < 24 ? -1 : 1.5 + (y - 24) * 0.27);
-  for (let y = apexY; y <= baseY; y++) {
-    const half = hw(y);
-    const d = door(y);
-    for (let x = Math.ceil(20 - half); x <= Math.floor(19 + half); x++) {
-      const dx = x + 0.5 - 20;
-      const edge = Math.abs(dx) > half - 1 || y === baseY;
-      if (d >= 0 && Math.abs(dx) <= d) {
-        px(x, y, Math.abs(dx) > d - 1 ? ink : y > baseY - 4 ? '#3b2814' : '#2b1c10');
-        continue;
-      }
-      if (edge) {
-        px(x, y, ink);
-        continue;
-      }
-      const u = dx / (y - apexY + 2);
-      const band = Math.floor(u * 6);
-      let col = band % 2 === 0 ? light : mid;
-      if (u > 0.28) col = band % 2 === 0 ? mid : dark;
-      if (u > 0.55) col = shade;
-      const bind = [17, 28, 37].some((by) => y === by + Math.floor(Math.abs(dx) / 8));
-      if (bind) col = ink;
-      if (worn && (x * 7 + y * 13) % 17 === 0 && y > 14) continue;
-      px(x, y, col);
-    }
-  }
-  // Скрещённые жерди над макушкой.
-  const stick = (x0: number, y0: number, x1: number, y1: number): void => {
-    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
-    for (let k = 0; k <= n; k++) {
-      const x = Math.round(x0 + ((x1 - x0) * k) / n);
-      const y = Math.round(y0 + ((y1 - y0) * k) / n);
-      px(x, y, '#7a4d2b');
-      px(x + 1, y, ink);
-    }
-  };
-  stick(16, 0, 21, 9);
-  stick(25, 0, 19, 9);
-  hutCache.set(worn, c);
-  return c;
-}
-
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
 const ACT_SPRITE: Readonly<Partial<Record<FrAction, string>>> = { pick: 'act-hand', chop: 'item-axe', drink: 'act-drop', light: 'act-flame', feed: 'branch', cook: 'item-friedegg', open: 'chest', fill: 'item-flask', mine: 'item-pickaxe', cut: 'item-knife', fish: 'item-rod', travel: 'act-door', sleep: 'item-bed' };
@@ -2063,16 +1998,18 @@ export class ForestGame implements GameScreen {
       // Прозрачным шалаш становится уже за клетку до него.
       const inside = s.x >= c.x - 2 && s.x < c.x + 3 && s.y >= c.y - 2 && s.y < c.y + 3;
       this.hutAlpha += ((inside ? 0.28 : 1) - this.hutAlpha) * 0.15;
-      const hw = tile * 3.5;
-      const hh = hw * (46 / 40);
+      const size = tile * 3.95;
       ctx.save();
-      ctx.globalAlpha = this.hutAlpha;
+      ctx.globalAlpha = this.hutAlpha * (s.shelter / FR_SHELTER_RAINS > 0.3 ? 1 : 0.85);
       ctx.fillStyle = 'rgba(0,0,0,0.16)';
       ctx.beginPath();
       ctx.ellipse(x0 + w / 2, y0 + w + tile * 0.05, w * 0.52, tile * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(hutSprite(s.shelter / FR_SHELTER_RAINS <= 0.3), x0 + w / 2 - hw / 2, y0 + w + tile * 0.1 - hh, hw, hh);
+      if (!drawIcon(ctx, 'hut', x0 + w / 2, y0 + w + tile * 0.1 - size / 2, size)) {
+        ctx.fillStyle = 'rgba(236,222,186,0.5)';
+        ctx.fillRect(x0, y0, w, w);
+      }
       ctx.restore();
     }
     if (frRainHere(s)) {
