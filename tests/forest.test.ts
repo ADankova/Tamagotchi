@@ -428,15 +428,19 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect([...frDo(s, wx, wy, 'fill'), ...run(s, 20_000)]).toContainEqual({ type: 'needFlask' });
     s.inv = { flask: 1 };
     expect([...frDo(s, wx, wy, 'fill'), ...run(s, 20_000)]).toContainEqual({ type: 'filled' });
-    expect(s.inv.water).toBe(3);
+    expect(s.inv).toEqual({ fullflask: 1 });
+    s.stats.water = 20;
+    frEat(s, 'fullflask');
+    expect(s.stats.water).toBe(50);
+    expect(s.inv).toEqual({ flask: 1 });
   });
 
   it('рецепты: яичница, компот, чай, каша и ягодная каша', () => {
     expect(frRecipe(['egg'])).toBe('friedegg');
-    expect(frRecipe(['berries', 'water'])).toBe('compote');
-    expect(frRecipe(['grass', 'water'])).toBe('tea');
-    expect(frRecipe(['water', 'seeds'])).toBe('porridge');
-    expect(frRecipe(['berries', 'seeds', 'water'])).toBe('berryporridge');
+    expect(frRecipe(['berries', 'fullflask'])).toBe('compote');
+    expect(frRecipe(['grass', 'fullflask'])).toBe('tea');
+    expect(frRecipe(['fullflask', 'seeds'])).toBe('porridge');
+    expect(frRecipe(['berries', 'seeds', 'fullflask'])).toBe('berryporridge');
     expect(frRecipe(['berries', 'seeds'])).toBe(null);
   });
 
@@ -473,5 +477,11 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.inv.torch).toBe(2);
     expect(frCraft(s, 'flask')).toContainEqual({ type: 'crafted', item: 'flask' });
     expect(frCraft(s, 'flask')).toContainEqual({ type: 'haveIt' });
+    s.inv = { fullflask: 1, berries: 1 };
+    s.fire = 1000;
+    frPotAdd(s, 'fullflask');
+    frPotAdd(s, 'berries');
+    expect(frPotCook(s)).toContainEqual({ type: 'cooked', item: 'compote' });
+    expect(s.inv).toEqual({ flask: 1, compote: 1 });
   });
 });
