@@ -5,6 +5,10 @@ import {
   frFireRadius,
   frRainHere,
   frTravel,
+  frSmelt,
+  frCanSmelt,
+  FR_SMELT_ORE,
+  frHasPit,
   frToolUses,
   type FrPlace,
   FR_NIGHT_AT,
@@ -91,9 +95,9 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
-const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤' };
-const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick'];
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ironaxe', 'ironpick'];
+const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', campfire: '🔥' };
+const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -418,6 +422,16 @@ export class ForestGame implements GameScreen {
         case 'torchOut':
           this.say(M.torchOut, 'miss');
           break;
+        case 'openFoundry':
+          this.renderFoundry();
+          this.bag.removeAttribute('hidden');
+          break;
+        case 'smelted':
+          this.say(M.smelted, 'win');
+          break;
+        case 'campGone':
+          this.say(M.campGone, 'blocked');
+          break;
         case 'openLoom':
           this.renderLoom();
           this.bag.removeAttribute('hidden');
@@ -702,7 +716,7 @@ export class ForestGame implements GameScreen {
   private renderCraftDetail(id: (typeof FR_CRAFT)[number]['id']): void {
     const s = this.state;
     const r = FR_CRAFT.find((x) => x.id === id)!;
-    const owned = FR_BUILDINGS.includes(id) ? s.tiles.filter((k) => k === id).length : s.inv[id as FrItem] ?? 0;
+    const owned = id === 'campfire' ? (frHasPit(s) && s.loc !== 'home' ? 1 : 0) : FR_BUILDINGS.includes(id) ? s.tiles.filter((k) => k === id).length : s.inv[id as FrItem] ?? 0;
     const mats = r.cost.map(([it, n]) =>
       el('div', { class: 'fr-dmat' }, [
         el('span', { class: 'fr-slot' }, [this.iconCanvas(it)]),
@@ -711,12 +725,15 @@ export class ForestGame implements GameScreen {
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
     if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'trap')) make.setAttribute('disabled', '');
-    const away = FR_BUILDINGS.includes(id) && id !== 'trap' && s.loc !== 'home';
-    if (away) make.setAttribute('disabled', '');
+    const homeOnly = (id === 'chest' || id === 'loom' || id === 'foundry') && s.loc !== 'home';
+    const campOnly = id === 'campfire' && s.loc === 'home';
+    if (homeOnly || campOnly) make.setAttribute('disabled', '');
     const why =
-      away
+      homeOnly
         ? GAMES_TEXT.forestHomeOnly
-        : owned > 0 && id !== 'torch' && id !== 'trap'
+        : campOnly
+          ? GAMES_TEXT.forestCampOnly
+          : owned > 0 && id !== 'torch' && id !== 'trap'
         ? GAMES_TEXT.forestAlreadyBuilt
         : !frCanCraft(s, id)
           ? GAMES_TEXT.forestNeedMats
@@ -839,6 +856,34 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-craft' }, [el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestPlaces.loom ?? '' }), close]), ...rows]),
+    );
+  }
+
+  /** Литейная: 2 руды переплавляются в один железный слиток. */
+  private renderFoundry(): void {
+    const s = this.state;
+    const ore = s.inv.ore ?? 0;
+    const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestSmelt });
+    if (!frCanSmelt(s)) make.setAttribute('disabled', '');
+    make.addEventListener('click', () => {
+      this.handle(frSmelt(s));
+      this.renderFoundry();
+    });
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-craft' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestPlaces.foundry ?? '' }), close]),
+        el('div', { class: 'fr-recipe' }, [
+          el('span', { class: 'fr-slot' }, [this.iconCanvas('ingot')]),
+          el('div', { class: 'fr-recipe-info' }, [
+            el('b', { text: GAMES_TEXT.forestItems.ingot ?? '' }),
+            el('div', { class: 'fr-mats' }, [el('span', { class: ore >= FR_SMELT_ORE ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas('ore', 24), el('b', { text: `${Math.min(ore, FR_SMELT_ORE)}/${FR_SMELT_ORE}` })])]),
+            el('small', { text: `${GAMES_TEXT.forestItems.ingot}: ${s.inv.ingot ?? 0}` }),
+          ]),
+          make,
+        ]),
+      ]),
     );
   }
 
@@ -1255,7 +1300,7 @@ export class ForestGame implements GameScreen {
         ctx.fillRect(px + 1, py + 1, Math.ceil(tile) - 2, Math.ceil(tile) - 2);
       }
       if (this.placing.cell !== null) {
-        const draw = this.placing.id === 'loom' ? drawLoom : this.placing.id === 'trap' ? drawTrap : drawChest;
+        const draw = this.placing.id === 'loom' ? drawLoom : this.placing.id === 'trap' ? drawTrap : this.placing.id === 'foundry' ? drawFoundry : this.placing.id === 'campfire' ? drawCampGhost : drawChest;
         draw(ctx, sx((this.placing.cell % FR_W) + 0.5), sy(Math.floor(this.placing.cell / FR_W) + 0.5), tile);
       }
     }
@@ -1290,6 +1335,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
+        else if (kind === 'foundry') items.push({ y: y + 0.7, draw: () => drawFoundry(ctx, cx, cy, tile) });
         else if (kind === 'trap' || kind === 'trapfull') items.push({ y: y + 0.2, draw: () => drawTrap(ctx, cx, cy, tile, kind === 'trapfull') });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
@@ -1464,6 +1510,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'rock' && s.loc !== 'cave') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
         else if (kind === 'ore') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ore ?? '' });
         else if (kind === 'exit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[`exit_${frExitAt(s, i)?.to ?? 'home'}`] ?? '' });
+        else if (kind === 'foundry') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.foundry ?? '' });
         else if (kind === 'trapfull') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.trapfull ?? '' });
         else if (kind === 'loom') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.loom ?? '' });
         else if (kind === 'chest') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.chest ?? '' });
@@ -1716,6 +1763,32 @@ function drawExit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   ctx.textBaseline = 'middle';
   ctx.fillText(to === 'home' ? '⌂' : to === 'lake' ? '≈' : '▲', cx, cy - tile * 0.25 + Math.sin(t / 400) * tile * 0.02);
   void loc;
+}
+
+function drawFoundry(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  const w = tile * 0.8;
+  ctx.fillStyle = '#6b6560';
+  ctx.fillRect(cx - w / 2, cy - tile * 0.35, w, tile * 0.7);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1.5, tile * 0.05);
+  ctx.strokeRect(cx - w / 2, cy - tile * 0.35, w, tile * 0.7);
+  ctx.fillStyle = '#2b2622';
+  ctx.fillRect(cx - tile * 0.2, cy - tile * 0.05, tile * 0.4, tile * 0.3);
+  ctx.fillStyle = '#ff9f3b';
+  ctx.fillRect(cx - tile * 0.12, cy + tile * 0.08, tile * 0.24, tile * 0.14);
+  ctx.fillStyle = '#4b463f';
+  ctx.fillRect(cx - tile * 0.12, cy - tile * 0.5, tile * 0.24, tile * 0.18);
+}
+
+function drawCampGhost(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  ctx.fillStyle = '#6b6560';
+  ctx.beginPath();
+  ctx.arc(cx, cy + tile * 0.1, tile * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.font = `${Math.round(tile * 0.6)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🔥', cx, cy);
 }
 
 function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
@@ -2125,6 +2198,29 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.fillStyle = '#e8a23c';
       ctx.fillRect(cx - size * 0.1, cy - size * 0.1, size * 0.16, size * 0.16);
       break;
+    case 'ingot':
+      ctx.fillStyle = '#b8c2cc';
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.34, cy + size * 0.2);
+      ctx.lineTo(cx - size * 0.2, cy - size * 0.18);
+      ctx.lineTo(cx + size * 0.34, cy - size * 0.18);
+      ctx.lineTo(cx + size * 0.24, cy + size * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'ironknife':
+      ctx.fillStyle = '#b8c2cc';
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.05, cy + size * 0.05);
+      ctx.lineTo(cx + size * 0.32, cy - size * 0.34);
+      ctx.lineTo(cx + size * 0.12, cy + size * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#8a5a2b';
+      ctx.fillRect(cx - size * 0.28, cy + size * 0.02, size * 0.28, size * 0.12);
+      break;
     case 'ironaxe':
     case 'ironpick':
       ctx.strokeStyle = '#8a5a2b';
@@ -2161,6 +2257,7 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.fillRect(cx + size * 0.18, cy - size * 0.26, size * 0.1, size * 0.2);
       break;
     case 'broth':
+    case 'fishporridge':
     case 'meatporridge':
       ctx.fillStyle = '#c98a4b';
       ctx.beginPath();

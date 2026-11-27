@@ -729,7 +729,8 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.loc).toBe('lake');
     expect(s.tiles.includes('reed')).toBe(true);
     expect(s.tiles.includes('water')).toBe(true);
-    expect(s.pit).toEqual({ x: 15, y: 25 });
+    expect(s.pit).toEqual({ x: 15, y: 26 });
+    expect(s.tiles[frIndex(15, 26)]).not.toBe('pit');
     // на озере вечером приходят волки
     s.clock = m.FR_EVENING_AT - 10;
     run(s, 500);
@@ -757,10 +758,12 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     m.frTravel(s, 'lake');
     s.inv = { branch: 3, flint: 1 };
     s.weather = { rain: false, left: 99_999_999 };
-    m.frDo(s, s.pit.x, s.pit.y, 'light');
-    run(s, 12_000);
-    expect(s.fire).toBeGreaterThan(0);
-    expect(s.fire).toBeLessThanOrEqual(m.FR_FIRE_START_MS / 3);
+    expect(m.frHasPit(s)).toBe(false);
+    const spot = m.frCampSpots(s)[0]!;
+    expect(m.frCraft(s, 'campfire', spot)).toContainEqual({ type: 'crafted', item: 'campfire' });
+    expect(s.tiles[spot]).toBe('pit');
+    expect(s.pit).toEqual({ x: spot % 30, y: Math.floor(spot / 30) });
+    expect(s.fire).toBe(m.FR_FIRE_START_MS / 3);
     expect(m.frFireRadius(s)).toBe(m.FR_CAMP_RADIUS);
     // дождь без дерева тушит, с деревом нет
     s.weather = { rain: false, left: 100 };
@@ -782,6 +785,12 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     s.fire = 100_000;
     run(s, 500);
     expect(s.fire).toBeGreaterThan(0);
+    // время вышло: костёр пропадает
+    s.weather = { rain: false, left: 99_999_999 };
+    s.fire = 200;
+    expect(run(s, 500)).toContainEqual({ type: 'campGone' });
+    expect(s.tiles[frIndex(s.pit.x, s.pit.y)]).toBe('grass');
+    expect(m.frHasPit(s)).toBe(false);
     // пещера: без света не разбить руду
     const c = newForest(7);
     m.frTravel(c, 'cave');
@@ -798,7 +807,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect([...frDo(c, ox, oy, 'mine'), ...run(c, 30_000)]).toContainEqual({ type: 'mined' });
     expect(c.inv.ore).toBe(2);
     // железная кирка: 60 ударов
-    c.inv = { ore: 5, branch: 2 };
+    c.inv = { ingot: 4, branch: 3 };
     expect(m.frCraft(c, 'ironpick')).toContainEqual({ type: 'crafted', item: 'ironpick' });
     expect(m.frDurability(c, 'ironpick')).toBe(60);
   });
@@ -822,5 +831,33 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.inv.fish).toBe(fished);
     expect(m.frRecipe(['fish'])).toBe('friedfish');
     expect(m.frRecipe(['fullflask', 'fish'])).toBe('fishsoup');
+  });
+
+  it('литейная: 2 руды в слиток, железные инструменты из слитков, каша с рыбой', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { stone: 15, branch: 5 };
+    const spot = m.frChestSpots(s)[0]!;
+    expect(m.frCraft(s, 'foundry', spot)).toContainEqual({ type: 'crafted', item: 'foundry' });
+    expect(s.tiles[spot]).toBe('foundry');
+    expect(m.frActions(s, m.frTargetAt(s, spot % 30, Math.floor(spot / 30))!)).toEqual(['open']);
+    s.inv = { ore: 5 };
+    expect(m.frSmelt(s)).toContainEqual({ type: 'smelted' });
+    expect(m.frSmelt(s)).toContainEqual({ type: 'smelted' });
+    expect(m.frSmelt(s)).toEqual([{ type: 'needMaterials' }]);
+    expect(s.inv.ingot).toBe(2);
+    expect(s.inv.ore).toBe(1);
+    // слитки: нож 1+2, топор 3+3, кирка 4+3
+    for (const [id, ingots, branches] of [['ironknife', 1, 2], ['ironaxe', 3, 3], ['ironpick', 4, 3]] as const) {
+      const c = m.FR_CRAFT.find((r) => r.id === id)!;
+      expect(c.cost).toEqual([['ingot', ingots], ['branch', branches]]);
+    }
+    s.inv = { ingot: 1, branch: 2 };
+    expect(m.frCraft(s, 'ironknife')).toContainEqual({ type: 'crafted', item: 'ironknife' });
+    expect(m.frDurability(s, 'ironknife')).toBe(60);
+    expect(m.frRecipe(['fullflask', 'seeds', 'fish'])).toBe('fishporridge');
+    const q = m.FR_QUESTS.find((x) => x.id === 'ironpick')!;
+    expect(q.reward).toBe(0);
+    expect(q.items).toEqual({ ingot: 3 });
   });
 });
