@@ -10,7 +10,7 @@ export const FR_DAY_MS = 300_000;
 export const FR_EVENING_AT = 180_000;
 export const FR_NIGHT_AT = 210_000;
 /** Во сне у костра время идёт во столько раз быстрее. */
-export const FR_SLEEP_SPEED = 4;
+export const FR_SLEEP_SPEED = 5.2;
 export const FR_SLOTS = 12;
 export const FR_STACK = 10;
 /** Скорость ходьбы, клеток в секунду. */
@@ -26,8 +26,8 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -58,6 +58,12 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Что лежит в окошке готовки у костра (вынуто из рюкзака). */
   pot: FrItem[];
+  /** Что лежит в сундуке (если он построен). */
+  chest: Partial<Record<FrItem, number>>;
+  /** Сколько деревьев срублено и блюд приготовлено — для заданий. */
+  count: { chopped: number; cooked: number };
+  /** Номер текущего задания (равен числу заданий — всё выполнено). */
+  quest: number;
   stats: Record<FrStat, number>;
   /** Время суток, мс от начала дня. */
   clock: number;
@@ -91,11 +97,19 @@ export type FrEvent =
   | { type: 'cooked'; item: FrItem }
   | { type: 'nothingToCook' }
   | { type: 'openCook' }
+  | { type: 'openChest' }
+  | { type: 'chopped' }
+  | { type: 'crafted'; item: FrCraftId }
+  | { type: 'needMaterials' }
+  | { type: 'haveIt' }
+  | { type: 'noPlace' }
+  | { type: 'questDone'; step: number; reward: number }
   | { type: 'sleepNo' }
   | { type: 'fellAsleep' }
   | { type: 'thrown'; item: FrItem }
   | { type: 'fireOut' }
   | { type: 'needAxe' }
+  | { type: 'needKnife' }
   | { type: 'evening' }
   | { type: 'morning'; day: number; reward: number }
   | { type: 'woke' }
@@ -267,6 +281,9 @@ export function newForest(seed: number): FrState {
     busy: null,
     inv: {},
     pot: [],
+    chest: {},
+    count: { chopped: 0, cooked: 0 },
+    quest: 0,
     stats: { food: 80, water: 80, warmth: 100, health: 100 },
     clock: 0,
     day: 1,
@@ -417,9 +434,10 @@ export type FrTarget =
   | { kind: 'bush' }
   | { kind: 'water' }
   | { kind: 'tree' }
-  | { kind: 'pit' };
+  | { kind: 'pit' }
+  | { kind: 'chest' };
 
-export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep';
+export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep' | 'open';
 
 export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
   if (!inside(x, y)) return null;
@@ -428,7 +446,7 @@ export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
     const drop = s.drops.find((d) => d.x === x && d.y === y);
     return drop ? { kind: 'drop', drop } : { kind: 'ground' };
   }
-  return { kind: tile === 'pit' ? 'pit' : tile };
+  return { kind: tile };
 }
 
 /** Какие кнопки показать у предмета. */
@@ -443,6 +461,8 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
       return ['drink'];
     case 'pit':
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
+    case 'chest':
+      return ['open'];
     case 'ground':
       return [];
   }
@@ -453,6 +473,10 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
  * К дереву, кусту и костру питомец подходит вплотную, к воде — до берега.
  */
 export function frDo(s: FrState, x: number, y: number, action: FrAction | null, point?: [number, number]): FrEvent[] {
+  return withQuest(s, doAction(s, x, y, action, point));
+}
+
+function doAction(s: FrState, x: number, y: number, action: FrAction | null, point?: [number, number]): FrEvent[] {
   if (s.over || !inside(x, y)) return [];
   const i = frIndex(x, y);
   const tile = s.tiles[i];
@@ -460,7 +484,7 @@ export function frDo(s: FrState, x: number, y: number, action: FrAction | null, 
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -508,6 +532,7 @@ function arrive(s: FrState): FrEvent[] {
       if (goal.id !== undefined) {
         const d = s.drops.find((it) => it.id === goal.id);
         if (!d) return [];
+        if (d.kind === 'grass' && !(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
         if (!canTake(s.inv, d.kind)) return [{ type: 'full' }];
         s.drops = s.drops.filter((it) => it.id !== d.id);
         s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
@@ -526,8 +551,18 @@ function arrive(s: FrState): FrEvent[] {
       s.stats.water = Math.min(100, s.stats.water + 30);
       s.busy = { kind: 'drink', left: FR_ACTION_MS };
       return [{ type: 'drank' }];
-    case 'chop':
-      return [{ type: 'needAxe' }];
+    case 'chop': {
+      if (!(s.inv.axe ?? 0)) return [{ type: 'needAxe' }];
+      if (s.tiles[goal.cell] !== 'tree') return [];
+      if (!canTake(s.inv, 'branch')) return [{ type: 'full' }];
+      s.tiles[goal.cell] = 'grass';
+      s.inv.branch = (s.inv.branch ?? 0) + 2;
+      s.count.chopped += 1;
+      s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
+      return [{ type: 'chopped' }];
+    }
+    case 'open':
+      return [{ type: 'openChest' }];
     case 'light':
     case 'feed':
       return tendFire(s);
@@ -611,7 +646,8 @@ export function frPotCook(s: FrState): FrEvent[] {
   if (!out) return [{ type: 'nothingToCook' }];
   s.pot = [];
   s.inv[out] = (s.inv[out] ?? 0) + 1;
-  return [{ type: 'cooked', item: out }];
+  s.count.cooked += 1;
+  return withQuest(s, [{ type: 'cooked', item: out }]);
 }
 
 /** Сколько сытости даёт еда из рюкзака. */
@@ -665,6 +701,10 @@ const LOW = 25;
 
 /** Сдвигает игру на dt реальных миллисекунд. Меняет состояние на месте, возвращает события. */
 export function frTick(s: FrState, dt: number): FrEvent[] {
+  return withQuest(s, tick(s, dt));
+}
+
+function tick(s: FrState, dt: number): FrEvent[] {
   if (s.over) return [];
   const events: FrEvent[] = [];
   const speed = s.sleeping ? FR_SLEEP_SPEED : 1;
@@ -758,7 +798,120 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!Array.isArray(s.drops) || !Array.isArray(s.berries)) return null;
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
+  if (!s.chest || typeof s.chest !== 'object') s.chest = {};
+  if (!s.count) s.count = { chopped: 0, cooked: 0 };
+  if (typeof s.quest !== 'number') s.quest = 0;
   if (!Array.isArray(s.path) || s.path.some((p) => !Array.isArray(p))) s.path = [];
   if (typeof s.x !== 'number' || typeof s.y !== 'number' || !s.stats || typeof s.clock !== 'number') return null;
   return s;
+}
+
+// --- Крафт, сундук, задания ---
+
+export type FrCraftId = 'knife' | 'axe' | 'chest';
+
+export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
+  { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
+  { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
+  { id: 'chest', cost: [['branch', 6], ['stone', 4], ['grass', 2]] },
+];
+
+export function frCanCraft(s: FrState, id: FrCraftId): boolean {
+  const r = FR_CRAFT.find((x) => x.id === id);
+  return !!r && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
+}
+
+/** Клетка, где встанет сундук: рядом с костровищем. */
+function chestSpot(s: FrState): number | null {
+  const c = frCenter();
+  for (const [dx, dy] of [[2, 0], [-2, 0], [0, -2], [2, 1], [-2, 1], [2, -1], [-2, -1], [1, -2], [-1, -2]] as const) {
+    const i = frIndex(c.x + dx, c.y + dy);
+    if (s.tiles[i] === 'grass' && !s.drops.some((d) => d.x === c.x + dx && d.y === c.y + dy)) return i;
+  }
+  return null;
+}
+
+export function frChestBuilt(s: FrState): boolean {
+  return s.tiles.includes('chest');
+}
+
+/** Смастерить предмет из материалов рюкзака. Топор — в рюкзак, сундук — рядом с костром. */
+export function frCraft(s: FrState, id: FrCraftId): FrEvent[] {
+  const r = FR_CRAFT.find((x) => x.id === id);
+  if (!r || s.over) return [];
+  if ((id === 'axe' || id === 'knife') && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
+  if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
+  let spot: number | null = null;
+  if (id === 'chest') {
+    spot = chestSpot(s);
+    if (spot === null) return [{ type: 'noPlace' }];
+  }
+  for (const [item, n] of r.cost) take(s, item, n);
+  if (id === 'axe' || id === 'knife') s.inv[id] = 1;
+  else s.tiles[spot!] = 'chest';
+  return withQuest(s, [{ type: 'crafted', item: id }]);
+}
+
+/** Переложить одну штуку из рюкзака в сундук. */
+export function frChestPut(s: FrState, item: FrItem): boolean {
+  if (!(s.inv[item] ?? 0) || !canTake(s.chest, item)) return false;
+  take(s, item, 1);
+  s.chest[item] = (s.chest[item] ?? 0) + 1;
+  return true;
+}
+
+/** Достать одну штуку из сундука в рюкзак. */
+export function frChestTake(s: FrState, item: FrItem): boolean {
+  if (!(s.chest[item] ?? 0) || !canTake(s.inv, item)) return false;
+  const left = (s.chest[item] ?? 0) - 1;
+  if (left > 0) s.chest[item] = left;
+  else delete s.chest[item];
+  s.inv[item] = (s.inv[item] ?? 0) + 1;
+  return true;
+}
+
+/** Цепочка заданий: выполненные по порядку дают лакомства. */
+export const FR_QUESTS: ReadonlyArray<{ need: number; reward: number }> = [
+  { need: 1, reward: 1 }, // собрать 3 ветки и кремень
+  { need: 1, reward: 1 }, // разжечь костёр
+  { need: 1, reward: 1 }, // сделать нож
+  { need: 1, reward: 2 }, // сделать топор
+  { need: 2, reward: 2 }, // срубить 2 дерева
+  { need: 1, reward: 1 }, // приготовить блюдо
+  { need: 1, reward: 2 }, // построить сундук
+  { need: 1, reward: 3 }, // пережить ночь
+];
+
+/** Сколько уже сделано по заданию step (0..need). */
+export function frQuestProgress(s: FrState, step: number, events: readonly FrEvent[] = []): number {
+  switch (step) {
+    case 0:
+      return (s.inv.branch ?? 0) >= 3 && (s.inv.flint ?? 0) >= 1 ? 1 : 0;
+    case 1:
+      return s.fire > 0 ? 1 : 0;
+    case 2:
+      return (s.inv.knife ?? 0) > 0 ? 1 : 0;
+    case 3:
+      return (s.inv.axe ?? 0) > 0 ? 1 : 0;
+    case 4:
+      return Math.min(2, s.count.chopped);
+    case 5:
+      return s.count.cooked > 0 ? 1 : 0;
+    case 6:
+      return frChestBuilt(s) ? 1 : 0;
+    default:
+      return events.some((e) => e.type === 'morning') ? 1 : 0;
+  }
+}
+
+function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
+  while (s.quest < FR_QUESTS.length) {
+    const q = FR_QUESTS[s.quest]!;
+    if (frQuestProgress(s, s.quest, events) < q.need) break;
+    s.treats += q.reward;
+    events.push({ type: 'questDone', step: s.quest, reward: q.reward });
+    s.quest += 1;
+  }
+  return events;
 }

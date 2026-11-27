@@ -3209,3 +3209,45 @@ button.m-jar:active {
   filter: grayscale(0.8) brightness(0.8);
   cursor: not-allowed;
 }
+
+.fr-quest {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+}
+.fr-sub {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+.fr-recipe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  text-align: left;
+}
+.fr-recipe .fr-slot {
+  width: 56px;
+  flex: none;
+  font-size: 1.8rem;
+}
+.fr-recipe-info {
+  flex: 1;
+  min-width: 0;
+}
+.fr-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 0.8rem;
+  opacity: 0.55;
+}
+.fr-mat.ok {
+  opacity: 1;
+  color: #2a7a3d;
+  font-weight: 900;
+}
+.fr-recipe .fr-action:disabled {
+  opacity: 0.45;
+}
