@@ -40,6 +40,7 @@ import {
   frRecipe,
   frTargetAt,
   frThrow,
+  frEarn,
   frCenter,
   frEat,
   frIndex,
@@ -398,8 +399,10 @@ describe('«Дикий лес»: сутки', () => {
     expect(s.stats.warmth).toBeGreaterThan(cold);
     s.clock = FR_DAY_MS - 1000;
     const events = run(s, 2000);
-    expect(events).toContainEqual({ type: 'morning', day: 2, reward: FR_NIGHT_REWARD });
-    expect(s.treats).toBe(FR_NIGHT_REWARD);
+    // Ночная награда в 4 раза меньше: 2 «старые» конфеты копятся, целой пока нет.
+    expect(events).toContainEqual({ type: 'morning', day: 2, reward: 0 });
+    expect(s.treats).toBe(0);
+    expect(s.count.treatQ).toBe(FR_NIGHT_REWARD);
   });
 
   it('сон у костра ускоряет ночь и лечит; погасший костёр будит', () => {
@@ -1288,5 +1291,17 @@ describe('пачки: выбросить и удалить с количеств
 
   it('волк сильнее: 40 жизней', () => {
     expect(FR_MOBS.wolf.hp).toBe(40);
+  });
+});
+
+describe('конфеты в лесу: в 4 раза меньше', () => {
+  it('копятся по четвертинкам', () => {
+    const s = newForest(7);
+    s.treats = 0;
+    s.count.treatQ = 0;
+    expect(frEarn(s, 2)).toBe(0);
+    expect(frEarn(s, 2)).toBe(1);
+    expect(frEarn(s, 8)).toBe(2);
+    expect(s.treats).toBe(3);
   });
 });

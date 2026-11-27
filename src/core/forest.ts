@@ -32,6 +32,17 @@ export const FR_FIRE_MAX_MS = 480_000;
 export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
+/** Награды конфетами в 4 раза меньше: копятся по четвертинкам, целая конфета — за каждые 4. */
+export const FR_TREAT_DIV = 4;
+
+/** Начисляет награду (в «старых» конфетах) и возвращает, сколько целых конфет выдано сейчас. */
+export function frEarn(s: FrState, amount: number): number {
+  const q = (s.count.treatQ ?? 0) + amount;
+  const whole = Math.floor(q / FR_TREAT_DIV);
+  s.count.treatQ = q - whole * FR_TREAT_DIV;
+  s.treats += whole;
+  return whole;
+}
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry' | 'dryer' | 'lighthouse' | 'ruins';
 export type FrPlace = 'home' | 'lake' | 'cave';
@@ -1125,7 +1136,7 @@ function arriveInner(s: FrState): FrEvent[] {
       if (rand(s.seed + 16_000 + tries * 31)() < FR_TREASURE_CHANCE) {
         const q = rand(s.seed + 17_000 + tries * 37);
         bump(s, 'treasure');
-        if (q() < 0.15) {
+        if (q() < 0.15 / FR_TREAT_DIV) {
           s.treats += 1;
           return [{ type: 'treasure', treat: true }];
         }
@@ -1676,7 +1687,7 @@ function tick(s: FrState, dt: number): FrEvent[] {
   if (s.clock >= FR_DAY_MS) {
     s.clock -= FR_DAY_MS;
     s.day += 1;
-    s.treats += FR_NIGHT_REWARD + ((s.count.beacon ?? 0) > 0 ? 1 : 0);
+    const nightPaid = frEarn(s, FR_NIGHT_REWARD + ((s.count.beacon ?? 0) > 0 ? 1 : 0));
     if (s.loc === 'cave') bump(s, 'caveNight');
     restock(s, rand(s.seed + s.day * 7919));
     spawnDay(s);
@@ -1684,7 +1695,7 @@ function tick(s: FrState, dt: number): FrEvent[] {
       s.sleeping = false;
       events.push({ type: 'woke' });
     }
-    events.push({ type: 'morning', day: s.day, reward: FR_NIGHT_REWARD + ((s.count.beacon ?? 0) > 0 ? 1 : 0) });
+    events.push({ type: 'morning', day: s.day, reward: nightPaid });
   }
 
   if (s.stats.health <= 0) {
@@ -2014,8 +2025,7 @@ export function frClaim(s: FrState, id: string): FrEvent[] {
   }
   s.inv = probe;
   s.claimed.push(id);
-  s.treats += q.reward;
-  const ev: FrEvent[] = [{ type: 'questDone', id, reward: q.reward }];
+  const ev: FrEvent[] = [{ type: 'questDone', id, reward: frEarn(s, q.reward) }];
   if (q.kind === 'story') ev.push({ type: 'storyDone', id });
   ensureAlpha(s, rand(s.seed + 25_000 + s.claimed.length * 7));
   return withQuest(s, ev);
