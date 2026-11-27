@@ -184,7 +184,35 @@ export class ForestGame implements GameScreen {
       this.note,
       el('div', { class: 'fr-actions' }, [bagButton, craftButton, this.sleepButton]),
     ]);
-    this.canvas.addEventListener('click', (e) => this.tap(e));
+    this.canvas.style.touchAction = 'none';
+    this.canvas.addEventListener('click', (e) => {
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return;
+      }
+      this.tap(e);
+    });
+    this.canvas.addEventListener('pointerdown', (e) => {
+      this.drag = { px: e.clientX, py: e.clientY, ox: this.pan.x, oy: this.pan.y };
+      this.dragMoved = false;
+    });
+    this.canvas.addEventListener('pointermove', (e) => {
+      const d = this.drag;
+      if (!d) return;
+      const dx = e.clientX - d.px;
+      const dy = e.clientY - d.py;
+      if (!this.dragMoved && Math.hypot(dx, dy) < 10) return;
+      this.dragMoved = true;
+      const tile = this.canvas.getBoundingClientRect().width / VIEW_W || 1;
+      this.pan = { x: d.ox - dx / tile, y: d.oy - dy / tile };
+      this.closeMenu();
+    });
+    const endDrag = (): void => {
+      this.drag = null;
+    };
+    this.canvas.addEventListener('pointerup', endDrag);
+    this.canvas.addEventListener('pointercancel', endDrag);
+    this.canvas.addEventListener('pointerleave', endDrag);
     this.bag.addEventListener('click', (e) => {
       if (e.target === this.bag) this.closeBag();
     });
@@ -1275,12 +1303,23 @@ export class ForestGame implements GameScreen {
     }
   }
 
+  /** Сдвиг камеры (в клетках) от слежения за питомцем; сбрасывается, когда питомец двигается. */
+  private pan = { x: 0, y: 0 };
+  private drag: { px: number; py: number; ox: number; oy: number } | null = null;
+  private dragMoved = false;
+  private lastPet = { x: -1, y: -1, loc: '' };
+
   private view(): { tile: number; rows: number; camX: number; camY: number } {
     const s = this.state;
     const tile = this.canvas.width / VIEW_W || 1;
     const rows = this.canvas.height / tile;
-    const camX = clamp(s.x - VIEW_W / 2, 0, FR_W - VIEW_W);
-    const camY = clamp(s.y - rows / 2, 0, FR_H - rows);
+    if (Math.abs(s.x - this.lastPet.x) > 1e-6 || Math.abs(s.y - this.lastPet.y) > 1e-6 || s.loc !== this.lastPet.loc) {
+      this.lastPet = { x: s.x, y: s.y, loc: s.loc };
+      this.pan = { x: 0, y: 0 };
+    }
+    const camX = clamp(s.x - VIEW_W / 2 + this.pan.x, 0, FR_W - VIEW_W);
+    const camY = clamp(s.y - rows / 2 + this.pan.y, 0, FR_H - rows);
+    this.pan = { x: camX - (s.x - VIEW_W / 2), y: camY - (s.y - rows / 2) };
     return { tile, rows, camX, camY };
   }
 
