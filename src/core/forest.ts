@@ -1750,7 +1750,7 @@ export type FrLoomId = 'cloth' | 'purse' | 'shelter' | 'bed';
 
 export const FR_LOOM: ReadonlyArray<{ id: FrLoomId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'cloth', cost: [['grass', 3]] },
-  { id: 'purse', cost: [['cloth', 5], ['grass', 5]] },
+  { id: 'purse', cost: [['cloth', 3], ['grass', 5]] },
   { id: 'shelter', cost: [['cloth', 10], ['branch', 5], ['stone', 3], ['grass', 5]] },
   { id: 'bed', cost: [['cloth', 5], ['grass', 5]] },
 ];

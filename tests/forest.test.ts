@@ -496,8 +496,8 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.tiles[spot]).toBe('loom');
     expect(m.frWeave(s, 'cloth')).toEqual([{ type: 'needMaterials' }]);
     s.inv = { grass: 20 };
-    for (let k = 0; k < 5; k++) m.frWeave(s, 'cloth');
-    expect(s.inv.cloth).toBe(5);
+    for (let k = 0; k < 3; k++) m.frWeave(s, 'cloth');
+    expect(s.inv.cloth).toBe(3);
     expect(m.frWeave(s, 'purse')).toContainEqual({ type: 'crafted', item: 'purse' });
     expect(s.inv.purse).toBe(1);
     const base = m.frCapacity(s);
