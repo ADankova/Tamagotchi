@@ -1266,6 +1266,11 @@ export class ForestGame implements GameScreen {
   private renderStoryStart(id: string): void {
     const q = FR_QUESTS.find((x) => x.id === id);
     if (!q) return;
+    // Глава уже выполнена (записка смотрителя): сразу «Забрать».
+    if (frQuestState(this.state, q) === 'ready') {
+      this.renderStoryReady(id);
+      return;
+    }
     const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryGo });
     go.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
@@ -1285,7 +1290,7 @@ export class ForestGame implements GameScreen {
     this.bag.replaceChildren(
       this.splitCard(
         this.chapterTitle(id),
-        [el('p', { class: 'fr-card-desc', text: id === 'ch1' ? GAMES_TEXT.forestStory.ch1?.text ?? '' : GAMES_TEXT.forestTaskDone }), this.rewardRow(id)],
+        [el('p', { class: 'fr-card-desc', text: id === 'ch1' ? GAMES_TEXT.forestStory.ch1?.text ?? '' : GAMES_TEXT.forestStoryDone[id] ?? GAMES_TEXT.forestTaskDone }), this.rewardRow(id)],
         [take],
       ),
     );

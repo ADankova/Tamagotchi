@@ -1305,3 +1305,16 @@ describe('конфеты в лесу: в 4 раза меньше', () => {
     expect(s.treats).toBe(3);
   });
 });
+
+describe('записка смотрителя', () => {
+  it('сразу после сундучка глава «Записка» готова, пещера и мыши — в «Линзе»', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.count.treasure = 1;
+    s.claimed.push('ch1', 'ch2');
+    const ch3 = m.FR_QUESTS.find((x) => x.id === 'ch3')!;
+    const ch4 = m.FR_QUESTS.find((x) => x.id === 'ch4')!;
+    expect(m.frQuestState(s, ch3)).toBe('ready');
+    expect(ch4.parts.map((p) => p.key)).toContain('visit:cave');
+  });
+});
