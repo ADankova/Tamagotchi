@@ -388,6 +388,33 @@ function canTake(inv: FrState['inv'], item: FrItem, cap = FR_SLOTS): boolean {
   return n % FR_STACK !== 0 || frSlotsUsed(inv) < cap;
 }
 
+/** Поместится ли предмет, если сперва убрать из рюкзака материалы (ячейки освобождаются только при опустошении стопки). */
+function fitsAfter(s: FrState, remove: ReadonlyArray<readonly [FrItem, number]>, add: FrItem): boolean {
+  const inv: FrState['inv'] = { ...s.inv };
+  for (const [item, n] of remove) {
+    const left = (inv[item] ?? 0) - n;
+    if (left > 0) inv[item] = left;
+    else delete inv[item];
+  }
+  return canTake(inv, add, frCapacity(s));
+}
+
+/** Страховка: всё, что не влезло в рюкзак (старые сохранения, редкие случаи), выкладывается на землю рядом с питомцем. */
+export function frTrimBag(s: FrState): number {
+  const cap = frCapacity(s);
+  let spilled = 0;
+  const cx = Math.floor(s.x);
+  const cy = Math.floor(s.y);
+  while (frSlotsUsed(s.inv) > cap) {
+    const items = Object.keys(s.inv).filter((k) => (s.inv[k as FrItem] ?? 0) > 0) as FrItem[];
+    const item = items[items.length - 1];
+    if (!item || !dropNear(s, item, cx, cy)) break;
+    take(s, item, 1);
+    spilled++;
+  }
+  return spilled;
+}
+
 /** Сколько ячеек в рюкзаке: 12 и по 4 за каждый надетый кошелёк. */
 export const FR_PURSE_BONUS = 4;
 export const FR_GEAR_SLOTS = 3;
@@ -1484,6 +1511,7 @@ export function frTick(s: FrState, dt: number): FrEvent[] {
 function tick(s: FrState, dt: number): FrEvent[] {
   if (s.over) return [];
   const events: FrEvent[] = [];
+  if (frTrimBag(s)) events.push({ type: 'spilled' });
   const speed = s.sleeping ? FR_SLEEP_SPEED : 1;
   const gdt = dt * speed;
 
@@ -1783,7 +1811,7 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
   if (!FR_BUILDINGS.includes(id) && id !== 'torch' && id !== 'lantern' && id !== 'flask' && (s.inv[id as FrItem] ?? 0) > 0) return [{ type: 'haveIt' }];
-  if ((id === 'torch' || id === 'lantern' || id === 'flask') && !canTake(s.inv, id, frCapacity(s))) return [{ type: 'full' }];
+  if (!FR_BUILDINGS.includes(id) && frCanCraft(s, id) && !fitsAfter(s, r.cost, id as FrItem)) return [{ type: 'full' }];
   if (id === 'campfire') {
     if (s.loc === 'home') return [{ type: 'noPlace' }];
     if (frHasPit(s)) return [{ type: 'haveIt' }];
@@ -2337,6 +2365,7 @@ export function frDry(s: FrState, from: FrItem): FrEvent[] {
   const d = FR_DRY.find((x) => x.from === from);
   if (s.over || !d || !frBuilt(s, 'dryer')) return [];
   if (!frCanDry(s, from)) return [{ type: 'needMaterials' }];
+  if (!fitsAfter(s, [[from, 1], ['salt', 1]], d.to)) return [{ type: 'full' }];
   take(s, from, 1);
   take(s, 'salt', 1);
   s.inv[d.to] = (s.inv[d.to] ?? 0) + 1;

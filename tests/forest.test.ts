@@ -132,6 +132,23 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(s.sleeping).toBe(true);
   });
 
+  it('рюкзак: полный рюкзак не принимает новый предмет из крафта и сушки, лишнее выкладывается', () => {
+    const s = newForest(7);
+    // 11 ячеек заняты камнями, 12-я — стопка веток (хватит на нож, но стопка не освободится).
+    s.inv = { stone: FR_STACK * 10 + 5, branch: FR_STACK };
+    expect(frSlotsUsed(s.inv)).toBe(FR_SLOTS);
+    expect(frCraft(s, 'knife')).toContainEqual({ type: 'full' });
+    expect(s.inv.knife).toBe(undefined);
+    expect(s.inv.branch).toBe(FR_STACK);
+    // Страховка: лишнее из старого сохранения не прячется, а ложится на землю.
+    s.inv.knife = 1;
+    expect(frSlotsUsed(s.inv)).toBeGreaterThan(FR_SLOTS);
+    const drops = s.drops.length;
+    frTick(s, 50);
+    expect(frSlotsUsed(s.inv)).toBeLessThanOrEqual(FR_SLOTS);
+    expect(s.drops.length).toBeGreaterThan(drops);
+  });
+
   it('рюкзак: 12 ячеек по 20 штук', () => {
     const s = newForest(7);
     s.inv = { stone: FR_STACK * FR_SLOTS };
