@@ -892,3 +892,24 @@ describe('yields', () => {
     expect(c[0]! > c[1]! && c[1]! > c[2]! && c[2]! > 0).toBe(true);
   });
 });
+
+describe('сушилка', () => {
+  it('мясо и рыба с солью превращаются в вяленое', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { branch: 10, cloth: 2, grass: 5 };
+    const spot = m.frChestSpots(s)[0]!;
+    expect(m.frCraft(s, 'dryer', spot)).toContainEqual({ type: 'crafted', item: 'dryer' });
+    expect(s.tiles[spot]).toBe('dryer');
+    expect(m.frActions(s, m.frTargetAt(s, spot % 30, Math.floor(spot / 30))!)).toEqual(['open']);
+    s.inv = { meat: 1, fish: 1 };
+    expect(m.frDry(s, 'meat')).toContainEqual({ type: 'needMaterials' });
+    s.inv.salt = 2;
+    expect(m.frDry(s, 'meat')).toContainEqual({ type: 'dried' });
+    expect(m.frDry(s, 'fish')).toContainEqual({ type: 'dried' });
+    expect(s.inv.jerky).toBe(1);
+    expect(s.inv.driedfish).toBe(1);
+    expect(s.inv.salt ?? 0).toBe(0);
+    expect(m.FR_EFFECTS.jerky?.food).toBeGreaterThan(m.FR_EFFECTS.steak!.food! - 10);
+  });
+});
