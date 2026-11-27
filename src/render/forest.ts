@@ -49,6 +49,8 @@ import {
   frUnwear,
   FR_BUILDINGS,
   FR_LOOM,
+  type FrLoomId,
+  frBuilt,
   FR_GEAR_SLOTS,
   type FrCraftId,
   frChestTake,
@@ -129,6 +131,7 @@ const CRAFT_TABS: ReadonlyArray<{ id: string; icon: string; emoji: string; items
   { id: 'home', icon: 'chest', emoji: '📦', items: ['chest', 'shelter', 'bed', 'lighthouse'] },
   { id: 'weapon', icon: 'item-spear', emoji: '🗡️', items: ['spear'] },
 ];
+const isLoomId = (id: string): id is FrLoomId => FR_LOOM.some((r) => r.id === id);
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
@@ -873,7 +876,8 @@ export class ForestGame implements GameScreen {
   /** Окно крафта: вкладки слева (только значки), плитки предметов с материалами; нажатие открывает подробности. */
   private renderCraft(): void {
     const s = this.state;
-    const groups = CRAFT_TABS.map((t) => ({ ...t, recipes: FR_CRAFT.filter((r) => t.items.includes(r.id) && frCraftUnlocked(s, r.id)) })).filter((t) => t.recipes.length > 0);
+    const all: ReadonlyArray<{ id: string; cost: ReadonlyArray<readonly [FrItem, number]> }> = [...FR_CRAFT.filter((r) => frCraftUnlocked(s, r.id)), ...FR_LOOM.filter((r) => r.id !== 'cloth')];
+    const groups = CRAFT_TABS.map((t) => ({ ...t, recipes: all.filter((r) => t.items.includes(r.id)) })).filter((t) => t.recipes.length > 0);
     if (!groups.some((t) => t.id === this.craftTab)) this.craftTab = groups[0]?.id ?? 'fire';
     const tabs = groups.map((t) => {
       const b = el('button', { type: 'button', class: this.craftTab === t.id ? 'fr-tab on' : 'fr-tab', 'aria-label': GAMES_TEXT.forestCraftTabs[t.id] ?? t.id, title: GAMES_TEXT.forestCraftTabs[t.id] ?? t.id }, [this.tabIcon(t.icon, t.emoji)]);
@@ -885,14 +889,14 @@ export class ForestGame implements GameScreen {
     });
     const recipes = groups.find((t) => t.id === this.craftTab)?.recipes ?? [];
     const tiles = recipes.map((r) => {
-      const can = frCanCraft(s, r.id);
+      const can = isLoomId(r.id) ? frCanWeave(s, r.id) && frBuilt(s, 'loom') : frCanCraft(s, r.id as FrCraftId);
       const mats = r.cost.map(([it, n]) =>
         el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: String(n) })]),
       );
       const tile = el('button', { type: 'button', class: can ? 'fr-ctile can' : 'fr-ctile', 'aria-label': GAMES_TEXT.forestItems[r.id] ?? r.id }, [
         this.iconCanvas(r.id as FrItem, 72),
       ]);
-      tile.addEventListener('click', () => this.renderCraftDetail(r.id));
+      tile.addEventListener('click', () => (isLoomId(r.id) ? this.renderLoomDetail(r.id) : this.renderCraftDetail(r.id as FrCraftId)));
       return el('div', { class: 'fr-citem' }, [
         el('div', { class: 'fr-crow' }, [tile, el('div', { class: 'fr-cmats' }, mats)]),
         el('div', { class: 'fr-cname', text: GAMES_TEXT.forestItems[r.id] ?? r.id }),
@@ -1027,10 +1031,46 @@ export class ForestGame implements GameScreen {
     return el('div', { class: 'fr-gear' }, [el('span', { class: 'fr-gear-title', text: GAMES_TEXT.forestGear }), ...slots]);
   }
 
-  /** Ткацкий станок: ткань из травы и кошелёк из ткани. */
+  /** Карточка предмета со станка: ткань, кошелёк, палатка, лежак. */
+  private renderLoomDetail(id: FrLoomId): void {
+    const s = this.state;
+    const r = FR_LOOM.find((x) => x.id === id)!;
+    const owned = id === 'shelter' ? (s.shelter > 0 ? 1 : 0) : id === 'bed' ? (s.bed ? 1 : 0) : s.inv[id as FrItem] ?? 0;
+    const mats = r.cost.map(([it, n]) =>
+      el('div', { class: 'fr-dmat' }, [
+        el('span', { class: 'fr-slot' }, [this.iconCanvas(it)]),
+        el('b', { class: (s.inv[it] ?? 0) >= n ? 'ok' : 'bad', text: `${Math.min(s.inv[it] ?? 0, 99)}/${n}` }),
+      ]),
+    );
+    const noLoom = !frBuilt(s, 'loom');
+    const done = frLoomDone(s, id);
+    const make = el('button', { type: 'button', class: 'chunky fr-action', text: done ? (id === 'shelter' ? `${s.shelter}/${FR_SHELTER_RAINS}` : GAMES_TEXT.forestHave) : GAMES_TEXT.forestMake });
+    if (noLoom || !frCanWeave(s, id)) make.setAttribute('disabled', '');
+    const why = noLoom ? GAMES_TEXT.forestNeedLoom : done ? GAMES_TEXT.forestAlreadyBuilt : !frCanWeave(s, id) ? GAMES_TEXT.forestNeedMats : '';
+    make.addEventListener('click', () => {
+      this.handle(frWeave(s, id));
+      this.renderLoomDetail(id);
+    });
+    const back = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    back.addEventListener('click', () => this.renderCraft());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
+        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
+        el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+        el('div', { class: 'fr-dmats' }, mats),
+        make,
+        ...(why ? [el('p', { class: 'fr-card-desc fr-why', text: why })] : []),
+      ]),
+    );
+  }
+
+  /** Ткацкий станок: здесь ткётся только ткань (кошелёк, палатка и лежак — в общем крафте). */
   private renderLoom(): void {
     const s = this.state;
-    const rows = FR_LOOM.map((r) => {
+    const rows = FR_LOOM.filter((r) => r.id === 'cloth').map((r) => {
       const mats = r.cost.map(([it, n]) =>
         el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: `${Math.min(s.inv[it] ?? 0, n)}/${n}` })]),
       );
