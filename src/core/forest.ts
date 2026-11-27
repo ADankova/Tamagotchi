@@ -1691,9 +1691,14 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'trap', cost: [['cloth', 5], ['branch', 10]] },
 ];
 
+/** Рецепт открыт? Маяк появляется в крафте, когда пройдена глава сюжета перед «Построй маяк» (ch7). */
+export function frCraftUnlocked(s: FrState, id: FrCraftId): boolean {
+  return id !== 'lighthouse' || s.claimed.includes('ch7') || s.tiles.includes('lighthouse');
+}
+
 export function frCanCraft(s: FrState, id: FrCraftId): boolean {
   const r = FR_CRAFT.find((x) => x.id === id);
-  return !!r && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
+  return !!r && frCraftUnlocked(s, id) && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
 }
 
 /** Клетки возле костровища, куда можно поставить сундук (трава и высокая трава без предметов). */
