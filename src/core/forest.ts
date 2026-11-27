@@ -30,6 +30,10 @@ export const FR_FIRE_RADIUS = 3.5;
 export const FR_NIGHT_REWARD = 2;
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom';
+export const FR_DRY_FIRST_MS = 150_000;
+export const FR_SHELTER_RAINS = 30;
+export const FR_BED_HEAL = 3;
+
 export type FrTool = 'knife' | 'axe' | 'pickaxe';
 export const FR_TOOL_USES = 20;
 export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse';
@@ -63,6 +67,12 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
   worn: FrItem[];
+  /** Погода: идёт ли дождь и сколько мс (игрового времени) до смены. */
+  weather: { rain: boolean; left: number };
+  /** Прочность шалаша вокруг костра: сколько дождей ещё выдержит (0 — шалаша нет). */
+  shelter: number;
+  /** Лежанка в шалаше. */
+  bed: boolean;
   /** Оставшаяся прочность инструментов (нет записи — полная). */
   dur: Partial<Record<FrTool, number>>;
   /** Сколько ещё горит факел, мс (0 — не горит). */
@@ -114,11 +124,16 @@ export type FrEvent =
   | { type: 'openLoom' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
+  | { type: 'rainStart' }
+  | { type: 'rainEnd' }
+  | { type: 'fireDoused' }
+  | { type: 'shelterBroke' }
+  | { type: 'tooWet' }
   | { type: 'spilled' }
   | { type: 'cookDropped'; item: FrItem }
   | { type: 'broke'; item: FrTool }
   | { type: 'chopped' }
-  | { type: 'crafted'; item: FrCraftId | 'cloth' | 'purse' }
+  | { type: 'crafted'; item: FrCraftId | FrLoomId }
   | { type: 'needMaterials' }
   | { type: 'haveIt' }
   | { type: 'noPlace' }
@@ -239,6 +254,19 @@ export function frDarkness(s: FrState): number {
   return dawn < 15_000 ? dawn / 15_000 : 1;
 }
 
+/** Под шалашом: 3x3 клетки вокруг костра. */
+export function frInShelter(s: FrState, x = s.x, y = s.y): boolean {
+  if (s.shelter <= 0) return false;
+  const c = frCenter();
+  return Math.abs(Math.floor(x) - c.x) <= 1 && Math.abs(Math.floor(y) - c.y) <= 1;
+}
+
+/** Клетка лежанки: рядом с костром внутри шалаша. */
+export function frBedCell(): { x: number; y: number } {
+  const c = frCenter();
+  return { x: c.x - 1, y: c.y + 1 };
+}
+
 /** Стоит ли питомец в свете костра. */
 export function frInFireLight(s: FrState): boolean {
   if (s.fire <= 0) return false;
@@ -319,6 +347,9 @@ export function newForest(seed: number): FrState {
     torch: 0,
     worn: [],
     dur: {},
+    weather: { rain: false, left: FR_DRY_FIRST_MS },
+    shelter: 0,
+    bed: false,
     chest: {},
     count: {},
     claimed: [],
@@ -723,6 +754,7 @@ function tendFire(s: FrState): FrEvent[] {
     s.fire = Math.min(FR_FIRE_MAX_MS, s.fire + FR_FIRE_BRANCH_MS);
     return [{ type: 'fireFed' }];
   }
+  if (s.weather.rain && s.shelter <= 0) return [{ type: 'tooWet' }];
   if (branches < 3 || (s.inv.flint ?? 0) < 1) return [{ type: 'needForFire' }];
   take(s, 'branch', 3);
   take(s, 'flint', 1);
@@ -958,10 +990,45 @@ function tick(s: FrState, dt: number): FrEvent[] {
   else s.stats.warmth = Math.min(100, s.stats.warmth + 1 * sec);
   const starving = s.stats.food <= 0 || s.stats.water <= 0 || s.stats.warmth <= 0;
   if (starving) s.stats.health = Math.max(0, s.stats.health - 0.5 * sec);
-  else if (s.sleeping) s.stats.health = Math.min(100, s.stats.health + 0.5 * sec);
+  else if (s.sleeping) s.stats.health = Math.min(100, s.stats.health + 0.5 * sec * (s.bed && s.shelter > 0 ? FR_BED_HEAL : 1));
   else if (s.stats.food > 30 && s.stats.water > 30) s.stats.health = Math.min(100, s.stats.health + 0.05 * sec);
   for (const k of ['food', 'water', 'warmth'] as const) {
     if (before[k] >= LOW && s.stats[k] < LOW) events.push({ type: 'low', stat: k });
+  }
+
+  // Погода.
+  s.weather.left -= gdt;
+  if (s.weather.left <= 0) {
+    const n = (s.count.rainCycle ?? 0) + 1;
+    s.count.rainCycle = n;
+    const r = rand(s.seed + 31_000 + n * 101)();
+    if (s.weather.rain) {
+      s.weather = { rain: false, left: 100_000 + r * 120_000 };
+      events.push({ type: 'rainEnd' });
+    } else {
+      s.weather = { rain: true, left: 40_000 + r * 40_000 };
+      bump(s, 'rain');
+      events.push({ type: 'rainStart' });
+      if (s.shelter > 0) {
+        s.shelter -= 1;
+        if (s.shelter <= 0) {
+          s.bed = false;
+          events.push({ type: 'shelterBroke' });
+        }
+      }
+    }
+  }
+  if (s.weather.rain) {
+    if (s.fire > 0 && s.shelter <= 0) {
+      s.fire = 0;
+      events.push({ type: 'fireDoused' });
+      if (s.sleeping) {
+        s.sleeping = false;
+        events.push({ type: 'woke' });
+      }
+    }
+    if (s.torch > 0 && !frInShelter(s)) s.torch = 0;
+    if (!frInShelter(s) && !frInFireLight(s)) s.stats.warmth = Math.max(0, s.stats.warmth - 1 * sec);
   }
 
   // Костёр.
@@ -1010,6 +1077,9 @@ export function restoreForest(raw: unknown): FrState | null {
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
   if (typeof s.torch !== 'number') s.torch = 0;
+  if (!s.weather || typeof s.weather.left !== 'number') s.weather = { rain: false, left: FR_DRY_FIRST_MS };
+  if (typeof s.shelter !== 'number') s.shelter = 0;
+  if (typeof s.bed !== 'boolean') s.bed = false;
   if (!Array.isArray(s.worn)) s.worn = [];
   if (!s.dur || typeof s.dur !== 'object') s.dur = {};
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
@@ -1151,6 +1221,7 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'porridge', kind: 'regular', reward: 0, items: { egg: 2 }, parts: [{ key: 'made:porridge', need: 1 }] },
   { id: 'loom', kind: 'regular', reward: 0, items: { stone: 2, branch: 3 }, parts: [{ key: 'craft:loom', need: 1 }] },
   { id: 'purse', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'craft:purse', need: 1 }] },
+  { id: 'shelter', kind: 'regular', reward: 0, items: { branch: 4, grass: 4 }, parts: [{ key: 'craft:shelter', need: 1 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
@@ -1204,21 +1275,41 @@ function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
 
 // --- Ткацкий станок и кошелёк ---
 
-export const FR_LOOM: ReadonlyArray<{ id: 'cloth' | 'purse'; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
+export type FrLoomId = 'cloth' | 'purse' | 'shelter' | 'bed';
+
+export const FR_LOOM: ReadonlyArray<{ id: FrLoomId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'cloth', cost: [['grass', 3]] },
   { id: 'purse', cost: [['cloth', 5], ['grass', 5]] },
+  { id: 'shelter', cost: [['cloth', 20], ['branch', 15], ['stone', 7], ['grass', 10]] },
+  { id: 'bed', cost: [['cloth', 10], ['grass', 5]] },
 ];
 
-export function frCanWeave(s: FrState, id: 'cloth' | 'purse'): boolean {
+/** Уже есть то, что делать второй раз не нужно (шалаш, лежанка). */
+export function frLoomDone(s: FrState, id: FrLoomId): boolean {
+  if (id === 'shelter') return s.shelter > 0;
+  if (id === 'bed') return s.bed;
+  return false;
+}
+
+export function frCanWeave(s: FrState, id: FrLoomId): boolean {
   const r = FR_LOOM.find((x) => x.id === id);
+  if (id === 'bed' && s.shelter <= 0) return false;
+  if (frLoomDone(s, id)) return false;
   return !!r && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
 }
 
 /** Соткать ткань или сшить кошелёк на станке. */
-export function frWeave(s: FrState, id: 'cloth' | 'purse'): FrEvent[] {
+export function frWeave(s: FrState, id: FrLoomId): FrEvent[] {
   const r = FR_LOOM.find((x) => x.id === id);
   if (!r || s.over || !frBuilt(s, 'loom')) return [];
   if (!frCanWeave(s, id)) return [{ type: 'needMaterials' }];
+  if (id === 'shelter' || id === 'bed') {
+    for (const [item, n] of r.cost) take(s, item, n);
+    if (id === 'shelter') s.shelter = FR_SHELTER_RAINS;
+    else s.bed = true;
+    bump(s, `craft:${id}`);
+    return withQuest(s, [{ type: 'crafted', item: id }]);
+  }
   for (const [item, n] of r.cost) take(s, item, n);
   if (!canTake(s.inv, id, frCapacity(s))) {
     for (const [item, n] of r.cost) s.inv[item] = (s.inv[item] ?? 0) + n;

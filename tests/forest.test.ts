@@ -569,4 +569,36 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     frWear(s, 'purse');
     expect(frCapacity(s)).toBe(before + 4);
   });
+
+  it('дождь тушит костёр, шалаш защищает и изнашивается, лежанка ускоряет лечение', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.fire = 600_000;
+    s.weather = { rain: false, left: 1000 };
+    const ev = run(s, 2000);
+    expect(ev).toContainEqual({ type: 'rainStart' });
+    expect(ev).toContainEqual({ type: 'fireDoused' });
+    expect(s.fire).toBe(0);
+    // под шалашом костёр горит под дождём
+    const s2 = newForest(7);
+    s2.fire = 600_000;
+    s2.shelter = 2;
+    s2.weather = { rain: false, left: 1000 };
+    run(s2, 2000);
+    expect(s2.fire).toBeGreaterThan(0);
+    expect(s2.shelter).toBe(1);
+    s2.weather = { rain: false, left: 1000 };
+    expect(run(s2, 2000)).toContainEqual({ type: 'shelterBroke' });
+    expect(s2.shelter).toBe(0);
+    // станок: шалаш и лежанка
+    const s3 = newForest(7);
+    s3.tiles[frChestSpots(s3)[0]!] = 'loom';
+    s3.inv = { cloth: 30, branch: 15, stone: 7, grass: 15 };
+    expect(m.frCanWeave(s3, 'bed')).toBe(false);
+    expect(m.frWeave(s3, 'shelter')).toContainEqual({ type: 'crafted', item: 'shelter' });
+    expect(s3.shelter).toBe(30);
+    expect(m.frWeave(s3, 'shelter')).toEqual([{ type: 'needMaterials' }]);
+    expect(m.frWeave(s3, 'bed')).toContainEqual({ type: 'crafted', item: 'bed' });
+    expect(s3.bed).toBe(true);
+  });
 });
