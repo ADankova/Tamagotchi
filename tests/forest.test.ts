@@ -1042,6 +1042,10 @@ describe('сюжет «Потерянный маяк»', () => {
     const s = newForest(7);
     s.inv = { branch: 20, stone: 10, ingot: 4, crystal: 3, cloth: 5, fang: 3 };
     const spot = m.frChestSpots(s)[0]!;
+    expect(m.frCraftUnlocked(s, 'lighthouse')).toBe(false);
+    expect(m.frCraft(s, 'lighthouse', spot)).toContainEqual({ type: 'needMaterials' });
+    s.claimed.push('ch7');
+    expect(m.frCraftUnlocked(s, 'lighthouse')).toBe(true);
     expect(m.frCraft(s, 'lighthouse', spot)).toContainEqual({ type: 'crafted', item: 'lighthouse' });
     expect(m.frCanLightBeacon(s)).toBe(false);
     s.clock = m.FR_DAY_MS - 1000;

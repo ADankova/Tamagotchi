@@ -25,6 +25,7 @@ import {
   frDarkness,
   frCookable,
   frCanCraft,
+  frCraftUnlocked,
   frCraft,
   frChestPut,
   frPlaceSpots,
@@ -804,7 +805,7 @@ export class ForestGame implements GameScreen {
       });
       return b;
     });
-    const recipes = FR_CRAFT.filter((r) => FR_BUILDINGS.includes(r.id) === (this.craftTab === 'build'));
+    const recipes = FR_CRAFT.filter((r) => frCraftUnlocked(s, r.id) && FR_BUILDINGS.includes(r.id) === (this.craftTab === 'build'));
     const tiles = recipes.map((r) => {
       const can = frCanCraft(s, r.id);
       const mats = r.cost.map(([it, n]) =>
