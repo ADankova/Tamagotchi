@@ -20,6 +20,9 @@ import {
   frChestPut,
   frChestSpots,
   frCapacity,
+  frDurability,
+  FR_TOOL_USES,
+  type FrTool,
   frWeave,
   frCanWeave,
   frWear,
@@ -75,6 +78,7 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
+const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
@@ -391,6 +395,10 @@ export class ForestGame implements GameScreen {
         case 'openLoom':
           this.renderLoom();
           this.bag.removeAttribute('hidden');
+          break;
+        case 'broke':
+          this.say(M.broke.replace('{item}', (GAMES_TEXT.forestItems[ev.item] ?? ev.item).toLowerCase()), 'blocked');
+          this.renderBag();
           break;
         case 'worn':
           this.say(M.worn, 'win');
@@ -742,7 +750,7 @@ export class ForestGame implements GameScreen {
       }
     }
     const cells: HTMLElement[] = [];
-    for (let k = 0; k < FR_SLOTS; k++) {
+    for (let k = 0; k < frCapacity(s); k++) {
       const st = stacks[k];
       if (!st) {
         cells.push(el('span', { class: 'fr-slot empty' }));
@@ -751,6 +759,7 @@ export class ForestGame implements GameScreen {
       const slot = el('button', { type: 'button', class: 'fr-slot', 'aria-label': GAMES_TEXT.forestItems[st.item] ?? st.item }, [
         this.iconCanvas(st.item),
         ...(st.n > 1 ? [el('span', { class: 'fr-slot-count', text: String(st.n) })] : []),
+        ...(TOOLS.includes(st.item) ? [this.durBar(st.item as FrTool)] : []),
       ]);
       slot.addEventListener('click', () => this.moveItems(st.item, s.chest[st.item] ?? 0, false));
       cells.push(slot);
@@ -874,6 +883,15 @@ export class ForestGame implements GameScreen {
   }
 
   /** Карточка предмета: картинка, что даёт, описание, «Съесть» и «Выбросить». */
+  /** Полоска прочности инструмента. */
+  private durBar(tool: FrTool): HTMLElement {
+    const left = frDurability(this.state, tool);
+    const pct = Math.round((left / FR_TOOL_USES) * 100);
+    const color = pct > 50 ? '#4caf50' : pct > 25 ? '#f0b429' : '#e0443e';
+    const fill = el('i', { style: `width:${pct}%;background:${color}` });
+    return el('span', { class: 'fr-dur', title: `${left}/${FR_TOOL_USES}` }, [fill]);
+  }
+
   private renderItem(item: FrItem): void {
     const s = this.state;
     if (!(s.inv[item] ?? 0)) {
@@ -923,7 +941,7 @@ export class ForestGame implements GameScreen {
       el('div', { class: 'fr-bag fr-card' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
-          icon,
+          el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
           el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : []),
         ]),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
