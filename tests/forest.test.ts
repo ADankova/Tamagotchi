@@ -12,6 +12,9 @@ import {
   frDurability,
   frAttack,
   frEquip,
+  frHeld,
+  frBagSize,
+  frBagUsed,
   frWeaponDmg,
   frWeaponStats,
   FR_WEAPONS,
@@ -231,6 +234,29 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(frWeaponDmg(s, 'axe')).toBe(16);
     frEquip(s, 'spear');
     expect(frWeaponStats(s).dmg).toBe(21);
+  });
+
+  it('оружие в руках не занимает ячейку, но годится для работы', () => {
+    const s = newForest(7);
+    s.inv = { stone: FR_STACK * (FR_SLOTS - 1), axe: 1 };
+    expect(frSlotsUsed(s.inv)).toBe(FR_SLOTS);
+    expect(frBagUsed(s)).toBe(FR_SLOTS);
+    frEquip(s, 'axe');
+    expect(frHeld(s)).toBe('axe');
+    expect(frBagUsed(s)).toBe(FR_SLOTS - 1);
+    expect(frBagSize(s)).toBe(FR_SLOTS);
+    expect(frCapacity(s)).toBe(FR_SLOTS + 1);
+    expect(s.inv.axe).toBe(1);
+    // Свободная ячейка действительно есть: можно взять ещё один предмет.
+    const branch = s.drops.find((d) => d.kind === 'branch')!;
+    expect(goTo(s, branch.x, branch.y)).not.toContainEqual({ type: 'full' });
+    // Убрать из рук при полном рюкзаке нельзя.
+    s.inv = { stone: FR_STACK * (FR_SLOTS - 1), axe: 1, branch: 1 };
+    expect(frEquip(s, 'axe')).toContainEqual({ type: 'noRoom' });
+    expect(frHeld(s)).toBe('axe');
+    delete s.inv.branch;
+    expect(frEquip(s, 'axe')).toEqual([]);
+    expect(frHeld(s)).toBe(null);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {
