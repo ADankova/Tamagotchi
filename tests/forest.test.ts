@@ -725,7 +725,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     const ev = [...frDo(s, 15, 1, 'travel'), ...run(s, 30_000)];
     expect(ev).toContainEqual({ type: 'travelAsk', to: 'lake' });
     expect(s.loc).toBe('home');
-    expect(m.frTravel(s, 'lake')).toEqual([{ type: 'traveled', to: 'lake' }]);
+    expect(m.frTravel(s, 'lake')).toContainEqual({ type: 'traveled', to: 'lake' });
     expect(s.loc).toBe('lake');
     expect(s.tiles.includes('reed')).toBe(true);
     expect(s.tiles.includes('water')).toBe(true);
@@ -794,6 +794,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     // пещера: без света не разбить руду
     const c = newForest(7);
     m.frTravel(c, 'cave');
+    c.mobs = [];
     c.inv = { pickaxe: 1 };
     const oi = c.tiles.findIndex((k) => k === 'ore');
     const ox = oi % 30;
@@ -953,5 +954,44 @@ describe('работа инструментами голодит', () => {
     for (let i = 0; i < 80; i++) m.frTick(s, 100);
     expect(s.stats.food).toBeLessThan(79.5);
     expect(m.FR_TOOL_FOOD).toBeGreaterThan(0);
+  });
+});
+
+describe('озеро и пещера: новое', () => {
+  it('сундучок при рыбалке иногда находится (ресурсы или конфета)', async () => {
+    const m = await import('../src/core/forest');
+    let found = 0;
+    for (let seed = 1; seed <= 12 && !found; seed++) {
+      const s = newForest(seed);
+      m.frTravel(s, 'lake');
+      s.mobs = [];
+      s.inv = { rod: 1 };
+      const wi = s.tiles.findIndex((k, i) => k === 'water' && [i + 1, i - 1, i + 30, i - 30].some((n) => s.tiles[n] === 'grass'));
+      for (let k = 0; k < 40; k++) {
+        s.busy = null;
+        s.dur.rod = 99;
+        s.stats.food = 100;
+        s.stats.water = 100;
+        s.stats.health = 100;
+        const ev = [...frDo(s, wi % 30, Math.floor(wi / 30), 'fish'), ...run(s, 20_000)];
+        if (ev.some((e) => e.type === 'treasure')) found++;
+      }
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+  it('в пещере есть летучие мыши, светящиеся грибы и озеро из нескольких клеток', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(5);
+    m.frTravel(s, 'cave');
+    expect(s.mobs.filter((x) => x.kind === 'bat').length).toBe(2);
+    expect(s.drops.some((d) => d.kind === 'glowcap')).toBe(true);
+    expect(s.tiles.filter((t) => t === 'water').length).toBeGreaterThan(2);
+  });
+  it('рецепт грибного супа и счётчики заданий', async () => {
+    const m = await import('../src/core/forest');
+    expect(m.frRecipe(['fullflask', 'glowcap'])).toBe('glowsoup');
+    const s = newForest(5);
+    m.frTravel(s, 'lake');
+    expect(m.frCounter(s, 'visit:lake')).toBe(1);
   });
 });
