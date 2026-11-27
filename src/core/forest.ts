@@ -2137,11 +2137,20 @@ export const FR_WEAPONS: Partial<Record<FrTool, { dmg: number; ms: number }>> = 
   spear: { dmg: FR_SPEAR_DMG, ms: PET_HIT_MS },
 };
 
+/** Редкий камень в оружии: урон больше на 30%. */
+export const FR_UP_DMG = 1.3;
+
+/** Урон оружия за удар с учётом вставленного камня. */
+export function frWeaponDmg(s: FrState, item: FrTool): number {
+  const base = FR_WEAPONS[item]?.dmg ?? FR_PET_DMG;
+  return s.up[item] ? Math.round(base * FR_UP_DMG) : base;
+}
+
 /** Чем питомец бьёт сейчас: выбранное оружие (если оно есть в рюкзаке), иначе кулаки. */
 export function frWeaponStats(s: FrState): { item: FrTool | null; dmg: number; ms: number } {
   const item = s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
   const w = item ? FR_WEAPONS[item] : undefined;
-  return { item, dmg: w?.dmg ?? FR_PET_DMG, ms: w?.ms ?? PET_HIT_MS };
+  return { item, dmg: item ? frWeaponDmg(s, item) : FR_PET_DMG, ms: w?.ms ?? PET_HIT_MS };
 }
 
 /** Взять оружие в руки (или убрать, если оно уже в руках). */
