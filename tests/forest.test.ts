@@ -11,6 +11,10 @@ import {
   frActions,
   frCanSleep,
   frDo,
+  frPotAdd,
+  frPotCook,
+  frPotReturn,
+  frRecipe,
   frTargetAt,
   frThrow,
   frCenter,
@@ -174,10 +178,13 @@ describe('«Дикий лес»: кнопки у предметов', () => {
     const c = frCenter();
     s.fire = 100_000;
     s.inv = { mushroom: 1 };
-    const cook = [...frDo(s, c.x, c.y, 'cook'), ...run(s, 10_000)];
-    expect(cook).toContainEqual({ type: 'cooked', item: 'cooked' });
+    expect([...frDo(s, c.x, c.y, 'cook'), ...run(s, 10_000)]).toContainEqual({ type: 'openCook' });
+    expect(frPotAdd(s, 'mushroom')).toBe(true);
+    expect(s.inv).toEqual({});
+    expect(frPotCook(s)).toContainEqual({ type: 'cooked', item: 'cooked' });
     expect(s.inv).toEqual({ cooked: 1 });
-    expect([...frDo(s, c.x, c.y, 'cook'), ...run(s, 1000)]).toContainEqual({ type: 'nothingToCook' });
+    expect(s.pot).toEqual([]);
+    expect(frPotCook(s)).toContainEqual({ type: 'nothingToCook' });
     expect([...frDo(s, c.x, c.y, 'sleep'), ...run(s, 500)]).toContainEqual({ type: 'sleepNo' });
     s.clock = FR_NIGHT_AT;
     expect(frDo(s, c.x, c.y, 'sleep')).toContainEqual({ type: 'fellAsleep' });
@@ -245,5 +252,33 @@ describe('«Дикий лес»: сохранение', () => {
     expect(restoreForest(JSON.parse(JSON.stringify(s)))).toEqual(s);
     expect(restoreForest({ v: 1, tiles: [] })).toBeNull();
     expect(restoreForest(null)).toBeNull();
+  });
+});
+
+describe('«Дикий лес»: окошко готовки', () => {
+  it('еда переезжает в окошко по одной штуке и возвращается обратно', () => {
+    const s = newForest(7);
+    s.inv = { berries: 2, mushroom: 1 };
+    expect(frPotAdd(s, 'berries')).toBe(true);
+    expect(s.inv.berries).toBe(1);
+    expect(frPotAdd(s, 'stone')).toBe(false);
+    expect(frRecipe(s.pot)).toBe(null);
+    frPotAdd(s, 'mushroom');
+    frPotAdd(s, 'berries');
+    expect(frPotAdd(s, 'berries')).toBe(false);
+    frPotReturn(s);
+    expect(s.pot).toEqual([]);
+    expect(s.inv).toEqual({ berries: 2, mushroom: 1 });
+  });
+
+  it('без огня и без рецепта ничего не готовится', () => {
+    const s = newForest(7);
+    s.inv = { mushroom: 1 };
+    frPotAdd(s, 'mushroom');
+    expect(frPotCook(s)).toContainEqual({ type: 'needForFire' });
+    s.fire = 1000;
+    s.pot = ['berries'];
+    expect(frPotCook(s)).toContainEqual({ type: 'nothingToCook' });
+    expect(s.pot).toEqual(['berries']);
   });
 });

@@ -15,6 +15,12 @@ import {
   frCenter,
   frDarkness,
   frEat,
+  frPotAdd,
+  frPotCook,
+  frPotRemove,
+  frPotReturn,
+  frRecipe,
+  FR_POT_SLOTS,
   frIndex,
   frSleep,
   frSlotsUsed,
@@ -115,7 +121,7 @@ export class ForestGame implements GameScreen {
     ]);
     this.canvas.addEventListener('click', (e) => this.tap(e));
     this.bag.addEventListener('click', (e) => {
-      if (e.target === this.bag) this.toggleBag();
+      if (e.target === this.bag) this.closeBag();
     });
     if (this.state.over) this.showOver();
     this.updateHud();
@@ -267,6 +273,9 @@ export class ForestGame implements GameScreen {
         case 'cooked':
           this.say(M.cooked, 'win');
           break;
+        case 'openCook':
+          this.openCook();
+          break;
         case 'nothingToCook':
           this.say(M.nothingToCook, 'blocked');
           break;
@@ -317,11 +326,73 @@ export class ForestGame implements GameScreen {
     if (this.bag.hasAttribute('hidden')) {
       this.renderBag();
       this.bag.removeAttribute('hidden');
-    } else this.bag.setAttribute('hidden', '');
+    } else this.closeBag();
   }
 
-  /** Рюкзак — сетка 4×3 ячеек; нажатие на ячейку открывает карточку предмета. */
-  private renderBag(): void {
+  /** Закрыть рюкзак или окошко готовки; всё, что лежало в окошке, возвращается в рюкзак. */
+  private closeBag(): void {
+    frPotReturn(this.state);
+    this.bag.setAttribute('hidden', '');
+  }
+
+  /** Окошко готовки у костра: в него по одной штуке переезжает еда из рюкзака. */
+  private openCook(): void {
+    this.renderCook();
+    this.bag.removeAttribute('hidden');
+  }
+
+  private renderCook(): void {
+    const s = this.state;
+    const out = frRecipe(s.pot);
+    const slots: HTMLElement[] = [];
+    for (let k = 0; k < FR_POT_SLOTS; k++) {
+      const item = s.pot[k];
+      if (!item) {
+        slots.push(el('span', { class: 'fr-slot empty' }));
+        continue;
+      }
+      const icon = el('canvas', { class: 'fr-slot-icon', width: '64', height: '64' }) as HTMLCanvasElement;
+      const ictx = icon.getContext('2d');
+      if (ictx) drawItem(ictx, item, 32, 34, 52, 0);
+      const slot = el('button', { type: 'button', class: 'fr-slot', 'aria-label': GAMES_TEXT.forestItems[item] ?? item }, [icon]);
+      slot.addEventListener('click', () => {
+        frPotRemove(s, k);
+        this.renderCook();
+      });
+      slots.push(slot);
+    }
+    const result = el('span', { class: out ? 'fr-slot fr-result' : 'fr-slot empty fr-result' });
+    if (out) {
+      const icon = el('canvas', { class: 'fr-slot-icon', width: '64', height: '64' }) as HTMLCanvasElement;
+      const ictx = icon.getContext('2d');
+      if (ictx) drawItem(ictx, out, 32, 34, 52, 0);
+      result.append(icon);
+    } else result.append(el('span', { class: 'fr-result-q', text: '?' }));
+    const cook = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestActs.cook });
+    if (!out) cook.setAttribute('disabled', '');
+    cook.addEventListener('click', () => {
+      this.handle(frPotCook(s));
+      this.renderCook();
+    });
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-cook' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCookTitle }), close]),
+        el('div', { class: 'fr-cook-row' }, [result]),
+        el('div', { class: 'fr-cook-row' }, slots),
+        el('p', { class: 'fr-card-desc', text: out ? GAMES_TEXT.forestItems[out] ?? out : GAMES_TEXT.forestCookHint }),
+        cook,
+        el('div', { class: 'fr-grid' }, this.bagCells((item) => {
+          frPotAdd(s, item);
+          this.renderCook();
+        })),
+      ]),
+    );
+  }
+
+  /** Ячейки рюкзака: по нажатию вызывается onPick с видом предмета. */
+  private bagCells(onPick: (item: FrItem) => void): HTMLElement[] {
     const s = this.state;
     const stacks: Array<{ item: FrItem; n: number }> = [];
     for (const item of ITEM_ORDER) {
@@ -345,9 +416,16 @@ export class ForestGame implements GameScreen {
         icon,
         ...(st.n > 1 ? [el('span', { class: 'fr-slot-count', text: String(st.n) })] : []),
       ]);
-      slot.addEventListener('click', () => this.renderItem(st.item));
+      slot.addEventListener('click', () => onPick(st.item));
       cells.push(slot);
     }
+    return cells;
+  }
+
+  /** Рюкзак — сетка 4×3 ячеек; нажатие на ячейку открывает карточку предмета. */
+  private renderBag(): void {
+    const s = this.state;
+    const cells = this.bagCells((item) => this.renderItem(item));
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.toggleBag());
     this.bag.replaceChildren(

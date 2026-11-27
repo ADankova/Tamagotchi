@@ -56,6 +56,8 @@ export interface FrState {
   /** Идущее действие (сбор, еда) и сколько ему осталось. */
   busy: { kind: 'gather' | 'eat' | 'drink'; left: number } | null;
   inv: Partial<Record<FrItem, number>>;
+  /** Что лежит в окошке готовки у костра (вынуто из рюкзака). */
+  pot: FrItem[];
   stats: Record<FrStat, number>;
   /** Время суток, мс от начала дня. */
   clock: number;
@@ -88,6 +90,7 @@ export type FrEvent =
   | { type: 'needBranch' }
   | { type: 'cooked'; item: FrItem }
   | { type: 'nothingToCook' }
+  | { type: 'openCook' }
   | { type: 'sleepNo' }
   | { type: 'fellAsleep' }
   | { type: 'thrown'; item: FrItem }
@@ -263,6 +266,7 @@ export function newForest(seed: number): FrState {
     goal: null,
     busy: null,
     inv: {},
+    pot: [],
     stats: { food: 80, water: 80, warmth: 100, health: 100 },
     clock: 0,
     day: 1,
@@ -529,11 +533,7 @@ function arrive(s: FrState): FrEvent[] {
       return tendFire(s);
     case 'cook':
       if (s.fire <= 0) return [{ type: 'needForFire' }];
-      if (!(s.inv.mushroom ?? 0)) return [{ type: 'nothingToCook' }];
-      take(s, 'mushroom', 1);
-      s.inv.cooked = (s.inv.cooked ?? 0) + 1;
-      s.busy = { kind: 'gather', left: FR_ACTION_MS };
-      return [{ type: 'cooked', item: 'cooked' }];
+      return [{ type: 'openCook' }];
     case 'sleep':
       if (!frCanSleep(s)) return [{ type: 'sleepNo' }];
       frSleep(s, true);
@@ -566,6 +566,47 @@ function take(s: FrState, item: FrItem, n: number): void {
   const left = (s.inv[item] ?? 0) - n;
   if (left > 0) s.inv[item] = left;
   else delete s.inv[item];
+}
+
+export const FR_POT_SLOTS = 3;
+
+/** Рецепты: что положить в окошко готовки и что получится. Порядок не важен. */
+export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [{ from: ['mushroom'], to: 'cooked' }];
+
+/** Что получится из того, что лежит в окошке (null — такого рецепта нет). */
+export function frRecipe(pot: readonly FrItem[]): FrItem | null {
+  const key = [...pot].sort().join();
+  const r = FR_RECIPES.find((x) => [...x.from].sort().join() === key);
+  return r ? r.to : null;
+}
+
+/** Переложить одну штуку из рюкзака в окошко готовки. */
+export function frPotAdd(s: FrState, item: FrItem): boolean {
+  if (s.pot.length >= FR_POT_SLOTS || !(s.inv[item] ?? 0) || !FR_FOOD[item]) return false;
+  take(s, item, 1);
+  s.pot.push(item);
+  return true;
+}
+
+/** Вернуть штуку из окошка готовки обратно в рюкзак. */
+export function frPotRemove(s: FrState, index: number): void {
+  const [item] = s.pot.splice(index, 1);
+  if (item) s.inv[item] = (s.inv[item] ?? 0) + 1;
+}
+
+/** Вернуть в рюкзак всё, что лежит в окошке. */
+export function frPotReturn(s: FrState): void {
+  while (s.pot.length) frPotRemove(s, 0);
+}
+
+/** Приготовить то, что лежит в окошке, на горящем костре. */
+export function frPotCook(s: FrState): FrEvent[] {
+  if (s.fire <= 0) return [{ type: 'needForFire' }];
+  const out = frRecipe(s.pot);
+  if (!out) return [{ type: 'nothingToCook' }];
+  s.pot = [];
+  s.inv[out] = (s.inv[out] ?? 0) + 1;
+  return [{ type: 'cooked', item: out }];
 }
 
 /** Сколько сытости даёт еда из рюкзака. */
@@ -711,6 +752,7 @@ export function restoreForest(raw: unknown): FrState | null {
   if (s.v !== 1 || !Array.isArray(s.tiles) || s.tiles.length !== FR_W * FR_H) return null;
   if (!Array.isArray(s.drops) || !Array.isArray(s.berries)) return null;
   // Старые сохранения хранили путь клетками — просто останавливаемся.
+  if (!Array.isArray(s.pot)) s.pot = [];
   if (!Array.isArray(s.path) || s.path.some((p) => !Array.isArray(p))) s.path = [];
   if (typeof s.x !== 'number' || typeof s.y !== 'number' || !s.stats || typeof s.clock !== 'number') return null;
   return s;
