@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Старички = взрослые (подросток) с седой шерстью: берёт листы *_adultNormal и обесцвечивает мех.
+"""Старички = взрослые (подросток) с седой шерстью: берёт листы *_adult и обесцвечивает мех.
 Запуск после pets-build.py и pets-prune.py: python3 scripts/pets-elder.py  (пишет art/pets/*_elder.png, meta.json, src/render/petMeta.ts)."""
 import colorsys, json, os, re
 from PIL import Image
@@ -7,7 +7,7 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, 'art', 'pets')
 SPECIES = ['cat', 'dog', 'blob']
-SRC_FORM = 'teen'
+SRC_FORM = 'adult'
 
 def grey(px):
     r, g, b, a = px

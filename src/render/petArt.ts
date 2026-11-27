@@ -5,52 +5,34 @@ import type { Species } from '../core/types';
 import { ROW_FRAMES, type AnimRow } from './scene';
 import type { BodyStage } from './species';
 import { PET_META } from './petMeta';
-import cat_adultGood_png from '../../art/pets/cat_adultGood.png';
-import blob_adultGood_png from '../../art/pets/blob_adultGood.png';
-import dog_adultGood_png from '../../art/pets/dog_adultGood.png';
 import cat_baby_png from '../../art/pets/cat_baby.png';
 import cat_child_png from '../../art/pets/cat_child.png';
-import cat_teen_png from '../../art/pets/cat_teen.png';
-import cat_adultNaughty_png from '../../art/pets/cat_adultNaughty.png';
+import cat_adult_png from '../../art/pets/cat_adult.png';
 import cat_elder_png from '../../art/pets/cat_elder.png';
-import cat_adultNormal_png from '../../art/pets/cat_adultNormal.png';
 import blob_baby_png from '../../art/pets/blob_baby.png';
 import blob_child_png from '../../art/pets/blob_child.png';
-import blob_teen_png from '../../art/pets/blob_teen.png';
-import blob_adultNaughty_png from '../../art/pets/blob_adultNaughty.png';
+import blob_adult_png from '../../art/pets/blob_adult.png';
 import blob_elder_png from '../../art/pets/blob_elder.png';
-import blob_adultNormal_png from '../../art/pets/blob_adultNormal.png';
 import dog_baby_png from '../../art/pets/dog_baby.png';
 import dog_child_png from '../../art/pets/dog_child.png';
-import dog_teen_png from '../../art/pets/dog_teen.png';
-import dog_adultNaughty_png from '../../art/pets/dog_adultNaughty.png';
+import dog_adult_png from '../../art/pets/dog_adult.png';
 import dog_elder_png from '../../art/pets/dog_elder.png';
-import dog_adultNormal_png from '../../art/pets/dog_adultNormal.png';
 import props_egg_png from '../../art/pets/props_egg.png';
 import butterfly_png from '../../art/pets/butterfly.png';
 
 const SHEET_URLS: Readonly<Record<string, string>> = {
-  cat_adultGood: cat_adultGood_png,
-  blob_adultGood: blob_adultGood_png,
-  dog_adultGood: dog_adultGood_png,
   cat_baby: cat_baby_png,
   cat_child: cat_child_png,
-  cat_teen: cat_teen_png,
-  cat_adultNaughty: cat_adultNaughty_png,
+  cat_adult: cat_adult_png,
   cat_elder: cat_elder_png,
-  cat_adultNormal: cat_adultNormal_png,
   blob_baby: blob_baby_png,
   blob_child: blob_child_png,
-  blob_teen: blob_teen_png,
-  blob_adultNaughty: blob_adultNaughty_png,
+  blob_adult: blob_adult_png,
   blob_elder: blob_elder_png,
-  blob_adultNormal: blob_adultNormal_png,
   dog_baby: dog_baby_png,
   dog_child: dog_child_png,
-  dog_teen: dog_teen_png,
-  dog_adultNaughty: dog_adultNaughty_png,
+  dog_adult: dog_adult_png,
   dog_elder: dog_elder_png,
-  dog_adultNormal: dog_adultNormal_png,
   props_egg: props_egg_png,
   butterfly: butterfly_png,
 };
@@ -162,7 +144,8 @@ export function drawPet(
   scale: number,
   flip = false,
 ): void {
-  const key = `${species}_${body}`;
+  // Подросток и все взрослые формы рисуются одним листом «adult».
+  const key = `${species}_${body === 'teen' || body.startsWith('adult') ? 'adult' : body}`;
   const meta = PET_META[key];
   if (!meta) return;
   const preferred = PREFERRED[anim] ?? [];
