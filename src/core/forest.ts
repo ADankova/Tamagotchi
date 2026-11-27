@@ -29,7 +29,7 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry';
 export type FrPlace = 'home' | 'lake' | 'cave';
 export const FR_DRY_FIRST_MS = 150_000;
 export const FR_SHELTER_RAINS = 30;
@@ -49,18 +49,19 @@ export interface FrPlaceState {
   day: number;
 }
 
-export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick';
+export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife';
 export const FR_TOOL_USES = 20;
 export const FR_IRON_USES = 60;
 export const FISH_CHANCE = 0.55;
 export function frToolUses(tool: FrTool): number {
-  return tool === 'ironaxe' || tool === 'ironpick' ? FR_IRON_USES : FR_TOOL_USES;
+  return tool === 'ironaxe' || tool === 'ironpick' || tool === 'ironknife' ? FR_IRON_USES : FR_TOOL_USES;
 }
 /** Есть ли нужный инструмент (обычный или железный). */
-function hasTool(s: FrState, kind: 'axe' | 'pickaxe'): boolean {
-  return (s.inv[kind] ?? 0) > 0 || (s.inv[kind === 'axe' ? 'ironaxe' : 'ironpick'] ?? 0) > 0;
+function hasTool(s: FrState, kind: 'axe' | 'pickaxe' | 'knife'): boolean {
+  const iron = kind === 'axe' ? 'ironaxe' : kind === 'pickaxe' ? 'ironpick' : 'ironknife';
+  return (s.inv[kind] ?? 0) > 0 || (s.inv[iron] ?? 0) > 0;
 }
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse' | 'meat' | 'steak' | 'meatporridge' | 'broth' | 'reed' | 'fish' | 'friedfish' | 'fishsoup' | 'rod' | 'ore' | 'ironaxe' | 'ironpick';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse' | 'meat' | 'steak' | 'meatporridge' | 'broth' | 'reed' | 'fish' | 'friedfish' | 'fishsoup' | 'rod' | 'ore' | 'ironaxe' | 'ironpick' | 'ironknife' | 'ingot' | 'fishporridge';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -158,6 +159,9 @@ export type FrEvent =
   | { type: 'openCook' }
   | { type: 'openChest' }
   | { type: 'openLoom' }
+  | { type: 'openFoundry' }
+  | { type: 'smelted' }
+  | { type: 'campGone' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
   | { type: 'travelAsk'; to: FrPlace }
@@ -226,6 +230,7 @@ function fireScale(s: FrState): number {
 
 /** Рядом с костром (в 8 клетках) растёт дерево: крона защищает от дождя. */
 export function frTreeCover(s: FrState): boolean {
+  if (!frHasPit(s)) return false;
   const c = frCenter(s);
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inside(c.x + dx, c.y + dy) && s.tiles[frIndex(c.x + dx, c.y + dy)] === 'tree') return true;
   return false;
@@ -506,13 +511,12 @@ type Gen = { tiles: FrTile[]; pit: { x: number; y: number } };
 
 function fillTiles(tiles: FrTile[], pit: { x: number; y: number }): void {
   for (let y = pit.y - 1; y <= pit.y + 1; y++) for (let x = pit.x - 1; x <= pit.x + 1; x++) tiles[frIndex(x, y)] = 'grass';
-  tiles[frIndex(pit.x, pit.y)] = 'pit';
 }
 
 /** Недостижимое от костровища превращается в стену (дерево или камень). */
 function sealUnreachable(tiles: FrTile[], pit: { x: number; y: number }, wall: FrTile): void {
   const tmp = { tiles } as FrState;
-  const reach = reachable(tmp, pit.x, pit.y + 1);
+  const reach = reachable(tmp, pit.x, pit.y);
   for (let i = 0; i < tiles.length; i++) {
     const t = tiles[i];
     if ((t === 'grass' || t === 'tall' || t === 'reed') && !reach.has(i)) tiles[i] = wall;
@@ -522,7 +526,7 @@ function sealUnreachable(tiles: FrTile[], pit: { x: number; y: number }, wall: F
 function genLake(seed: number): Gen {
   const r = rand(seed);
   const tiles: FrTile[] = new Array(FR_W * FR_H).fill('grass');
-  const pit = { x: 15, y: 25 };
+  const pit = { x: 15, y: 26 };
   for (let y = 0; y < FR_H; y++) {
     for (let x = 0; x < FR_W; x++) {
       const i = frIndex(x, y);
@@ -555,7 +559,7 @@ function genLake(seed: number): Gen {
 function genCave(seed: number): Gen {
   const r = rand(seed);
   const tiles: FrTile[] = new Array(FR_W * FR_H).fill('rock');
-  const pit = { x: 4, y: 15 };
+  const pit = { x: 3, y: 15 };
   const carve = (x: number, y: number): void => {
     if (x >= 2 && y >= 2 && x <= FR_W - 3 && y <= FR_H - 3) tiles[frIndex(x, y)] = 'grass';
   };
@@ -722,7 +726,7 @@ function restock(s: FrState, r: Rand): void {
   const c = frCenter(s);
   const free: number[] = [];
   const taken = new Set(s.drops.map((d) => frIndex(d.x, d.y)));
-  const reach = reachable(s, c.x, c.y + 1);
+  const reach = reachable(s, c.x, frWalkable(s, c.x, c.y + 1) ? c.y + 1 : c.y);
   for (const i of reach) {
     const x = i % FR_W;
     const y = Math.floor(i / FR_W);
@@ -800,6 +804,7 @@ export type FrTarget =
   | { kind: 'chest' }
   | { kind: 'loom' }
   | { kind: 'exit' }
+  | { kind: 'foundry' }
   | { kind: 'reed' }
   | { kind: 'ore' }
   | { kind: 'trap' }
@@ -841,6 +846,7 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
     case 'chest':
     case 'loom':
+    case 'foundry':
     case 'trapfull':
       return ['open'];
     case 'trap':
@@ -872,7 +878,7 @@ function doAction(s: FrState, x: number, y: number, action: FrAction | null, poi
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'foundry' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush' || tile === 'rock' || tile === 'ore') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -915,8 +921,7 @@ function toolFor(ev: FrEvent, s: FrState): FrTool | null {
   if (ev.type === 'chopped') return (s.inv.ironaxe ?? 0) > 0 ? 'ironaxe' : 'axe';
   if (ev.type === 'mined') return (s.inv.ironpick ?? 0) > 0 ? 'ironpick' : 'pickaxe';
   if (ev.type === 'fished' || ev.type === 'noBite') return 'rod';
-  if (ev.type === 'cut') return 'knife';
-  if (ev.type === 'picked' && ev.item === 'grass' && s.goal === null) return 'knife';
+  if (ev.type === 'cut' || (ev.type === 'picked' && ev.item === 'grass' && s.goal === null)) return (s.inv.ironknife ?? 0) > 0 ? 'ironknife' : 'knife';
   return null;
 }
 
@@ -949,7 +954,7 @@ function arriveInner(s: FrState): FrEvent[] {
       if (goal.id !== undefined) {
         const d = s.drops.find((it) => it.id === goal.id);
         if (!d) return [];
-        if (d.kind === 'grass' && !(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
+        if (d.kind === 'grass' && !hasTool(s, 'knife')) return [{ type: 'needKnife' }];
         if (!canTake(s.inv, d.kind, frCapacity(s))) return [{ type: 'full' }];
         s.drops = s.drops.filter((it) => it.id !== d.id);
         s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
@@ -1016,7 +1021,7 @@ function arriveInner(s: FrState): FrEvent[] {
         let spill = give(s, 'meat', 1, goal.cell);
         return spill ? [{ type: 'trapEmptied' }, { type: 'spilled' }] : [{ type: 'trapEmptied' }];
       }
-      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : 'openChest' }];
+      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : s.tiles[goal.cell] === 'foundry' ? 'openFoundry' : 'openChest' }];
     case 'mine': {
       if (!hasTool(s, 'pickaxe')) return [{ type: 'needPickaxe' }];
       if (!frLit(s)) return [{ type: 'tooDark' }];
@@ -1041,7 +1046,7 @@ function arriveInner(s: FrState): FrEvent[] {
       return spill ? [{ type: 'mined' }, { type: 'spilled' }] : [{ type: 'mined' }];
     }
     case 'cut': {
-      if (!(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
+      if (!hasTool(s, 'knife')) return [{ type: 'needKnife' }];
       if (s.tiles[goal.cell] === 'reed') {
         s.tiles[goal.cell] = 'grass';
         const spillReed = give(s, 'reed', 2, goal.cell);
@@ -1114,6 +1119,7 @@ export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> 
   { from: ['meat'], to: 'steak' },
   { from: ['fish'], to: 'friedfish' },
   { from: ['fullflask', 'fish'], to: 'fishsoup' },
+  { from: ['fullflask', 'seeds', 'fish'], to: 'fishporridge' },
   { from: ['fullflask', 'meat'], to: 'broth' },
   { from: ['fullflask', 'seeds', 'meat'], to: 'meatporridge' },
   { from: ['fullflask', 'berries'], to: 'compote' },
@@ -1217,6 +1223,7 @@ export const FR_EFFECTS: Partial<Record<FrItem, Partial<Record<FrStat, number>>>
   fish: { food: 10 },
   friedfish: { food: 40, health: 3 },
   fishsoup: { food: 30, water: 25, health: 8 },
+  fishporridge: { food: 55, health: 5 },
   broth: { food: 20, water: 30, health: 10 },
   meatporridge: { food: 60, health: 8 },
   fullflask: { water: 30 },
@@ -1392,6 +1399,10 @@ function tick(s: FrState, dt: number): FrEvent[] {
     s.fire = Math.max(0, s.fire - gdt);
     if (s.fire === 0) {
       events.push({ type: 'fireOut' });
+      if (s.loc !== 'home' && frHasPit(s)) {
+        s.tiles[frIndex(s.pit.x, s.pit.y)] = 'grass';
+        events.push({ type: 'campGone' });
+      }
       if (s.sleeping) {
         s.sleeping = false;
         events.push({ type: 'woke' });
@@ -1470,10 +1481,10 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom' | 'trap' | 'rod' | 'ironaxe' | 'ironpick';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom' | 'trap' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife' | 'foundry' | 'campfire';
 
 /** Постройки: ставятся на выбранную клетку у костра. */
-export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom', 'trap'];
+export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom', 'foundry', 'campfire', 'trap'];
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
@@ -1482,8 +1493,11 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'torch', cost: [['branch', 1], ['grass', 2]] },
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
   { id: 'rod', cost: [['reed', 3], ['branch', 1]] },
-  { id: 'ironaxe', cost: [['ore', 4], ['branch', 2]] },
-  { id: 'ironpick', cost: [['ore', 5], ['branch', 2]] },
+  { id: 'ironknife', cost: [['ingot', 1], ['branch', 2]] },
+  { id: 'ironaxe', cost: [['ingot', 3], ['branch', 3]] },
+  { id: 'ironpick', cost: [['ingot', 4], ['branch', 3]] },
+  { id: 'foundry', cost: [['stone', 15], ['branch', 5]] },
+  { id: 'campfire', cost: [['branch', 3], ['flint', 1]] },
   { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
   { id: 'loom', cost: [['branch', 10], ['stone', 5], ['grass', 3]] },
   { id: 'trap', cost: [['cloth', 5], ['branch', 10]] },
@@ -1523,9 +1537,29 @@ export function frTrapSpots(s: FrState): number[] {
   return out;
 }
 
+/** Свободные клетки рядом с питомцем, где можно развести маленький костёр. */
+export function frCampSpots(s: FrState): number[] {
+  const out: number[] = [];
+  const px = Math.floor(s.x);
+  const py = Math.floor(s.y);
+  for (let y = py - 6; y <= py + 6; y++) {
+    for (let x = px - 6; x <= px + 6; x++) {
+      if (!inside(x, y) || Math.hypot(x - px, y - py) > 6.2) continue;
+      const tile = s.tiles[frIndex(x, y)];
+      if ((tile === 'grass' || tile === 'tall') && !s.drops.some((d) => d.x === x && d.y === y) && frPassable(s, x, y)) out.push(frIndex(x, y));
+    }
+  }
+  return out;
+}
+
+/** Стоит ли на карте костровище (дома каменное, в походе — маленький костёр). */
+export function frHasPit(s: FrState): boolean {
+  return s.tiles[frIndex(s.pit.x, s.pit.y)] === 'pit';
+}
+
 /** Клетки для постройки выбранного здания. */
 export function frPlaceSpots(s: FrState, id: FrCraftId): number[] {
-  return id === 'trap' ? frTrapSpots(s) : frChestSpots(s);
+  return id === 'trap' ? frTrapSpots(s) : id === 'campfire' ? frCampSpots(s) : frChestSpots(s);
 }
 
 export function frChestBuilt(s: FrState): boolean {
@@ -1542,8 +1576,13 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   if (!r || s.over) return [];
   if (!FR_BUILDINGS.includes(id) && id !== 'torch' && (s.inv[id as FrItem] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
   if (id === 'torch' && !canTake(s.inv, 'torch', frCapacity(s))) return [{ type: 'full' }];
-  if (FR_BUILDINGS.includes(id) && id !== 'trap' && frBuilt(s, id)) return [{ type: 'haveIt' }];
-  if (FR_BUILDINGS.includes(id) && id !== 'trap' && s.loc !== 'home') return [{ type: 'noPlace' }];
+  if (id === 'campfire') {
+    if (s.loc === 'home') return [{ type: 'noPlace' }];
+    if (frHasPit(s)) return [{ type: 'haveIt' }];
+  } else if (FR_BUILDINGS.includes(id) && id !== 'trap') {
+    if (frBuilt(s, id)) return [{ type: 'haveIt' }];
+    if (s.loc !== 'home') return [{ type: 'noPlace' }];
+  }
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
   if (FR_BUILDINGS.includes(id) && (cell === undefined || !frPlaceSpots(s, id).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
@@ -1552,7 +1591,11 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
     s.inv[id as FrItem] = 1;
     delete s.dur[id as FrTool];
   }
-  else s.tiles[cell!] = id as FrTile;
+  else if (id === 'campfire') {
+    s.tiles[cell!] = 'pit';
+    s.pit = { x: cell! % FR_W, y: Math.floor(cell! / FR_W) };
+    s.fire = FR_FIRE_START_MS * fireScale(s);
+  } else s.tiles[cell!] = id as FrTile;
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
@@ -1619,7 +1662,8 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'shelter', kind: 'regular', reward: 1, parts: [{ key: 'craft:shelter', need: 1 }] },
   { id: 'rod', kind: 'regular', reward: 0, items: { berries: 3 }, parts: [{ key: 'craft:rod', need: 1 }] },
   { id: 'fish', kind: 'regular', reward: 0, items: { stone: 2 }, parts: [{ key: 'pick:fish', need: 2 }] },
-  { id: 'ironpick', kind: 'regular', reward: 2, parts: [{ key: 'craft:ironpick', need: 1 }] },
+  { id: 'foundry', kind: 'regular', reward: 0, items: { branch: 3 }, parts: [{ key: 'craft:foundry', need: 1 }] },
+  { id: 'ironpick', kind: 'regular', reward: 0, items: { ingot: 3 }, parts: [{ key: 'craft:ironpick', need: 1 }] },
   { id: 'hunt', kind: 'regular', reward: 0, items: { cooked: 1 }, parts: [{ key: 'kill', need: 2 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
@@ -1806,7 +1850,7 @@ export const FR_IRON_DMG = 12;
 function mobBlocked(s: FrState, x: number, y: number): boolean {
   const c = frCenter(s);
   const r = s.fire > 0 ? frFireRadius(s) : 1.5;
-  if (Math.hypot(x - (c.x + 0.5), y - (c.y + 0.5)) <= r) return true;
+  if (frHasPit(s) && Math.hypot(x - (c.x + 0.5), y - (c.y + 0.5)) <= r) return true;
   return !frWalkable(s, Math.floor(x), Math.floor(y));
 }
 
@@ -1984,4 +2028,27 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
   }
   for (const k of s.trapNews) ev.push({ type: 'trapped', kind: k });
   return ev;
+}
+
+// --- Литейная ---
+
+/** Сколько руды нужно на один слиток. */
+export const FR_SMELT_ORE = 2;
+
+export function frCanSmelt(s: FrState): boolean {
+  return frBuilt(s, 'foundry') && (s.inv.ore ?? 0) >= FR_SMELT_ORE;
+}
+
+/** Переплавить руду в железный слиток. */
+export function frSmelt(s: FrState): FrEvent[] {
+  if (s.over || !frBuilt(s, 'foundry')) return [];
+  if (!frCanSmelt(s)) return [{ type: 'needMaterials' }];
+  take(s, 'ore', FR_SMELT_ORE);
+  if (!canTake(s.inv, 'ingot', frCapacity(s))) {
+    s.inv.ore = (s.inv.ore ?? 0) + FR_SMELT_ORE;
+    return [{ type: 'full' }];
+  }
+  s.inv.ingot = (s.inv.ingot ?? 0) + 1;
+  bump(s, 'pick:ingot');
+  return withQuest(s, [{ type: 'smelted' }]);
 }
