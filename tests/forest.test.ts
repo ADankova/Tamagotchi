@@ -130,6 +130,34 @@ describe('«Дикий лес»: сбор и костёр', () => {
   });
 });
 
+describe('«Дикий лес»: ходьба', () => {
+  it('идёт по прямой к точке, сквозь деревья и кусты, но не по воде', () => {
+    const s = newForest(7);
+    s.tiles = s.tiles.map((t, i) => {
+      const x = i % FR_W;
+      const y = Math.floor(i / FR_W);
+      if (x === 0 || y === 0 || x === FR_W - 1 || y === FR_H - 1) return 'tree';
+      if (x === 20) return y === 25 ? 'grass' : 'water';
+      if (t === 'pit') return t;
+      return y === 18 ? 'tree' : 'grass';
+    });
+    s.x = 15.5;
+    s.y = 17.5;
+    frDo(s, 15, 22, null, [15.3, 22.7]);
+    expect(s.path).toEqual([[15.3, 22.7]]);
+    run(s, 5000);
+    expect([s.x, s.y]).toEqual([15.3, 22.7]);
+    // За ручей — только через брод внизу, с поворотами, но не по воде.
+    frDo(s, 24, 10, null, [24.5, 10.5]);
+    expect(s.path.length).toBeGreaterThan(1);
+    for (let k = 0; k < 200; k++) {
+      frTick(s, 100);
+      expect(s.tiles[frIndex(Math.floor(s.x), Math.floor(s.y))]).not.toBe('water');
+    }
+    expect([s.x, s.y]).toEqual([24.5, 10.5]);
+  });
+});
+
 describe('«Дикий лес»: кнопки у предметов', () => {
   it('у костровища — «зажечь», у горящего костра — «подкинуть», «приготовить», «спать»', () => {
     const s = newForest(7);

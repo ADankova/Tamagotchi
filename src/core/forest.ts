@@ -49,7 +49,8 @@ export interface FrState {
   x: number;
   y: number;
   facing: 1 | -1;
-  path: number[];
+  /** Точки, через которые питомец идёт (в клетках, дробные). */
+  path: Array<[number, number]>;
   /** Что сделать, дойдя до конца пути. */
   goal: FrGoal | null;
   /** Идущее действие (сбор, еда) и сколько ему осталось. */
@@ -103,6 +104,77 @@ const BLOCKING: ReadonlySet<FrTile> = new Set(['water', 'tree', 'bush', 'pit']);
 export const frIndex = (x: number, y: number): number => y * FR_W + x;
 const inside = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < FR_W && y < FR_H;
 export const frCenter = (): { x: number; y: number } => ({ x: Math.floor(FR_W / 2), y: Math.floor(FR_H / 2) });
+
+/**
+ * Где питомец может идти: везде, кроме воды, костровища и самого края леса.
+ * Сквозь деревья, кусты и предметы он проходит.
+ */
+export function frPassable(s: FrState, x: number, y: number): boolean {
+  if (x < 1 || y < 1 || x >= FR_W - 1 || y >= FR_H - 1) return false;
+  const tile = s.tiles[frIndex(x, y)];
+  return tile !== 'water' && tile !== 'pit';
+}
+
+/** Свободна ли прямая между двумя точками. */
+function clearLine(s: FrState, ax: number, ay: number, bx: number, by: number): boolean {
+  const steps = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.1);
+  for (let k = 0; k <= steps; k++) {
+    const f = steps ? k / steps : 0;
+    if (!frPassable(s, Math.floor(ax + (bx - ax) * f), Math.floor(ay + (by - ay) * f))) return false;
+  }
+  return true;
+}
+
+/** Плавный маршрут к точке (tx, ty): сначала по клеткам, потом лишние повороты срезаются. */
+function route(s: FrState, tx: number, ty: number): Array<[number, number]> | null {
+  const goal = frIndex(Math.floor(tx), Math.floor(ty));
+  if (!frPassable(s, Math.floor(tx), Math.floor(ty))) return null;
+  if (clearLine(s, s.x, s.y, tx, ty)) return [[tx, ty]];
+  const start = frIndex(Math.floor(s.x), Math.floor(s.y));
+  const prev = new Map<number, number>([[start, -1]]);
+  const queue = [start];
+  while (queue.length && !prev.has(goal)) {
+    const i = queue.shift()!;
+    const x = i % FR_W;
+    const y = Math.floor(i / FR_W);
+    for (const [dx, dy] of DIRS8) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const ni = frIndex(nx, ny);
+      if (prev.has(ni) || !frPassable(s, nx, ny)) continue;
+      // По диагонали — только если обе соседние клетки проходимы (не срезаем угол воды).
+      if (dx && dy && (!frPassable(s, x + dx, y) || !frPassable(s, x, y + dy))) continue;
+      prev.set(ni, i);
+      queue.push(ni);
+    }
+  }
+  if (!prev.has(goal)) return null;
+  const cells: number[] = [];
+  for (let c = goal; c !== start && c !== -1; c = prev.get(c)!) cells.unshift(c);
+  const points: Array<[number, number]> = cells.map((c) => [(c % FR_W) + 0.5, Math.floor(c / FR_W) + 0.5]);
+  points[points.length - 1] = [tx, ty];
+  // Срезаем углы: из текущей точки идём сразу в самую дальнюю видимую.
+  const out: Array<[number, number]> = [];
+  let from: [number, number] = [s.x, s.y];
+  let k = 0;
+  while (k < points.length) {
+    let far = k;
+    for (let j = points.length - 1; j > k; j--) {
+      if (clearLine(s, from[0], from[1], points[j]![0], points[j]![1])) {
+        far = j;
+        break;
+      }
+    }
+    out.push(points[far]!);
+    from = points[far]!;
+    k = far + 1;
+  }
+  return out;
+}
+
+const DIRS8: ReadonlyArray<readonly [number, number]> = [
+  [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+];
 
 export function frWalkable(s: FrState, x: number, y: number): boolean {
   return inside(x, y) && !BLOCKING.has(s.tiles[frIndex(x, y)]!);
@@ -372,22 +444,47 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
   }
 }
 
-/** Пойти в клетку (или к ней, если на неё не встать) и, дойдя, сделать action. */
-export function frDo(s: FrState, x: number, y: number, action: FrAction | null): FrEvent[] {
+/**
+ * Пойти к клетке (x, y) и, дойдя, сделать action. point — точное место нажатия (для ходьбы по земле).
+ * К дереву, кусту и костру питомец подходит вплотную, к воде — до берега.
+ */
+export function frDo(s: FrState, x: number, y: number, action: FrAction | null, point?: [number, number]): FrEvent[] {
   if (s.over || !inside(x, y)) return [];
   const i = frIndex(x, y);
-  const walkable = frWalkable(s, x, y);
-  const targets = walkable
-    ? new Set([i])
-    : new Set(neighbours(i).filter((n) => frWalkable(s, n % FR_W, Math.floor(n / FR_W))));
-  const path = frPath(s, petCell(s), targets);
+  const tile = s.tiles[i];
+  const cx = x + 0.5;
+  const cy = y + 0.5;
+  let dest: [number, number] | null = null;
+  if (!action) dest = point ?? [cx, cy];
+  else if (tile === 'grass') dest = [cx, cy];
+  else if (tile === 'tree' || tile === 'bush') {
+    // Встать рядом, со стороны питомца.
+    const d = Math.hypot(s.x - cx, s.y - cy) || 1;
+    dest = d <= 0.75 ? [s.x, s.y] : [cx + ((s.x - cx) / d) * 0.6, cy + ((s.y - cy) / d) * 0.6];
+  }
+  let path = dest && frPassable(s, Math.floor(dest[0]), Math.floor(dest[1])) ? route(s, dest[0], dest[1]) : null;
+  if (!path) {
+    // Вода, костровище или недоступная точка: ближайшее проходимое место рядом с клеткой.
+    const spots = neighbours(i)
+      .filter((n) => frPassable(s, n % FR_W, Math.floor(n / FR_W)))
+      .map((n): [number, number] => {
+        const nx = (n % FR_W) + 0.5;
+        const ny = Math.floor(n / FR_W) + 0.5;
+        return [nx + (cx - nx) * 0.35, ny + (cy - ny) * 0.35];
+      })
+      .sort((a, b) => Math.hypot(a[0] - s.x, a[1] - s.y) - Math.hypot(b[0] - s.x, b[1] - s.y));
+    for (const spot of spots) {
+      path = route(s, spot[0], spot[1]);
+      if (path) break;
+    }
+  }
   if (!path) return [];
   if (s.sleeping) s.sleeping = false;
   const drop = s.drops.find((d) => d.x === x && d.y === y);
-  s.path = path;
+  s.path = Math.hypot(path[path.length - 1]![0] - s.x, path[path.length - 1]![1] - s.y) < 0.05 ? [] : path;
   s.goal = action ? { action, cell: i, ...(action === 'pick' && drop ? { id: drop.id } : {}) } : null;
   s.busy = null;
-  return path.length === 0 ? arrive(s) : [];
+  return s.path.length === 0 ? arrive(s) : [];
 }
 
 /** Нажатие без меню: сразу первое действие у предмета (или просто пойти). */
@@ -401,7 +498,7 @@ function arrive(s: FrState): FrEvent[] {
   const goal = s.goal;
   s.goal = null;
   if (!goal) return [];
-  if (!frWalkable(s, goal.cell % FR_W, Math.floor(goal.cell / FR_W))) faceTo(s, goal.cell);
+  faceTo(s, goal.cell);
   switch (goal.action) {
     case 'pick': {
       if (goal.id !== undefined) {
@@ -534,9 +631,7 @@ export function frTick(s: FrState, dt: number): FrEvent[] {
   } else if (s.path.length) {
     let step = (SPEED * dt) / 1000;
     while (step > 0 && s.path.length) {
-      const next = s.path[0]!;
-      const tx = (next % FR_W) + 0.5;
-      const ty = Math.floor(next / FR_W) + 0.5;
+      const [tx, ty] = s.path[0]!;
       const dx = tx - s.x;
       const dy = ty - s.y;
       const d = Math.hypot(dx, dy);
@@ -614,7 +709,9 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!raw || typeof raw !== 'object') return null;
   const s = raw as FrState;
   if (s.v !== 1 || !Array.isArray(s.tiles) || s.tiles.length !== FR_W * FR_H) return null;
-  if (!Array.isArray(s.drops) || !Array.isArray(s.berries) || !Array.isArray(s.path)) return null;
+  if (!Array.isArray(s.drops) || !Array.isArray(s.berries)) return null;
+  // Старые сохранения хранили путь клетками — просто останавливаемся.
+  if (!Array.isArray(s.path) || s.path.some((p) => !Array.isArray(p))) s.path = [];
   if (typeof s.x !== 'number' || typeof s.y !== 'number' || !s.stats || typeof s.clock !== 'number') return null;
   return s;
 }

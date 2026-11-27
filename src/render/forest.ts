@@ -157,8 +157,10 @@ export class ForestGame implements GameScreen {
     if (this.state.over) return;
     const rect = this.canvas.getBoundingClientRect();
     const view = this.view();
-    const x = Math.floor(view.camX + ((e.clientX - rect.left) / rect.width) * VIEW_W);
-    const y = Math.floor(view.camY + ((e.clientY - rect.top) / rect.height) * view.rows);
+    const fx = view.camX + ((e.clientX - rect.left) / rect.width) * VIEW_W;
+    const fy = view.camY + ((e.clientY - rect.top) / rect.height) * view.rows;
+    const x = Math.floor(fx);
+    const y = Math.floor(fy);
     const hadMenu = this.menuAt !== null;
     this.closeMenu();
     const target = frTargetAt(this.state, x, y);
@@ -166,7 +168,7 @@ export class ForestGame implements GameScreen {
     const actions = frActions(this.state, target);
     if (!actions.length) {
       // Нажатие на пустую землю при открытом меню только закрывает его.
-      if (!hadMenu) this.handle(frDo(this.state, x, y, null));
+      if (!hadMenu) this.handle(frDo(this.state, x, y, null, [fx, fy]));
       return;
     }
     this.openMenu(x, y, actions);
@@ -532,7 +534,18 @@ export class ForestGame implements GameScreen {
         const cx = sx(x + 0.5);
         const cy = sy(y + 0.5);
         const kind = s.tiles[i];
-        if (kind === 'tree') items.push({ y: y + 0.9, draw: () => drawTree(ctx, cx, sy(y + 1), tile) });
+        if (kind === 'tree') {
+          // Если питомец зашёл за дерево, оно становится полупрозрачным, чтобы его было видно.
+          const behind = Math.abs(s.x - (x + 0.5)) < 0.75 && s.y > y - 1.2 && s.y < y + 0.9;
+          items.push({
+            y: y + 0.9,
+            draw: () => {
+              ctx.globalAlpha = behind ? 0.45 : 1;
+              drawTree(ctx, cx, sy(y + 1), tile);
+              ctx.globalAlpha = 1;
+            },
+          });
+        }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
