@@ -656,11 +656,11 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.inv.purse).toBe(1);
   });
 
-  it('прочность инструментов: 20 использований, потом ломаются', async () => {
+  it('прочность инструментов: 30 использований, потом ломаются', async () => {
     const m = await import('../src/core/forest');
     const s = newForest(7);
     s.inv = { knife: 1 };
-    expect(m.frDurability(s, 'knife')).toBe(20);
+    expect(m.frDurability(s, 'knife')).toBe(30);
     s.dur.knife = 1;
     const tall = s.tiles.findIndex((x) => x === 'tall');
     expect(tall).toBeGreaterThan(-1);
@@ -673,7 +673,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.inv.knife ?? 0).toBe(0);
     s.inv = { branch: 1, stone: 1 };
     m.frCraft(s, 'knife');
-    expect(m.frDurability(s, 'knife')).toBe(20);
+    expect(m.frDurability(s, 'knife')).toBe(30);
   });
 
   it('блюдо без места в рюкзаке ложится рядом с костром', () => {
@@ -1154,8 +1154,8 @@ describe('редкий камень', () => {
     s.inv.axe = 1;
     expect(m.frCanUpgrade(s, 'axe')).toBe(true);
     expect(m.frUpgrade(s, 'axe')).toContainEqual({ type: 'upgraded', item: 'axe' });
-    expect(m.frDurability(s, 'axe')).toBe(40);
-    expect(m.frToolMax(s, 'axe')).toBe(40);
+    expect(m.frDurability(s, 'axe')).toBe(60);
+    expect(m.frToolMax(s, 'axe')).toBe(60);
     expect(m.frCanUpgrade(s, 'axe')).toBe(false);
     expect(s.inv.crystal).toBe(1);
   });
@@ -1176,7 +1176,7 @@ describe('сюжет «Потерянный маяк»', () => {
     expect(m.frQuestState(s, ch[1]!)).toBe('ready');
     s.inv = { fang: 2, branch: 2, stone: 1 };
     expect(m.frCraft(s, 'spear')).toContainEqual({ type: 'crafted', item: 'spear' });
-    expect(m.frDurability(s, 'spear')).toBe(30);
+    expect(m.frDurability(s, 'spear')).toBe(80);
     // белый волк появляется в пещере после 6-й главы
     for (const id of ['ch2', 'ch3', 'ch4', 'ch5', 'ch6']) s.claimed.push(id);
     expect(m.frAlphaDue(s)).toBe(true);
