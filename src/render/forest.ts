@@ -506,8 +506,19 @@ export class ForestGame implements GameScreen {
   private placeMenu(): void {
     if (!this.menuAt) return;
     const { camX, camY, rows } = this.view();
-    this.menu.style.left = `${((this.menuAt.x + 0.5 - camX) / VIEW_W) * 100}%`;
-    this.menu.style.top = `${((this.menuAt.y - camY) / rows) * 100}%`;
+    const box = this.menu.parentElement;
+    const W = box?.clientWidth || 1;
+    const H = box?.clientHeight || 1;
+    const topPx = ((this.menuAt.y - camY) / rows) * H;
+    const mh = this.menu.offsetHeight || 80;
+    const mw = this.menu.offsetWidth || 120;
+    // У верхнего края карты меню показывается под клеткой, у боковых краёв сдвигается внутрь.
+    const below = topPx < mh + 4;
+    const cx = ((this.menuAt.x + 0.5 - camX) / VIEW_W) * W;
+    const left = Math.min(Math.max(cx, mw / 2 + 4), Math.max(mw / 2 + 4, W - mw / 2 - 4));
+    this.menu.style.left = `${(left / W) * 100}%`;
+    this.menu.style.top = below ? `${((this.menuAt.y + 1 - camY) / rows) * 100}%` : `${(topPx / H) * 100}%`;
+    this.menu.style.transform = below ? 'translate(-50%, 0)' : '';
   }
 
   private handle(events: FrEvent[]): void {
@@ -1060,12 +1071,15 @@ export class ForestGame implements GameScreen {
     const back = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     back.addEventListener('click', () => this.renderCraft());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
-        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
-        el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+      el('div', { class: 'fr-bag fr-card fr-nopan' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestItems[id] ?? id }), back]),
+        el('div', { class: 'fr-detail-top' }, [
+          el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
+          el('div', { class: 'fr-detail-text' }, [
+            el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
+            el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+          ]),
+        ]),
         el('div', { class: 'fr-dmats' }, mats),
         make,
         ...(why ? [el('p', { class: 'fr-card-desc fr-why', text: why })] : []),
@@ -1174,12 +1188,15 @@ export class ForestGame implements GameScreen {
     const back = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     back.addEventListener('click', () => this.renderCraft());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
-        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
-        el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
-        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+      el('div', { class: 'fr-bag fr-card fr-nopan' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestItems[id] ?? id }), back]),
+        el('div', { class: 'fr-detail-top' }, [
+          el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
+          el('div', { class: 'fr-detail-text' }, [
+            el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
+            el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+          ]),
+        ]),
         el('div', { class: 'fr-dmats' }, mats),
         make,
         ...(why ? [el('p', { class: 'fr-card-desc fr-why', text: why })] : []),

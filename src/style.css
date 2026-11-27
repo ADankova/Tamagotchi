@@ -3691,3 +3691,47 @@ body:has(.fr-game) {
   border-style: solid;
   border-color: #b5651d;
 }
+
+/* Окошко изготовления не листается: всё помещается сразу. */
+.fr-nopan {
+  overflow: hidden;
+  gap: 4px;
+  padding: 10px 14px 12px;
+}
+.fr-nopan .fr-bag-head {
+  position: static;
+  margin: 0;
+  padding: 0;
+}
+.fr-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fr-detail-top .fr-detail-icon {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  margin: 0;
+}
+.fr-detail-top .fr-detail-icon canvas {
+  width: 64px;
+  height: 64px;
+}
+.fr-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fr-detail-text .fr-card-desc {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.fr-nopan .fr-dmats {
+  margin: 2px 0;
+  gap: 10px;
+}
+.fr-nopan .fr-why {
+  margin: 0;
+  text-align: center;
+}
