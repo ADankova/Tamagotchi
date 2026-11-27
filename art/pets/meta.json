@@ -505,56 +505,56 @@
    "sleep_v3",
    "sad_v3"
   ],
-  "feet": 62,
-  "left": 2,
-  "right": 60,
+  "feet": 63,
+  "left": 10,
+  "right": 58,
   "rowInfo": {
    "idle_v3": {
-    "feet": 62,
-    "left": 2,
-    "right": 62,
+    "feet": 63,
+    "left": 13,
+    "right": 56,
     "frames": 17
    },
    "catch_v3": {
-    "feet": 62,
-    "left": 2,
-    "right": 60,
+    "feet": 63,
+    "left": 7,
+    "right": 59,
     "frames": 17
    },
    "walk_v3": {
-    "feet": 62,
+    "feet": 56,
     "left": 2,
-    "right": 62,
+    "right": 61,
     "frames": 17
    },
    "eat_v3": {
-    "feet": 62,
-    "left": 0,
+    "feet": 56,
+    "left": 2,
     "right": 64,
     "frames": 17
    },
    "lie_v3": {
-    "feet": 58,
-    "left": 0,
-    "right": 62,
+    "feet": 52,
+    "left": 2,
+    "right": 63,
     "frames": 17
    },
    "roll_v3": {
-    "feet": 58,
-    "left": 2,
-    "right": 62,
+    "feet": 52,
+    "left": 1,
+    "right": 64,
     "frames": 17
    },
    "sleep_v3": {
-    "feet": 58,
-    "left": 2,
-    "right": 58,
+    "feet": 55,
+    "left": 4,
+    "right": 60,
     "frames": 17
    },
    "sad_v3": {
-    "feet": 58,
+    "feet": 52,
     "left": 2,
-    "right": 62,
+    "right": 63,
     "frames": 17
    }
   }
@@ -926,55 +926,55 @@
    "sad_v3"
   ],
   "feet": 62,
-  "left": 4,
-  "right": 60,
+  "left": 10,
+  "right": 54,
   "rowInfo": {
    "idle_v3": {
     "feet": 62,
-    "left": 4,
-    "right": 60,
+    "left": 10,
+    "right": 54,
     "frames": 17
    },
    "catch_v3": {
     "feet": 62,
-    "left": 2,
-    "right": 62,
+    "left": 8,
+    "right": 56,
     "frames": 17
    },
    "walk_v3": {
-    "feet": 56,
-    "left": 4,
-    "right": 60,
+    "feet": 62,
+    "left": 8,
+    "right": 56,
     "frames": 17
    },
    "eat_v3": {
-    "feet": 56,
-    "left": 4,
-    "right": 62,
+    "feet": 62,
+    "left": 8,
+    "right": 58,
     "frames": 17
    },
    "lie_v3": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
+    "feet": 56,
+    "left": 8,
+    "right": 56,
     "frames": 17
    },
    "roll_v3": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
+    "feet": 57,
+    "left": 6,
+    "right": 58,
     "frames": 17
    },
    "sleep_v3": {
-    "feet": 56,
-    "left": 4,
-    "right": 60,
+    "feet": 54,
+    "left": 6,
+    "right": 58,
     "frames": 17
    },
    "sad_v3": {
-    "feet": 58,
-    "left": 4,
-    "right": 60,
+    "feet": 56,
+    "left": 6,
+    "right": 58,
     "frames": 17
    }
   }
@@ -1346,55 +1346,55 @@
    "sad_v3"
   ],
   "feet": 64,
-  "left": 2,
-  "right": 62,
+  "left": 8,
+  "right": 56,
   "rowInfo": {
    "idle_v3": {
     "feet": 64,
-    "left": 2,
-    "right": 64,
+    "left": 8,
+    "right": 56,
     "frames": 17
    },
    "catch_v3": {
     "feet": 64,
-    "left": 2,
-    "right": 62,
+    "left": 6,
+    "right": 58,
     "frames": 17
    },
    "walk_v3": {
     "feet": 60,
-    "left": 4,
-    "right": 60,
+    "left": 0,
+    "right": 62,
     "frames": 17
    },
    "eat_v3": {
     "feet": 60,
-    "left": 2,
+    "left": 0,
     "right": 64,
     "frames": 17
    },
    "lie_v3": {
     "feet": 54,
-    "left": 6,
-    "right": 60,
+    "left": 4,
+    "right": 62,
     "frames": 17
    },
    "roll_v3": {
     "feet": 54,
-    "left": 6,
-    "right": 58,
+    "left": 2,
+    "right": 62,
     "frames": 17
    },
    "sleep_v3": {
-    "feet": 54,
+    "feet": 56,
     "left": 4,
     "right": 60,
     "frames": 17
    },
    "sad_v3": {
     "feet": 54,
-    "left": 6,
-    "right": 58,
+    "left": 4,
+    "right": 62,
     "frames": 17
    }
   }
