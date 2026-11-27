@@ -900,7 +900,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
-        if (d) items.push({ y: y + 0.4, draw: () => drawItem(ctx, d.kind, cx, cy, tile * 0.7, t) });
+        if (d) items.push({ y: y + 0.4, draw: () => drawItem(ctx, d.kind, cx, cy, tile * 0.7, t, d.id) });
       }
     }
     items.push({ y: s.y + 0.2, draw: () => this.drawPetAt(ctx, sx(s.x), sy(s.y) + tile * 0.35, tile, t) });
@@ -1197,9 +1197,9 @@ function drawPit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: nu
 }
 
 /** Предмет на земле или в рюкзаке: центр (cx, cy), size — примерная ширина. */
-function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: number, size: number, t: number): void {
+function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: number, size: number, t: number, phase = 0): void {
   outline(ctx, size);
-  const bob = Math.sin(t / 500 + cx) * size * 0.03;
+  const bob = Math.sin(t / 500 + phase) * size * 0.03;
   cy += bob;
   switch (kind) {
     case 'pickaxe':
