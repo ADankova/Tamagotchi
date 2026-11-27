@@ -12,6 +12,7 @@ import {
   frDurability,
   frAttack,
   frEquip,
+  frDestroy,
   frHeld,
   frBagSize,
   frBagUsed,
@@ -269,6 +270,24 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(m.frDurability(s, 'spear')).toBe(110);
     m.frUpgrade(s, 'ironaxe');
     expect(m.frToolMax(s, 'ironaxe')).toBe(90);
+  });
+
+  it('удалить уничтожает предмет совсем: все штуки, прочность и оружие в руках', () => {
+    const s = newForest(7);
+    s.inv = { stone: 7, axe: 1 };
+    s.up.axe = true;
+    s.dur.axe = 5;
+    frEquip(s, 'axe');
+    const drops = s.drops.length;
+    expect(frDestroy(s, 'stone')).toContainEqual({ type: 'destroyed', item: 'stone', n: 7 });
+    expect(s.inv.stone).toBe(undefined);
+    expect(frDestroy(s, 'axe')).toContainEqual({ type: 'destroyed', item: 'axe', n: 1 });
+    expect(s.inv.axe).toBe(undefined);
+    expect(s.weapon).toBe(null);
+    expect(s.dur.axe).toBe(undefined);
+    expect(s.up.axe).toBe(undefined);
+    expect(s.drops.length).toBe(drops);
+    expect(frDestroy(s, 'axe')).toEqual([]);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {
