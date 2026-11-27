@@ -904,7 +904,7 @@ export class ForestGame implements GameScreen {
     return c;
   }
 
-  /** Окно крафта: вкладки слева (только значки), плитки предметов с материалами; нажатие открывает подробности. */
+  /** Окно крафта: вкладки сверху (только значки), плитки предметов с материалами; нажатие открывает подробности. */
   private renderCraft(): void {
     const s = this.state;
     const all = this.craftRecipes();
@@ -937,8 +937,8 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-craft' }, [
-        el('div', { class: 'fr-bag-head' }, [el('span'), close]),
-        el('div', { class: 'fr-cbody' }, [el('div', { class: 'fr-vtabs' }, tabs), el('div', { class: 'fr-cgrid' }, tiles)]),
+        el('div', { class: 'fr-bag-head' }, [el('div', { class: 'fr-tabs' }, tabs), close]),
+        el('div', { class: 'fr-cgrid' }, tiles),
       ]),
     );
   }
