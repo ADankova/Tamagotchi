@@ -48,6 +48,7 @@ import {
   frUnwear,
   frEquip,
   frWeaponDmg,
+  frWeaponStats,
   FR_WEAPONS,
   FR_BUILDINGS,
   FR_LOOM,
@@ -259,6 +260,8 @@ export class ForestGame implements GameScreen {
   private readonly clock: SVGSVGElement;
   private readonly treatText = el('span', {});
   private hutAlpha = 1;
+  /** Последний удар питомца: когда и куда (в клетках от питомца) — для замаха оружием. */
+  private swing: { at: number; dx: number; dy: number } | null = null;
   private readonly sleepButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWake });
   private readonly menu = el('div', { class: 'fr-menu', hidden: '' });
   private menuAt: { x: number; y: number } | null = null;
@@ -647,8 +650,12 @@ export class ForestGame implements GameScreen {
         case 'tooWet':
           this.say(M.tooWet, 'blocked');
           break;
-        case 'petHit':
+        case 'petHit': {
+          const st = this.state;
+          const near = st.mobs.filter((x) => Math.hypot(x.x - st.x, x.y - st.y) < 2.5).sort((a, b) => Math.hypot(a.x - st.x, a.y - st.y) - Math.hypot(b.x - st.x, b.y - st.y))[0];
+          this.swing = { at: performance.now(), dx: near ? near.x - st.x : st.facing, dy: near ? near.y - st.y : 0 };
           break;
+        }
         case 'traveled':
           this.closeMenu();
           this.closeBag();
@@ -1930,6 +1937,68 @@ export class ForestGame implements GameScreen {
     this.drawLabels(ctx, sx, sy, tile, drops);
   }
 
+  /** Оружие в руках летает рядом с питомцем, при ударе делает выпад в сторону зверя; со вставленным камнем светится. */
+  private drawHeld(ctx: CanvasRenderingContext2D, cx: number, feet: number, tile: number, t: number): void {
+    const s = this.state;
+    const w = frWeaponStats(s).item;
+    if (!w || s.sleeping || s.over) return;
+    const f = s.facing < 0 ? -1 : 1;
+    const bx = cx - f * tile * 0.62;
+    const by = feet - tile * 0.95 + Math.sin(t / 330) * tile * 0.06;
+    let x = bx;
+    let y = by;
+    let rot = -0.35 * f;
+    const dur = 280;
+    const sw = this.swing;
+    let spark: { x: number; y: number; a: number } | null = null;
+    if (sw && t >= sw.at && t - sw.at < dur) {
+      const p = (t - sw.at) / dur;
+      const k = Math.sin(Math.PI * Math.min(1, p * 1.1));
+      const tx = cx + sw.dx * tile;
+      const ty = feet - tile * 0.45 + sw.dy * tile;
+      x = bx + (tx - bx) * k * 0.9;
+      y = by + (ty - by) * k * 0.9;
+      rot = f * (-0.9 + 2.2 * p);
+      if (p > 0.35 && p < 0.8) spark = { x: tx, y: ty, a: 1 - Math.abs(p - 0.55) / 0.25 };
+    }
+    const size = tile * 0.62;
+    if (s.up[w]) {
+      const a = 0.4 + 0.2 * Math.sin(t / 260);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, size * 0.85);
+      g.addColorStop(0, `rgba(150,235,255,${a})`);
+      g.addColorStop(1, 'rgba(150,235,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - size, y - size, size * 2, size * 2);
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    if (f < 0) ctx.scale(-1, 1);
+    ctx.imageSmoothingEnabled = false;
+    drawIcon(ctx, `item-${w}`, 0, 0, size);
+    ctx.restore();
+    if (s.up[w]) {
+      ctx.fillStyle = '#e8fbff';
+      for (let k = 0; k < 2; k++) {
+        const ang = t / 420 + k * Math.PI;
+        const px = x + Math.cos(ang) * size * 0.55;
+        const py = y + Math.sin(ang) * size * 0.45;
+        const r = tile * 0.028 * (1 + 0.5 * Math.sin(t / 150 + k));
+        ctx.fillRect(px - r, py - r * 3, r * 2, r * 6);
+        ctx.fillRect(px - r * 3, py - r, r * 6, r * 2);
+      }
+    }
+    if (spark) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, spark.a);
+      ctx.fillStyle = '#fff6c8';
+      const r = tile * 0.07;
+      ctx.fillRect(spark.x - r, spark.y - r * 4, r * 2, r * 8);
+      ctx.fillRect(spark.x - r * 4, spark.y - r, r * 8, r * 2);
+      ctx.restore();
+    }
+  }
+
   private drawPetAt(ctx: CanvasRenderingContext2D, cx: number, feet: number, tile: number, t: number): void {
     const s = this.state;
     let anim: AnimRow = 'idle_smooth';
@@ -1945,6 +2014,7 @@ export class ForestGame implements GameScreen {
     ctx.ellipse(cx, feet - tile * 0.05, tile * 0.38, tile * 0.12, 0, 0, Math.PI * 2);
     ctx.fill();
     drawPet(ctx, this.host.petSpecies, this.host.petBody, anim, animFrame(anim, t, 1), cx, feet, scale, s.facing < 0);
+    this.drawHeld(ctx, cx, feet, tile, t);
     if (s.sleeping) {
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = INK;
