@@ -206,6 +206,7 @@ export class ForestGame implements GameScreen {
       const dy = e.clientY - d.py;
       if (!this.dragMoved && Math.hypot(dx, dy) < 10) return;
       this.dragMoved = true;
+      this.following = false;
       const tile = this.canvas.getBoundingClientRect().width / VIEW_W || 1;
       this.pan = { x: d.ox - dx / tile, y: d.oy - dy / tile };
       this.closeMenu();
@@ -251,6 +252,14 @@ export class ForestGame implements GameScreen {
     if (this.messageLeft > 0) {
       this.messageLeft -= dt;
       if (this.messageLeft <= 0) this.note.classList.remove('on');
+    }
+    if (this.following && !this.drag) {
+      const k = Math.exp(-dt / 160);
+      this.pan = { x: this.pan.x * k, y: this.pan.y * k };
+      if (Math.hypot(this.pan.x, this.pan.y) < 0.02) {
+        this.pan = { x: 0, y: 0 };
+        this.following = false;
+      }
     }
     this.resize();
     this.placeMenu();
@@ -1348,6 +1357,7 @@ export class ForestGame implements GameScreen {
   private pan = { x: 0, y: 0 };
   private drag: { px: number; py: number; ox: number; oy: number } | null = null;
   private dragMoved = false;
+  private following = false;
   private lastPet = { x: -1, y: -1, loc: '' };
 
   private view(): { tile: number; rows: number; camX: number; camY: number } {
@@ -1355,8 +1365,9 @@ export class ForestGame implements GameScreen {
     const tile = this.canvas.width / VIEW_W || 1;
     const rows = this.canvas.height / tile;
     if (Math.abs(s.x - this.lastPet.x) > 1e-6 || Math.abs(s.y - this.lastPet.y) > 1e-6 || s.loc !== this.lastPet.loc) {
+      if (s.loc !== this.lastPet.loc) this.pan = { x: 0, y: 0 };
       this.lastPet = { x: s.x, y: s.y, loc: s.loc };
-      this.pan = { x: 0, y: 0 };
+      this.following = true;
     }
     const camX = clamp(s.x - VIEW_W / 2 + this.pan.x, 0, FR_W - VIEW_W);
     const camY = clamp(s.y - rows / 2 + this.pan.y, 0, FR_H - rows);
