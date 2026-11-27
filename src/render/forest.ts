@@ -6,7 +6,6 @@ import {
   FR_NIGHT_AT,
   FR_EFFECTS,
   FR_H,
-  FR_SLOTS,
   FR_W,
   frActions,
   frDo,
@@ -857,7 +856,7 @@ export class ForestGame implements GameScreen {
       }
     }
     const cells: HTMLElement[] = [];
-    for (let k = 0; k < FR_SLOTS; k++) {
+    for (let k = 0; k < frCapacity(s); k++) {
       const st = stacks[k];
       if (!st) {
         cells.push(el('span', { class: 'fr-slot empty' }));

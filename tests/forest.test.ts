@@ -16,6 +16,8 @@ import {
   frTorch,
   frChestPut,
   frChestSpots,
+  frCapacity,
+  frWear,
   frChestTake,
   frChestBuilt,
   frPotAdd,
@@ -493,9 +495,9 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(m.frCraft(s, 'loom', spot)).toContainEqual({ type: 'crafted', item: 'loom' });
     expect(s.tiles[spot]).toBe('loom');
     expect(m.frWeave(s, 'cloth')).toEqual([{ type: 'needMaterials' }]);
-    s.inv = { grass: 14 };
-    for (let k = 0; k < 3; k++) m.frWeave(s, 'cloth');
-    expect(s.inv.cloth).toBe(3);
+    s.inv = { grass: 20 };
+    for (let k = 0; k < 5; k++) m.frWeave(s, 'cloth');
+    expect(s.inv.cloth).toBe(5);
     expect(m.frWeave(s, 'purse')).toContainEqual({ type: 'crafted', item: 'purse' });
     expect(s.inv.purse).toBe(1);
     const base = m.frCapacity(s);
@@ -557,5 +559,14 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(s.tiles[ti]).toBe('grass');
     expect(s.drops.length).toBeGreaterThan(before);
     expect(s.drops.some((d) => d.kind === 'grass')).toBe(true);
+  });
+
+  it('надетый кошелёк увеличивает число ячеек в сетке рюкзака', () => {
+    // сетка рисуется по frCapacity, а не по базовым 12
+    const s = newForest(7);
+    s.inv = { purse: 1 };
+    const before = frCapacity(s);
+    frWear(s, 'purse');
+    expect(frCapacity(s)).toBe(before + 4);
   });
 });

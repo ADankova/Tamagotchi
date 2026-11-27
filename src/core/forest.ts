@@ -1206,7 +1206,7 @@ function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
 
 export const FR_LOOM: ReadonlyArray<{ id: 'cloth' | 'purse'; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'cloth', cost: [['grass', 3]] },
-  { id: 'purse', cost: [['cloth', 3], ['grass', 5]] },
+  { id: 'purse', cost: [['cloth', 5], ['grass', 5]] },
 ];
 
 export function frCanWeave(s: FrState, id: 'cloth' | 'purse'): boolean {
