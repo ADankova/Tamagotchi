@@ -9,6 +9,8 @@ import {
   FR_STACK,
   FR_W,
   frActions,
+  frDurability,
+  frAttack,
   frEquip,
   frWeaponStats,
   FR_WEAPONS,
@@ -193,6 +195,28 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(hits(FR_MOBS.wolf.hp)).toBe(5);
     expect(hits(FR_MOBS.bat.hp)).toBe(3);
     expect(hits(FR_MOBS.alpha.hp)).toBe(10);
+  });
+
+  it('удар оружием изнашивает его так же, как добыча', () => {
+    const s = newForest(7);
+    s.tiles = s.tiles.map((k) => (k === 'tree' || k === 'rock' || k === 'bush' || k === 'water' || k === 'tall' ? 'grass' : k));
+    s.fire = 0;
+    s.inv = { axe: 1 };
+    frEquip(s, 'axe');
+    const before = frDurability(s, 'axe');
+    s.mobs = [{ id: 970, kind: 'wolf', x: s.x + 0.8, y: s.y, hp: 25, provoked: true, angry: true, cd: 0, wx: s.x, wy: s.y }];
+    frAttack(s, 970);
+    for (let k = 0; k < 40; k++) frTick(s, 100);
+    expect(frDurability(s, 'axe')).toBeLessThan(before);
+    // Кулаки ничего не изнашивают.
+    const t = newForest(7);
+    t.tiles = s.tiles;
+    t.fire = 0;
+    t.inv = { axe: 1 };
+    t.mobs = [{ id: 971, kind: 'wolf', x: t.x + 0.8, y: t.y, hp: 25, provoked: true, angry: true, cd: 0, wx: t.x, wy: t.y }];
+    frAttack(t, 971);
+    for (let k = 0; k < 40; k++) frTick(t, 100);
+    expect(frDurability(t, 'axe')).toBe(before);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {

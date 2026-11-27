@@ -2283,20 +2283,21 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
         s.path = [];
         s.facing = m.x >= s.x ? 1 : -1;
         if (s.atkCd <= 0) {
-          const { dmg, ms } = frWeaponStats(s);
+          const { item: weapon, dmg, ms } = frWeaponStats(s);
           m.hp -= dmg;
           m.provoked = true;
           m.angry = true;
           s.atkCd = ms;
           ev.push({ type: 'petHit', kind: m.kind, dmg });
-          if (frWeaponStats(s).item === 'spear') {
-            const left = frDurability(s, 'spear') - 1;
-            if (left > 0) s.dur.spear = left;
+          if (weapon) {
+            const left = frDurability(s, weapon) - 1;
+            if (left > 0) s.dur[weapon] = left;
             else {
-              delete s.dur.spear;
-              delete s.up.spear;
-              delete s.inv.spear;
-              ev.push({ type: 'broke', item: 'spear' });
+              delete s.dur[weapon];
+              delete s.up[weapon];
+              delete s.inv[weapon];
+              if (s.weapon === weapon) s.weapon = null;
+              ev.push({ type: 'broke', item: weapon });
             }
           }
           if (m.hp <= 0) {
