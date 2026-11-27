@@ -1990,12 +1990,24 @@ export const FR_QUESTS: readonly FrQuest[] = [
 ];
 
 /** Сколько сделано по пункту задания (без ограничения сверху). */
-export function frCounter(s: FrState, key: string): number {
-  return key === 'night' ? s.day - 1 : s.count[key] ?? 0;
+export function frCounter(s: FrState, key: string, q?: FrQuest): number {
+  const raw = key === 'night' ? s.day - 1 : s.count[key] ?? 0;
+  // Главы «Линза» и дальше считают только то, что сделано после получения задания.
+  if (q && q.kind === 'story' && !FR_STORY_FREE.includes(q.id) && !s.claimed.includes(q.id)) {
+    if (frStoryActive(s)?.id !== q.id) return 0;
+    const bk = `qb:${q.id}:${key}`;
+    if (s.count[bk] === undefined) s.count[bk] = raw;
+    return Math.max(0, raw - (s.count[bk] ?? 0));
+  }
+  return raw;
 }
 
+/** Главы, у которых засчитывается и то, что сделано раньше. */
+const FR_STORY_FREE = ['ch1', 'ch2', 'ch3'];
+
 export function frQuestDone(s: FrState, q: FrQuest): boolean {
-  return q.parts.every((p) => frCounter(s, p.key) >= p.need);
+  // map, а не every: все пункты должны получить точку отсчёта сразу.
+  return q.parts.map((p) => frCounter(s, p.key, q) >= p.need).every(Boolean);
 }
 
 export type FrQuestState = 'progress' | 'ready' | 'claimed' | 'locked';

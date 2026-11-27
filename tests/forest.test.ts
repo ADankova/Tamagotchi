@@ -1329,3 +1329,21 @@ describe('сундук вмещает столько же ячеек, сколь
     expect(frChestPut(s, 'seeds', 2)).toBe(2);
   });
 });
+
+describe('главы сюжета считают только то, что сделано после получения', () => {
+  it('«Линза»: пещера и мыши до задания не засчитываются', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.count['visit:cave'] = 1;
+    s.count['kill:bat'] = 2;
+    s.count['pick:crystal'] = 3;
+    s.claimed.push('ch1', 'ch2', 'ch3');
+    const ch4 = m.FR_QUESTS.find((x) => x.id === 'ch4')!;
+    expect(m.frQuestState(s, ch4)).toBe('progress');
+    expect(m.frCounter(s, 'kill:bat', ch4)).toBe(0);
+    s.count['visit:cave'] = 2;
+    s.count['kill:bat'] = 4;
+    s.count['pick:crystal'] = 6;
+    expect(m.frQuestState(s, ch4)).toBe('ready');
+  });
+});
