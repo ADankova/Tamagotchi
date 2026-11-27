@@ -12,8 +12,6 @@ export const FR_NIGHT_AT = 210_000;
 /** Во сне у костра время идёт во столько раз быстрее. */
 export const FR_SLEEP_SPEED = 5.2;
 export const FR_SLOTS = 12;
-/** Сколько воды набирается фляжкой за раз. */
-export const FR_FILL = 3;
 export const FR_TORCH_MS = 60_000;
 const EGG_CHANCE = 0.35;
 const SEED_CHANCE = 0.3;
@@ -32,7 +30,7 @@ export const FR_FIRE_RADIUS = 3.5;
 export const FR_NIGHT_REWARD = 2;
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'water' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -590,12 +588,8 @@ function arrive(s: FrState): FrEvent[] {
     }
     case 'fill': {
       if (!(s.inv.flask ?? 0)) return [{ type: 'needFlask' }];
-      let got = 0;
-      while (got < FR_FILL && canTake(s.inv, 'water')) {
-        s.inv.water = (s.inv.water ?? 0) + 1;
-        got++;
-      }
-      if (!got) return [{ type: 'full' }];
+      take(s, 'flask', 1);
+      s.inv.fullflask = (s.inv.fullflask ?? 0) + 1;
       s.busy = { kind: 'drink', left: FR_ACTION_MS };
       return [{ type: 'filled' }];
     }
@@ -699,10 +693,10 @@ export const FR_POT_SLOTS = 3;
 export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [
   { from: ['mushroom'], to: 'cooked' },
   { from: ['egg'], to: 'friedegg' },
-  { from: ['water', 'berries'], to: 'compote' },
-  { from: ['water', 'grass'], to: 'tea' },
-  { from: ['water', 'seeds'], to: 'porridge' },
-  { from: ['water', 'seeds', 'berries'], to: 'berryporridge' },
+  { from: ['fullflask', 'berries'], to: 'compote' },
+  { from: ['fullflask', 'grass'], to: 'tea' },
+  { from: ['fullflask', 'seeds'], to: 'porridge' },
+  { from: ['fullflask', 'seeds', 'berries'], to: 'berryporridge' },
 ];
 
 /** Можно ли положить предмет в окошко: он входит хотя бы в один рецепт. */
@@ -741,6 +735,8 @@ export function frPotCook(s: FrState): FrEvent[] {
   if (s.fire <= 0) return [{ type: 'needForFire' }];
   const out = frRecipe(s.pot);
   if (!out) return [{ type: 'nothingToCook' }];
+  // Фляга с водой после готовки возвращается пустой.
+  if (s.pot.includes('fullflask')) s.inv.flask = (s.inv.flask ?? 0) + 1;
   s.pot = [];
   s.inv[out] = (s.inv[out] ?? 0) + 1;
   bump(s, 'cook');
@@ -755,7 +751,7 @@ export const FR_EFFECTS: Partial<Record<FrItem, Partial<Record<FrStat, number>>>
   cooked: { food: 25 },
   egg: { food: 5 },
   friedegg: { food: 30, health: 5 },
-  water: { water: 30 },
+  fullflask: { water: 30 },
   tea: { water: 20, warmth: 30, health: 10 },
   compote: { food: 12, water: 25 },
   porridge: { food: 40 },
@@ -771,6 +767,7 @@ export function frEat(s: FrState, item: FrItem): FrEvent[] {
   const fx = FR_EFFECTS[item];
   if (s.over || !fx || !(s.inv[item] ?? 0)) return [];
   take(s, item, 1);
+  if (item === 'fullflask') s.inv.flask = (s.inv.flask ?? 0) + 1;
   for (const [k, v] of Object.entries(fx) as Array<[FrStat, number]>) s.stats[k] = Math.min(100, s.stats[k] + v);
   s.busy = { kind: 'eat', left: FR_ACTION_MS };
   s.path = [];
@@ -982,7 +979,7 @@ export function frChestBuilt(s: FrState): boolean {
 export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
-  if (id !== 'chest' && id !== 'torch' && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if (id !== 'chest' && id !== 'torch' && (s.inv[id] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
   if (id === 'torch' && !canTake(s.inv, 'torch')) return [{ type: 'full' }];
   if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
