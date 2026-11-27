@@ -75,6 +75,8 @@ export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 export interface FrDrop {
   id: number;
   kind: FrItem;
+  /** Сколько штук лежит в куче (нет — одна). */
+  n?: number;
   x: number;
   y: number;
 }
@@ -1086,8 +1088,14 @@ function arriveInner(s: FrState): FrEvent[] {
         if (!d) return [];
         if (d.kind === 'grass' && !hasTool(s, 'knife')) return [{ type: 'needKnife' }];
         if (!canTake(s.inv, d.kind, frCapacity(s))) return [{ type: 'full' }];
-        s.drops = s.drops.filter((it) => it.id !== d.id);
-        s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+        // Кучу забираем сколько влезет, остаток лежит дальше.
+        let got = 0;
+        for (let k = 0; k < (d.n ?? 1) && canTake(s.inv, d.kind, frCapacity(s)); k++) {
+          s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+          got++;
+        }
+        if (got >= (d.n ?? 1)) s.drops = s.drops.filter((it) => it.id !== d.id);
+        else d.n = (d.n ?? 1) - got;
         bump(s, `pick:${d.kind}`);
         s.busy = { kind: 'gather', left: FR_ACTION_MS };
         return [{ type: 'picked', item: d.kind }];
@@ -1370,11 +1378,11 @@ export function frFixDrops(s: FrState): void {
   const bad = s.drops.filter((d) => !dropTileOk(s, d.x, d.y) && s.tiles[frIndex(d.x, d.y)] !== 'tall');
   if (!bad.length) return;
   s.drops = s.drops.filter((d) => !bad.includes(d));
-  for (const d of bad) if (!dropNear(s, d.kind, d.x, d.y)) s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+  for (const d of bad) if (!dropNear(s, d.kind, d.x, d.y, 0, d.n ?? 1)) s.inv[d.kind] = (s.inv[d.kind] ?? 0) + (d.n ?? 1);
 }
 
 /** Кладёт предмет на свободную клетку рядом с (cx, cy), кольцами от `from`. */
-function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0): boolean {
+function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0, n = 1): boolean {
   const c = { x: cx, y: cy };
   for (let r = from; r <= 4; r++) {
     for (let dy = -r; dy <= r; dy++) {
@@ -1383,7 +1391,7 @@ function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0): b
         const x = c.x + dx;
         const y = c.y + dy;
         if (!dropTileOk(s, x, y) || s.drops.some((d) => d.x === x && d.y === y)) continue;
-        s.drops.push({ id: s.nextId++, kind, x, y });
+        s.drops.push({ id: s.nextId++, kind, ...(n > 1 ? { n } : {}), x, y });
         return true;
       }
     }
@@ -1478,13 +1486,16 @@ export function frCanUpgrade(s: FrState, tool: FrTool): boolean {
 }
 
 /** Уничтожить предмет совсем (все штуки): он исчезает, на землю ничего не падает. */
-export function frDestroy(s: FrState, item: FrItem): FrEvent[] {
-  const n = s.inv[item] ?? 0;
-  if (s.over || !n) return [];
-  delete s.inv[item];
-  delete s.dur[item as FrTool];
-  delete s.up[item as FrTool];
-  if (s.weapon === item) s.weapon = null;
+export function frDestroy(s: FrState, item: FrItem, count?: number): FrEvent[] {
+  const have = s.inv[item] ?? 0;
+  if (s.over || !have) return [];
+  const n = Math.max(1, Math.min(Math.floor(count ?? have), have));
+  take(s, item, n);
+  if (!s.inv[item]) {
+    delete s.dur[item as FrTool];
+    delete s.up[item as FrTool];
+    if (s.weapon === item) s.weapon = null;
+  }
   return [{ type: 'destroyed', item, n }];
 }
 
@@ -1497,7 +1508,8 @@ export function frUpgrade(s: FrState, tool: FrTool): FrEvent[] {
   return [{ type: 'upgraded', item: tool }];
 }
 
-export function frThrow(s: FrState, item: FrItem): FrEvent[] {
+export function frThrow(s: FrState, item: FrItem, count = 1): FrEvent[] {
+  const n = Math.max(1, Math.min(Math.floor(count), s.inv[item] ?? 0));
   if (s.over || !(s.inv[item] ?? 0)) return [];
   const here = petCell(s);
   const spots = [here, ...neighbours(here)].filter(
@@ -1505,8 +1517,9 @@ export function frThrow(s: FrState, item: FrItem): FrEvent[] {
   );
   const spot = spots[0];
   if (spot === undefined) return [];
-  take(s, item, 1);
-  s.drops.push({ id: s.nextId++, kind: item, x: spot % FR_W, y: Math.floor(spot / FR_W) });
+  take(s, item, n);
+  if (s.weapon === item && !s.inv[item]) s.weapon = null;
+  s.drops.push({ id: s.nextId++, kind: item, ...(n > 1 ? { n } : {}), x: spot % FR_W, y: Math.floor(spot / FR_W) });
   return [{ type: 'thrown', item }];
 }
 
@@ -2136,9 +2149,9 @@ export interface FrMob {
 export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number; flee: boolean; meat: number }> = {
   mouse: { hp: 10, dmg: 2, speed: 2.2, flee: true, meat: 0 },
   rabbit: { hp: 15, dmg: 4, speed: 2.6, flee: true, meat: 1 },
-  wolf: { hp: 25, dmg: 9, speed: 2.8, flee: false, meat: 2 },
+  wolf: { hp: 40, dmg: 12, speed: 3, flee: false, meat: 2 },
   bat: { hp: 15, dmg: 3, speed: 3.2, flee: false, meat: 0 },
-  alpha: { hp: 50, dmg: 12, speed: 3, flee: false, meat: 4 },
+  alpha: { hp: 70, dmg: 15, speed: 3.1, flee: false, meat: 4 },
 };
 
 /** Летучие мыши замечают питомца с факелом за столько клеток. */
