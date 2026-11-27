@@ -51,6 +51,17 @@ export function drawSprite(ctx: CanvasRenderingContext2D, kind: string, v: numbe
   return true;
 }
 
+/** Иконка предмета: вписывается в квадрат size по центру (cx, cy); false — нет картинки. */
+export function drawIcon(ctx: CanvasRenderingContext2D, kind: string, cx: number, cy: number, size: number): boolean {
+  const img = sprite(kind, 0);
+  if (!img) return false;
+  const k = size / Math.max(img.naturalWidth, img.naturalHeight);
+  const w = img.naturalWidth * k;
+  const h = img.naturalHeight * k;
+  ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+  return true;
+}
+
 type Rng = () => number;
 const mk = (seed: number): Rng => {
   let a = seed | 0;
@@ -137,3 +148,6 @@ export function groundTile(kind: 'meadow' | 'cave', x: number, y: number): HTMLC
   ground.set(key, c);
   return c;
 }
+
+// Картинки создаём заранее: иконки в рюкзаке рисуются один раз и не успели бы загрузиться.
+if (typeof Image !== 'undefined') for (const kind of Object.keys(NATURE)) for (let v = 0; v < NATURE[kind]!.length; v++) sprite(kind, v);
