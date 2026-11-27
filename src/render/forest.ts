@@ -273,6 +273,8 @@ export class ForestGame implements GameScreen {
     cb: Callbacks,
   ) {
     this.state = loadSaved() ?? newForest(randomSeed());
+    // Конфеты уже выданы питомцу в момент получения; при новом входе счётчик начинается с нуля, как в других играх.
+    this.state.treats = 0;
     this.clock = clockFace();
     this.clockHand = this.clock.querySelector('.fr-hand') as SVGElement;
     const bagButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestBag });
