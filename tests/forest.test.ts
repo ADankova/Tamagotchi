@@ -339,3 +339,55 @@ describe('«Дикий лес»: этап 2', () => {
     expect(s.treats).toBe(1);
   });
 });
+
+describe('«Дикий лес»: трава и большие камни', () => {
+  it('высокая трава покрывает около 65% свободных клеток, камней и веток мало', () => {
+    for (const seed of [1, 7, 42]) {
+      const s = newForest(seed);
+      const n = (k: string): number => s.tiles.filter((x) => x === k).length;
+      const free = n('grass') + n('tall') + n('rock');
+      expect(n('tall') / free).toBeGreaterThan(0.55);
+      expect(n('tall') / free).toBeLessThan(0.78);
+      expect(n('rock')).toBeGreaterThan(5);
+      expect(s.drops.filter((d) => d.kind === 'branch').length).toBeLessThanOrEqual(8);
+      expect(s.drops.some((d) => d.kind === 'grass')).toBe(false);
+    }
+  });
+
+  it('траву срезают ножом, а камень разбивают киркой', () => {
+    const s = newForest(7);
+    const ti = s.tiles.findIndex((k, n) => k === 'tall' && n % 30 > 3 && n % 30 < 26 && Math.floor(n / 30) > 3 && Math.floor(n / 30) < 26);
+    const tx = ti % 30;
+    const ty = Math.floor(ti / 30);
+    s.x = tx + 0.5;
+    s.y = ty + 0.5;
+    expect(frActions(s, frTargetAt(s, tx, ty)!)).toEqual(['cut']);
+    expect([...frDo(s, tx, ty, 'cut'), ...run(s, 3000)]).toContainEqual({ type: 'needKnife' });
+    s.inv = { knife: 1 };
+    expect([...frDo(s, tx, ty, 'cut'), ...run(s, 3000)]).toContainEqual({ type: 'cut' });
+    expect(s.tiles[ti]).toBe('grass');
+    expect(s.inv.grass).toBe(1);
+
+    const ri = s.tiles.findIndex((k) => k === 'rock');
+    const rx = ri % 30;
+    const ry = Math.floor(ri / 30);
+    s.x = rx + 0.5;
+    s.y = ry + 0.5;
+    expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'needPickaxe' });
+    s.inv = { pickaxe: 1 };
+    expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'mined' });
+    expect(s.inv.stone).toBe(3);
+    expect(s.tiles[ri]).toBe('grass');
+  });
+
+  it('далёкую траву издалека не режут: нажатие ведёт к ней', () => {
+    const s = newForest(7);
+    const ti = s.tiles.findIndex((k) => k === 'tall');
+    s.x = 15.5;
+    s.y = 15.5;
+    const x = ti % 30;
+    const y = Math.floor(ti / 30);
+    s.x = x > 15 ? 3.5 : 25.5;
+    expect(frActions(s, frTargetAt(s, x, y)!)).toEqual([]);
+  });
+});

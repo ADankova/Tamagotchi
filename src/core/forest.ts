@@ -26,8 +26,8 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -61,7 +61,7 @@ export interface FrState {
   /** Что лежит в сундуке (если он построен). */
   chest: Partial<Record<FrItem, number>>;
   /** Сколько деревьев срублено и блюд приготовлено — для заданий. */
-  count: { chopped: number; cooked: number };
+  count: { chopped: number; cooked: number; mined: number };
   /** Номер текущего задания (равен числу заданий — всё выполнено). */
   quest: number;
   stats: Record<FrStat, number>;
@@ -110,13 +110,16 @@ export type FrEvent =
   | { type: 'fireOut' }
   | { type: 'needAxe' }
   | { type: 'needKnife' }
+  | { type: 'needPickaxe' }
+  | { type: 'mined' }
+  | { type: 'cut' }
   | { type: 'evening' }
   | { type: 'morning'; day: number; reward: number }
   | { type: 'woke' }
   | { type: 'low'; stat: FrStat }
   | { type: 'over' };
 
-const BLOCKING: ReadonlySet<FrTile> = new Set(['water', 'tree', 'bush', 'pit']);
+const BLOCKING: ReadonlySet<FrTile> = new Set(['water', 'tree', 'bush', 'pit', 'rock']);
 
 export const frIndex = (x: number, y: number): number => y * FR_W + x;
 const inside = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < FR_W && y < FR_H;
@@ -239,7 +242,7 @@ function rand(seed: number): Rand {
   };
 }
 
-const DROP_COUNTS: Readonly<Partial<Record<FrItem, number>>> = { branch: 14, stone: 8, flint: 4, grass: 10, mushroom: 5 };
+const DROP_COUNTS: Readonly<Partial<Record<FrItem, number>>> = { branch: 8, stone: 6, flint: 3, mushroom: 5 };
 
 /** Новый поход: случайная поляна с ручьём, костровищем в центре и рассыпанными вещами. */
 export function newForest(seed: number): FrState {
@@ -282,7 +285,7 @@ export function newForest(seed: number): FrState {
     inv: {},
     pot: [],
     chest: {},
-    count: { chopped: 0, cooked: 0 },
+    count: { chopped: 0, cooked: 0, mined: 0 },
     quest: 0,
     stats: { food: 80, water: 80, warmth: 100, health: 100 },
     clock: 0,
@@ -304,6 +307,17 @@ export function newForest(seed: number): FrState {
   if (!tiles.some((t, i) => t === 'water' && touchesReach(i, reach))) {
     // Почти невозможно, но на всякий случай: прорубаем тропу к ручью.
     carveToWater(s, c.x, c.y + 1);
+  }
+  // Высокая трава на ~65% свободных клеток (кроме поляны) и большие камни.
+  const inClearing = (i: number): boolean => Math.abs((i % FR_W) - c.x) <= 2 && Math.abs(Math.floor(i / FR_W) - c.y) <= 2;
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] === 'grass' && !inClearing(i) && r() < 0.7) tiles[i] = 'tall';
+  }
+  const rockSpots = tiles.flatMap((t, i) => (t !== 'grass' && t !== 'tall') || inClearing(i) || !reach.has(i) ? [] : [i]);
+  for (let k = 0; k < 10 && rockSpots.length; k++) {
+    const j = Math.floor(r() * rockSpots.length);
+    tiles[rockSpots[j]!] = 'rock';
+    rockSpots.splice(j, 1);
   }
   restock(s, r);
   return s;
@@ -364,7 +378,7 @@ function restock(s: FrState, r: Rand): void {
   for (const i of reach) {
     const x = i % FR_W;
     const y = Math.floor(i / FR_W);
-    if (!taken.has(i) && Math.abs(x - c.x) + Math.abs(y - c.y) > 1) free.push(i);
+    if (s.tiles[i] === 'grass' && !taken.has(i) && Math.abs(x - c.x) + Math.abs(y - c.y) > 1) free.push(i);
   }
   for (const kind of Object.keys(DROP_COUNTS) as FrItem[]) {
     const have = s.drops.filter((d) => d.kind === kind).length;
@@ -435,9 +449,11 @@ export type FrTarget =
   | { kind: 'water' }
   | { kind: 'tree' }
   | { kind: 'pit' }
-  | { kind: 'chest' };
+  | { kind: 'chest' }
+  | { kind: 'rock' }
+  | { kind: 'tall'; x: number; y: number };
 
-export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep' | 'open';
+export type FrAction = 'pick' | 'chop' | 'drink' | 'light' | 'feed' | 'cook' | 'sleep' | 'open' | 'mine' | 'cut';
 
 export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
   if (!inside(x, y)) return null;
@@ -446,6 +462,7 @@ export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
     const drop = s.drops.find((d) => d.x === x && d.y === y);
     return drop ? { kind: 'drop', drop } : { kind: 'ground' };
   }
+  if (tile === 'tall') return { kind: 'tall', x, y };
   return { kind: tile };
 }
 
@@ -463,6 +480,11 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
     case 'chest':
       return ['open'];
+    case 'rock':
+      return ['mine'];
+    case 'tall':
+      // Срезать можно только рядом; издалека нажатие просто ведёт питомца к траве.
+      return Math.hypot(s.x - (target.x + 0.5), s.y - (target.y + 0.5)) <= 1.7 ? ['cut'] : [];
     case 'ground':
       return [];
   }
@@ -484,8 +506,8 @@ function doAction(s: FrState, x: number, y: number, action: FrAction | null, poi
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest') dest = [cx, cy];
-  else if (tile === 'tree' || tile === 'bush') {
+  else if (tile === 'grass' || tile === 'chest' || tile === 'tall') dest = [cx, cy];
+  else if (tile === 'tree' || tile === 'bush' || tile === 'rock') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
     dest = d <= 0.75 ? [s.x, s.y] : [cx + ((s.x - cx) / d) * 0.6, cy + ((s.y - cy) / d) * 0.6];
@@ -563,6 +585,26 @@ function arrive(s: FrState): FrEvent[] {
     }
     case 'open':
       return [{ type: 'openChest' }];
+    case 'mine': {
+      if (!(s.inv.pickaxe ?? 0)) return [{ type: 'needPickaxe' }];
+      if (s.tiles[goal.cell] !== 'rock') return [];
+      if (!canTake(s.inv, 'stone')) return [{ type: 'full' }];
+      s.tiles[goal.cell] = 'grass';
+      s.inv.stone = (s.inv.stone ?? 0) + 3;
+      if (s.count.mined % 2 === 0 && canTake(s.inv, 'flint')) s.inv.flint = (s.inv.flint ?? 0) + 1;
+      s.count.mined += 1;
+      s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
+      return [{ type: 'mined' }];
+    }
+    case 'cut': {
+      if (!(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
+      if (s.tiles[goal.cell] !== 'tall') return [];
+      if (!canTake(s.inv, 'grass')) return [{ type: 'full' }];
+      s.tiles[goal.cell] = 'grass';
+      s.inv.grass = (s.inv.grass ?? 0) + 1;
+      s.busy = { kind: 'gather', left: FR_ACTION_MS };
+      return [{ type: 'cut' }];
+    }
     case 'light':
     case 'feed':
       return tendFire(s);
@@ -799,7 +841,8 @@ export function restoreForest(raw: unknown): FrState | null {
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
-  if (!s.count) s.count = { chopped: 0, cooked: 0 };
+  if (!s.count) s.count = { chopped: 0, cooked: 0, mined: 0 };
+  if (typeof s.count.mined !== 'number') s.count.mined = 0;
   if (typeof s.quest !== 'number') s.quest = 0;
   if (!Array.isArray(s.path) || s.path.some((p) => !Array.isArray(p))) s.path = [];
   if (typeof s.x !== 'number' || typeof s.y !== 'number' || !s.stats || typeof s.clock !== 'number') return null;
@@ -808,10 +851,11 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'chest';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'chest';
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
+  { id: 'pickaxe', cost: [['branch', 2], ['stone', 3], ['grass', 1]] },
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
   { id: 'chest', cost: [['branch', 6], ['stone', 4], ['grass', 2]] },
 ];
@@ -839,7 +883,7 @@ export function frChestBuilt(s: FrState): boolean {
 export function frCraft(s: FrState, id: FrCraftId): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
-  if ((id === 'axe' || id === 'knife') && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
+  if (id !== 'chest' && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
   if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
   let spot: number | null = null;
@@ -848,7 +892,7 @@ export function frCraft(s: FrState, id: FrCraftId): FrEvent[] {
     if (spot === null) return [{ type: 'noPlace' }];
   }
   for (const [item, n] of r.cost) take(s, item, n);
-  if (id === 'axe' || id === 'knife') s.inv[id] = 1;
+  if (id !== 'chest') s.inv[id] = 1;
   else s.tiles[spot!] = 'chest';
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
@@ -872,33 +916,39 @@ export function frChestTake(s: FrState, item: FrItem): boolean {
 }
 
 /** Цепочка заданий: выполненные по порядку дают лакомства. */
-export const FR_QUESTS: ReadonlyArray<{ need: number; reward: number }> = [
-  { need: 1, reward: 1 }, // собрать 3 ветки и кремень
-  { need: 1, reward: 1 }, // разжечь костёр
-  { need: 1, reward: 1 }, // сделать нож
-  { need: 1, reward: 2 }, // сделать топор
-  { need: 2, reward: 2 }, // срубить 2 дерева
-  { need: 1, reward: 1 }, // приготовить блюдо
-  { need: 1, reward: 2 }, // построить сундук
-  { need: 1, reward: 3 }, // пережить ночь
+export const FR_QUESTS: ReadonlyArray<{ id: string; need: number; reward: number }> = [
+  { id: 'gather', need: 1, reward: 1 }, // собрать 3 ветки и кремень
+  { id: 'fire', need: 1, reward: 1 }, // разжечь костёр
+  { id: 'knife', need: 1, reward: 1 }, // сделать нож
+  { id: 'axe', need: 1, reward: 2 }, // сделать топор
+  { id: 'chop', need: 2, reward: 2 }, // срубить 2 дерева
+  { id: 'pickaxe', need: 1, reward: 2 }, // сделать кирку
+  { id: 'mine', need: 1, reward: 2 }, // разбить большой камень
+  { id: 'cook', need: 1, reward: 1 }, // приготовить блюдо
+  { id: 'chest', need: 1, reward: 2 }, // построить сундук
+  { id: 'night', need: 1, reward: 3 }, // пережить ночь
 ];
 
 /** Сколько уже сделано по заданию step (0..need). */
 export function frQuestProgress(s: FrState, step: number, events: readonly FrEvent[] = []): number {
-  switch (step) {
-    case 0:
+  switch (FR_QUESTS[step]?.id) {
+    case 'gather':
       return (s.inv.branch ?? 0) >= 3 && (s.inv.flint ?? 0) >= 1 ? 1 : 0;
-    case 1:
+    case 'fire':
       return s.fire > 0 ? 1 : 0;
-    case 2:
+    case 'knife':
       return (s.inv.knife ?? 0) > 0 ? 1 : 0;
-    case 3:
+    case 'axe':
       return (s.inv.axe ?? 0) > 0 ? 1 : 0;
-    case 4:
+    case 'chop':
       return Math.min(2, s.count.chopped);
-    case 5:
+    case 'pickaxe':
+      return (s.inv.pickaxe ?? 0) > 0 ? 1 : 0;
+    case 'mine':
+      return Math.min(1, s.count.mined);
+    case 'cook':
       return s.count.cooked > 0 ? 1 : 0;
-    case 6:
+    case 'chest':
       return frChestBuilt(s) ? 1 : 0;
     default:
       return events.some((e) => e.type === 'morning') ? 1 : 0;
