@@ -253,6 +253,7 @@ const GAMES_TEXT = {
   forestMobs: { mouse: 'Мышь', rabbit: 'Кролик', wolf: 'Волк', bat: 'Летучая мышь', alpha: 'Белый волк' } as Record<string, string>,
   forestHave: 'Есть',
   forestAlreadyBuilt: 'Уже есть — второй такой не нужно',
+  forestNeedLoom: 'Нужен ткацкий станок',
   forestNeedMats: 'Не хватает материалов',
   forestWear: 'Надеть',
   forestGear: 'Слоты',
