@@ -258,17 +258,19 @@ describe('«Дикий лес»: сохранение', () => {
 describe('«Дикий лес»: окошко готовки', () => {
   it('еда переезжает в окошко по одной штуке и возвращается обратно', () => {
     const s = newForest(7);
-    s.inv = { berries: 2, mushroom: 1 };
-    expect(frPotAdd(s, 'berries')).toBe(true);
-    expect(s.inv.berries).toBe(1);
-    expect(frPotAdd(s, 'stone')).toBe(false);
-    expect(frRecipe(s.pot)).toBe(null);
-    frPotAdd(s, 'mushroom');
-    frPotAdd(s, 'berries');
+    s.inv = { berries: 2, mushroom: 2 };
+    expect(frPotAdd(s, 'mushroom')).toBe(true);
+    expect(s.inv.mushroom).toBe(1);
     expect(frPotAdd(s, 'berries')).toBe(false);
+    expect(frPotAdd(s, 'stone')).toBe(false);
+    expect(frRecipe(s.pot)).toBe('cooked');
+    frPotAdd(s, 'mushroom');
+    expect(frPotAdd(s, 'mushroom')).toBe(false);
+    expect(s.pot.length).toBe(2);
+    expect(frRecipe(s.pot)).toBe(null);
     frPotReturn(s);
     expect(s.pot).toEqual([]);
-    expect(s.inv).toEqual({ berries: 2, mushroom: 1 });
+    expect(s.inv).toEqual({ berries: 2, mushroom: 2 });
   });
 
   it('без огня и без рецепта ничего не готовится', () => {
@@ -277,8 +279,8 @@ describe('«Дикий лес»: окошко готовки', () => {
     frPotAdd(s, 'mushroom');
     expect(frPotCook(s)).toContainEqual({ type: 'needForFire' });
     s.fire = 1000;
-    s.pot = ['berries'];
+    s.pot = ['mushroom', 'mushroom'];
     expect(frPotCook(s)).toContainEqual({ type: 'nothingToCook' });
-    expect(s.pot).toEqual(['berries']);
+    expect(s.pot).toEqual(['mushroom', 'mushroom']);
   });
 });

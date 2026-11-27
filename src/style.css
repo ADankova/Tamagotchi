@@ -3204,3 +3204,8 @@ button.m-jar:active {
   max-height: 100%;
   overflow-y: auto;
 }
+.fr-slot.dim {
+  opacity: 0.35;
+  filter: grayscale(0.8) brightness(0.8);
+  cursor: not-allowed;
+}
