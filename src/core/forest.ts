@@ -871,6 +871,7 @@ export type FrTarget =
   | { kind: 'water' }
   | { kind: 'tree' }
   | { kind: 'pit' }
+  | { kind: 'bed' }
   | { kind: 'chest' }
   | { kind: 'loom' }
   | { kind: 'exit' }
@@ -892,7 +893,9 @@ export function frTargetAt(s: FrState, x: number, y: number): FrTarget | null {
   const tile = s.tiles[frIndex(x, y)]!;
   if (tile === 'grass') {
     const drop = s.drops.find((d) => d.x === x && d.y === y);
-    return drop ? { kind: 'drop', drop } : { kind: 'ground' };
+    if (drop) return { kind: 'drop', drop };
+    const bed = frBedCell();
+    return s.bed && s.shelter > 0 && s.loc === 'home' && bed.x === x && bed.y === y ? { kind: 'bed' } : { kind: 'ground' };
   }
   if (tile === 'tall') return { kind: 'tall', x, y };
   if (tile === 'reed') return { kind: 'reed', x, y } as unknown as FrTarget;
@@ -911,6 +914,8 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
       return (s.inv.rod ?? 0) > 0 ? ['drink', 'fill', 'fish'] : ['drink', 'fill'];
     case 'exit':
       return ['travel'];
+    case 'bed':
+      return ['sleep'];
     case 'ore':
       return ['mine'];
     case 'reed':

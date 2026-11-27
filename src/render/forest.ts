@@ -135,7 +135,7 @@ const isLoomId = (id: string): id is FrLoomId => FR_LOOM.some((r) => r.id === id
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
-const ACT_SPRITE: Readonly<Partial<Record<FrAction, string>>> = { pick: 'act-hand', chop: 'item-axe', drink: 'act-drop', light: 'act-flame', feed: 'branch', cook: 'item-friedegg', open: 'chest', fill: 'item-flask', mine: 'item-pickaxe', cut: 'item-knife', fish: 'item-rod', travel: 'act-door' };
+const ACT_SPRITE: Readonly<Partial<Record<FrAction, string>>> = { pick: 'act-hand', chop: 'item-axe', drink: 'act-drop', light: 'act-flame', feed: 'branch', cook: 'item-friedegg', open: 'chest', fill: 'item-flask', mine: 'item-pickaxe', cut: 'item-knife', fish: 'item-rod', travel: 'act-door', sleep: 'item-bed' };
 function actIcon(a: FrAction): HTMLCanvasElement {
   const c = el('canvas', { width: '56', height: '56' }) as HTMLCanvasElement;
   c.style.cssText = 'width:28px;height:28px;display:block;margin:auto';
@@ -1871,27 +1871,51 @@ export class ForestGame implements GameScreen {
       const x0 = sx(c.x - 1);
       const y0 = sy(c.y - 1);
       const w = tile * 3;
+      // Навес из ткани над 3x3 клетками: лёгкая ткань, бахрома и четыре столба.
+      const wear = s.shelter / FR_SHELTER_RAINS;
+      ctx.fillStyle = wear > 0.3 ? 'rgba(244,232,200,0.30)' : 'rgba(200,180,140,0.30)';
+      ctx.fillRect(x0, y0, w, w);
+      ctx.strokeStyle = wear > 0.3 ? 'rgba(255,248,225,0.35)' : 'rgba(200,180,140,0.3)';
+      ctx.lineWidth = Math.max(1, tile * 0.05);
+      ctx.beginPath();
+      for (let k = 1; k < 6; k++) {
+        ctx.moveTo(x0 + k * tile * 0.5, y0);
+        ctx.lineTo(x0 + k * tile * 0.5, y0 + w);
+      }
+      ctx.stroke();
+      // Бахрома по нижнему краю.
+      ctx.fillStyle = wear > 0.3 ? 'rgba(236,222,186,0.75)' : 'rgba(190,170,130,0.75)';
+      const fr = tile * 0.16;
+      for (let k = 0; k < 12; k++) {
+        ctx.beginPath();
+        ctx.arc(x0 + (k + 0.5) * (w / 12), y0 + w, fr, 0, Math.PI);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#7a4d2b';
+      ctx.lineWidth = Math.max(2, tile * 0.07);
+      ctx.lineCap = 'round';
+      for (const [px, py] of [[0, 0], [3, 0], [0, 3], [3, 3]] as const) {
+        const qx = x0 + px * tile;
+        const qy = y0 + py * tile;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath();
+        ctx.ellipse(qx, qy + tile * 0.06, tile * 0.14, tile * 0.06, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(qx, qy - tile * 0.35);
+        ctx.lineTo(qx, qy);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
       if (s.bed) {
         const b = frBedCell();
         const bx = sx(b.x);
         const by = sy(b.y);
-        ctx.fillStyle = '#c9544d';
-        ctx.fillRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
-        ctx.fillStyle = '#f4e3c1';
-        ctx.fillRect(bx + tile * 0.14, by + tile * 0.34, tile * 0.26, tile * 0.22);
-        ctx.strokeStyle = '#3b2a1e';
-        ctx.lineWidth = Math.max(1, tile * 0.05);
-        ctx.strokeRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
+        if (!drawIcon(ctx, 'item-bed', bx + tile / 2, by + tile / 2, tile * 0.95)) {
+          ctx.fillStyle = '#c9544d';
+          ctx.fillRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
+        }
       }
-      // Навес из ткани над 3x3 клетками и четыре столба по углам.
-      const wear = s.shelter / FR_SHELTER_RAINS;
-      ctx.fillStyle = wear > 0.3 ? 'rgba(236,222,186,0.42)' : 'rgba(190,170,130,0.42)';
-      ctx.fillRect(x0, y0, w, w);
-      ctx.strokeStyle = '#7a4d2b';
-      ctx.lineWidth = Math.max(2, tile * 0.1);
-      ctx.strokeRect(x0, y0, w, w);
-      ctx.fillStyle = '#7a4d2b';
-      for (const [px, py] of [[0, 0], [3, 0], [0, 3], [3, 3]] as const) ctx.fillRect(x0 + px * tile - tile * 0.07, y0 + py * tile - tile * 0.07, tile * 0.14, tile * 0.14);
     }
     if (frRainHere(s)) {
       const W = this.canvas.width;
