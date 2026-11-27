@@ -3545,3 +3545,53 @@ body:has(.fr-game) {
   right: 0;
   height: 7px;
 }
+
+.fr-status {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 4;
+}
+.fr-torch,
+.fr-rain {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  border: 2px solid #3b2a1e;
+  border-radius: 12px;
+  background: rgba(255, 248, 230, 0.9);
+}
+.fr-torch-ico,
+.fr-rain {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.fr-torch-bar {
+  width: 30px;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.fr-torch-bar i {
+  display: block;
+  height: 100%;
+  background: #ff9f3b;
+}
+.fr-rain.blink {
+  animation: fr-blink 0.7s steps(2, start) infinite;
+}
+@keyframes fr-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+.fr-qline {
+  white-space: pre-line;
+}

@@ -1286,7 +1286,8 @@ export interface FrQuest {
 export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'start', kind: 'regular', reward: 0, items: { berries: 3 }, parts: [{ key: 'pick:branch', need: 3 }, { key: 'pick:flint', need: 1 }] },
   { id: 'fire', kind: 'regular', reward: 0, items: { stone: 2 }, parts: [{ key: 'fire', need: 1 }] },
-  { id: 'knife', kind: 'regular', reward: 0, items: { grass: 3 }, parts: [{ key: 'craft:knife', need: 1 }, { key: 'pick:grass', need: 2 }] },
+  { id: 'knife', kind: 'regular', reward: 0, items: { berries: 2 }, parts: [{ key: 'craft:knife', need: 1 }] },
+  { id: 'grass', kind: 'regular', reward: 0, items: { grass: 3 }, parts: [{ key: 'pick:grass', need: 2 }] },
   { id: 'axe', kind: 'regular', reward: 0, items: { stone: 3 }, parts: [{ key: 'craft:axe', need: 1 }] },
   { id: 'chop', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'chop', need: 2 }] },
   { id: 'pickaxe', kind: 'regular', reward: 0, items: { stone: 2, grass: 2 }, parts: [{ key: 'craft:pickaxe', need: 1 }] },
@@ -1350,6 +1351,34 @@ function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
 }
 
 // --- Ткацкий станок и кошелёк ---
+
+/** Что нужно для пункта задания «изготовь / построй / приготовь»: список материалов или null. */
+export function frPartCost(key: string): ReadonlyArray<readonly [FrItem, number]> | null {
+  if (key.startsWith('craft:')) {
+    const id = key.slice(6);
+    return FR_CRAFT.find((r) => r.id === id)?.cost ?? FR_LOOM.find((r) => r.id === id)?.cost ?? null;
+  }
+  if (key.startsWith('made:')) {
+    const out = key.slice(5);
+    const r = FR_RECIPES.find((x) => x.to === out);
+    if (!r) return null;
+    const cost: Array<[FrItem, number]> = [];
+    for (const it of r.from) {
+      const e = cost.find((c) => c[0] === it);
+      if (e) e[1]++;
+      else cost.push([it, 1]);
+    }
+    return cost;
+  }
+  return null;
+}
+
+/** Скоро ли дождь: за полминуты до начала (в безопасные ночи дождя нет). */
+export const FR_RAIN_WARN_MS = 30_000;
+export function frRainSoon(s: FrState): boolean {
+  const calm = s.day <= FR_CALM_DAYS && s.clock >= FR_EVENING_AT;
+  return !s.weather.rain && !calm && s.weather.left <= FR_RAIN_WARN_MS;
+}
 
 export type FrLoomId = 'cloth' | 'purse' | 'shelter' | 'bed';
 

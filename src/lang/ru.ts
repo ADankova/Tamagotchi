@@ -205,6 +205,7 @@ const GAMES_TEXT = {
   forestBagTitle: (used: number, max: number) => `Рюкзак · ${used}/${max}`,
   forestBagEmpty: 'Пока пусто',
   forestEat: 'Съесть',
+  forestNeeds: 'Нужно',
   forestShelterTip: 'С третьей ночи пойдут дожди и потушат костёр. Построй шалаш на ткацком станке: за это дадут конфету!',
   forestMobs: { mouse: 'Мышь', rabbit: 'Кролик', wolf: 'Волк' } as Record<string, string>,
   forestHave: 'Есть',
