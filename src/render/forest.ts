@@ -1,6 +1,9 @@
 import { randomSeed } from '../core/rng';
 import {
+  FR_DAY_MS,
+  FR_EVENING_AT,
   FR_FIRE_RADIUS,
+  FR_NIGHT_AT,
   FR_FOOD,
   FR_H,
   FR_SLOTS,
@@ -13,7 +16,6 @@ import {
   frDarkness,
   frEat,
   frIndex,
-  frIsNight,
   frSleep,
   frSlotsUsed,
   frTick,
@@ -72,6 +74,8 @@ export class ForestGame implements GameScreen {
   private readonly overPanel = el('div', { class: 'm3-help fr-panel fr-over', hidden: '' });
   private readonly note = el('p', { class: 'm3-note fr-note', text: GAMES_TEXT.forestHint });
   private readonly dayChip = el('span', { class: 'q-chip fr-day' });
+  private readonly clockHand: SVGElement;
+  private readonly clock: SVGSVGElement;
   private readonly treatText = el('span', {});
   private readonly sleepButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWake });
   private readonly menu = el('div', { class: 'fr-menu', hidden: '' });
@@ -90,6 +94,8 @@ export class ForestGame implements GameScreen {
     cb: Callbacks,
   ) {
     this.state = loadSaved() ?? newForest(randomSeed());
+    this.clock = clockFace();
+    this.clockHand = this.clock.querySelector('.fr-hand') as SVGElement;
     const bagButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestBag });
     bagButton.addEventListener('click', () => this.toggleBag());
     this.sleepButton.addEventListener('click', () => this.toggleSleep());
@@ -97,6 +103,7 @@ export class ForestGame implements GameScreen {
     this.root = el('div', { class: 'q-game fr-game' }, [
       cb.header(GAMES_TEXT.forestTitle),
       el('div', { class: 'q-top' }, [
+        this.clock as unknown as HTMLElement,
         this.dayChip,
         el('span', { class: 'q-chip h-treat-chip' }, [el('img', { class: 'q-chip-pet', src: host.treatImage, alt: '' }), this.treatText]),
         this.restartButton(),
@@ -449,7 +456,8 @@ export class ForestGame implements GameScreen {
 
   private updateHud(): void {
     const s = this.state;
-    const day = `${GAMES_TEXT.forestDay(s.day)} ${frIsNight(s) ? '☾' : '☀'}`;
+    const day = GAMES_TEXT.forestDay(s.day);
+    this.clockHand.setAttribute('transform', `rotate(${((s.clock / FR_DAY_MS) * 360).toFixed(1)} 24 24)`);
     if (this.dayChip.textContent !== day) this.dayChip.textContent = day;
     const treats = GAMES_TEXT.forestTreats(s.treats);
     if (this.treatText.textContent !== treats) this.treatText.textContent = treats;
@@ -882,6 +890,34 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       }
       break;
   }
+}
+
+/** Часы похода: жёлтый сектор — день, оранжевый — вечер, тёмный — ночь; стрелка — сейчас. */
+function clockFace(): SVGSVGElement {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 48 48');
+  svg.setAttribute('class', 'fr-clock');
+  svg.setAttribute('aria-hidden', 'true');
+  const point = (f: number, r: number): string => {
+    const a = f * Math.PI * 2 - Math.PI / 2;
+    return `${(24 + Math.cos(a) * r).toFixed(2)} ${(24 + Math.sin(a) * r).toFixed(2)}`;
+  };
+  const sector = (from: number, to: number, color: string): string =>
+    `<path d="M24 24L${point(from, 20)}A20 20 0 ${to - from > 0.5 ? 1 : 0} 1 ${point(to, 20)}Z" fill="${color}"/>`;
+  const e = FR_EVENING_AT / FR_DAY_MS;
+  const n = FR_NIGHT_AT / FR_DAY_MS;
+  svg.innerHTML =
+    `<circle cx="24" cy="24" r="22" fill="#3b2a1e"/>` +
+    sector(0, e, '#ffd25e') +
+    sector(e, n, '#ff9f4a') +
+    sector(n, 1, '#3d3f8a') +
+    `<circle cx="24" cy="24" r="20" fill="none" stroke="#3b2a1e" stroke-width="2"/>` +
+    `<circle cx="${point(e / 2, 12).split(' ')[0]}" cy="${point(e / 2, 12).split(' ')[1]}" r="3.2" fill="#fff6c4" stroke="#e8a21e" stroke-width="1.2"/>` +
+    `<path d="M${point((n + 1) / 2, 14)}a3.4 3.4 0 1 0 3 4.6a2.8 2.8 0 1 1 -3 -4.6z" fill="#e9e6ff"/>` +
+    `<g class="fr-hand"><path d="M24 24L24 7" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><path d="M24 24L24 7" stroke="#3b2a1e" stroke-width="2.2" stroke-linecap="round"/></g>` +
+    `<circle cx="24" cy="24" r="3" fill="#3b2a1e"/>`;
+  return svg;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

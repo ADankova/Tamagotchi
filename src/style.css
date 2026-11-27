@@ -3172,3 +3172,9 @@ button.m-jar:active {
   text-align: left;
   font-size: 0.9rem;
 }
+.fr-clock {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-self: center;
+}
