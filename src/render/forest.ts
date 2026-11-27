@@ -19,9 +19,12 @@ import {
   frCraft,
   frChestPut,
   frChestTake,
-  frQuestProgress,
+  frClaim,
+  frCounter,
+  frQuestState,
   FR_CRAFT,
   FR_QUESTS,
+  type FrQuest,
   frEat,
   frPotAdd,
   frPotCook,
@@ -89,7 +92,8 @@ export class ForestGame implements GameScreen {
   private readonly shade = document.createElement('canvas');
   private readonly bag = el('div', { class: 'm3-help fr-panel', hidden: '' });
   private readonly overPanel = el('div', { class: 'm3-help fr-panel fr-over', hidden: '' });
-  private readonly questLine = el('p', { class: 'fr-quest' });
+  private readonly questLine = el('button', { type: 'button', class: 'fr-quest' });
+  private questKey = '';
   private readonly note = el('p', { class: 'm3-note fr-note', text: GAMES_TEXT.forestHint });
   private readonly dayChip = el('span', { class: 'q-chip fr-day' });
   private readonly clockHand: SVGElement;
@@ -143,6 +147,7 @@ export class ForestGame implements GameScreen {
       if (e.target === this.bag) this.closeBag();
     });
     if (this.state.over) this.showOver();
+    this.questLine.addEventListener('click', () => this.openQuests());
     this.updateHud();
     window.requestAnimationFrame((t) => this.frame(t));
   }
@@ -322,6 +327,9 @@ export class ForestGame implements GameScreen {
         case 'noPlace':
           this.say(M.noPlace, 'blocked');
           break;
+        case 'questReady':
+          this.say(GAMES_TEXT.forestQuestReady, 'snack');
+          break;
         case 'questDone':
           this.host.earnTreats(ev.reward);
           this.say(M.questDone(ev.reward), 'snack');
@@ -395,30 +403,144 @@ export class ForestGame implements GameScreen {
     return icon;
   }
 
-  /** Окно крафта: рецепты с материалами и кнопкой «Сделать». */
+  private partText(p: { key: string; need: number }, value: number): string {
+    const tpl = GAMES_TEXT.forestPart[p.key] ?? p.key;
+    return `${tpl.replace('{n}', String(p.need))} (${Math.min(value, p.need)}/${p.need})`;
+  }
+
+  /** Строки пунктов задания с прогрессом. */
+  private questLines(q: FrQuest): HTMLElement[] {
+    return q.parts.map((p) => {
+      const v = frCounter(this.state, p.key);
+      return el('div', { class: v >= p.need ? 'fr-qline done' : 'fr-qline', text: this.partText(p, v) });
+    });
+  }
+
+  /** Плашка слева над полем: ближайшее невыполненное задание, нажатие открывает список. */
+  private updateQuestCard(): void {
+    const s = this.state;
+    const ready = FR_QUESTS.find((q) => frQuestState(s, q) === 'ready');
+    const next = ready ?? FR_QUESTS.find((q) => q.kind === 'regular' && frQuestState(s, q) === 'progress');
+    const key = next ? `${next.id}:${next.parts.map((p) => Math.min(frCounter(s, p.key), p.need)).join(',')}:${ready ? 1 : 0}` : 'done';
+    if (this.questKey === key) return;
+    this.questKey = key;
+    this.questLine.classList.toggle('ready', !!ready);
+    this.questLine.replaceChildren(
+      el('span', { class: 'fr-quest-icon', text: '📜' }),
+      el('span', { class: 'fr-quest-text' }, next ? (ready ? [el('b', { text: GAMES_TEXT.forestQuestReady })] : this.questLines(next)) : [el('b', { text: GAMES_TEXT.forestQuestsDone })]),
+    );
+  }
+
+  /** Окно заданий: «по умолчанию» и обычные, у каждого награда и кнопка. */
+  private openQuests(): void {
+    this.closeMenu();
+    this.renderQuests();
+    this.bag.removeAttribute('hidden');
+  }
+
+  private renderQuests(): void {
+    const s = this.state;
+    const order: Record<string, number> = { ready: 0, progress: 1, claimed: 2 };
+    const section = (kind: FrQuest['kind'], title: string): HTMLElement => {
+      const list = FR_QUESTS.filter((q) => q.kind === kind).sort((a, b) => order[frQuestState(s, a)]! - order[frQuestState(s, b)]!);
+      const rows = list.map((q) => {
+        const st = frQuestState(s, q);
+        const btn = el('button', {
+          type: 'button',
+          class: st === 'ready' ? 'chunky fr-qbtn ready' : 'chunky fr-qbtn',
+          text: st === 'ready' ? GAMES_TEXT.forestQClaim : st === 'claimed' ? GAMES_TEXT.forestQDone : GAMES_TEXT.forestQPending,
+        });
+        if (st !== 'ready') btn.setAttribute('disabled', '');
+        btn.addEventListener('click', () => {
+          this.handle(frClaim(s, q.id));
+          this.renderQuests();
+        });
+        return el('div', { class: st === 'claimed' ? 'fr-qrow claimed' : 'fr-qrow' }, [
+          el('div', { class: 'fr-qlines' }, this.questLines(q)),
+          el('div', { class: 'fr-qreward' }, [el('img', { src: this.host.treatImage, alt: '' }), el('b', { text: String(q.reward) })]),
+          btn,
+        ]);
+      });
+      return el('div', { class: 'fr-qsection' }, [el('h4', { text: title }), ...rows]);
+    };
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-cook fr-quests' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestQuestsTitle }), close]),
+        section('regular', GAMES_TEXT.forestRegularQ),
+        section('default', GAMES_TEXT.forestDefaultQ),
+      ]),
+    );
+  }
+
+  private craftTab: 'tools' | 'build' = 'tools';
+
+  /** Окно крафта: вкладки, плитки предметов с материалами; нажатие открывает подробности. */
   private renderCraft(): void {
     const s = this.state;
-    const rows = FR_CRAFT.map((r) => {
-      const can = frCanCraft(s, r.id);
-      const mats = r.cost.map(([it, n]) =>
-        el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat', text: `${GAMES_TEXT.forestItems[it] ?? it} ${Math.min(s.inv[it] ?? 0, n)}/${n}` }),
-      );
-      const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
-      if (!can) make.setAttribute('disabled', '');
-      make.addEventListener('click', () => {
-        this.handle(frCraft(s, r.id));
+    const tabs = (['tools', 'build'] as const).map((tab) => {
+      const b = el('button', { type: 'button', class: this.craftTab === tab ? 'fr-tab on' : 'fr-tab', text: GAMES_TEXT.forestCraftTabs[tab] });
+      b.addEventListener('click', () => {
+        this.craftTab = tab;
         this.renderCraft();
       });
-      return el('div', { class: 'fr-recipe' }, [
-        r.id === 'chest' ? el('span', { class: 'fr-slot fr-chest-ico', text: '📦' }) : el('span', { class: 'fr-slot' }, [this.iconCanvas(r.id as FrItem)]),
-        el('div', { class: 'fr-recipe-info' }, [el('b', { text: GAMES_TEXT.forestItems[r.id] ?? r.id }), el('div', { class: 'fr-mats' }, mats)]),
-        make,
+      return b;
+    });
+    const recipes = FR_CRAFT.filter((r) => (r.id === 'chest') === (this.craftTab === 'build'));
+    const tiles = recipes.map((r) => {
+      const can = frCanCraft(s, r.id);
+      const mats = r.cost.map(([it, n]) =>
+        el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: String(n) })]),
+      );
+      const tile = el('button', { type: 'button', class: can ? 'fr-ctile can' : 'fr-ctile', 'aria-label': GAMES_TEXT.forestItems[r.id] ?? r.id }, [
+        r.id === 'chest' ? el('span', { class: 'fr-chest-ico', text: '📦' }) : this.iconCanvas(r.id as FrItem, 72),
+      ]);
+      tile.addEventListener('click', () => this.renderCraftDetail(r.id));
+      return el('div', { class: 'fr-citem' }, [
+        el('div', { class: 'fr-crow' }, [tile, el('div', { class: 'fr-cmats' }, mats)]),
+        el('div', { class: 'fr-cname', text: GAMES_TEXT.forestItems[r.id] ?? r.id }),
       ]);
     });
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
-      el('div', { class: 'fr-bag fr-craft' }, [el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraft }), close]), ...rows]),
+      el('div', { class: 'fr-bag fr-craft' }, [
+        el('div', { class: 'fr-bag-head' }, [el('div', { class: 'fr-tabs' }, tabs), close]),
+        el('div', { class: 'fr-cgrid' }, tiles),
+      ]),
+    );
+  }
+
+  /** Подробности предмета: картинка, описание, «Владение», материалы «есть/нужно» и «Изготовление». */
+  private renderCraftDetail(id: (typeof FR_CRAFT)[number]['id']): void {
+    const s = this.state;
+    const r = FR_CRAFT.find((x) => x.id === id)!;
+    const owned = id === 'chest' ? (s.tiles.includes('chest') ? 1 : 0) : s.inv[id as FrItem] ?? 0;
+    const mats = r.cost.map(([it, n]) =>
+      el('div', { class: 'fr-dmat' }, [
+        el('span', { class: 'fr-slot' }, [this.iconCanvas(it)]),
+        el('b', { class: (s.inv[it] ?? 0) >= n ? 'ok' : 'bad', text: `${Math.min(s.inv[it] ?? 0, 99)}/${n}` }),
+      ]),
+    );
+    const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
+    if (!frCanCraft(s, id) || owned > 0) make.setAttribute('disabled', '');
+    make.addEventListener('click', () => {
+      this.handle(frCraft(s, id));
+      this.renderCraftDetail(id);
+    });
+    const back = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    back.addEventListener('click', () => this.renderCraft());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
+        el('div', { class: 'fr-detail-icon' }, [id === 'chest' ? el('span', { class: 'fr-chest-ico', text: '📦' }) : this.iconCanvas(id as FrItem, 96)]),
+        el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
+        el('div', { class: 'fr-dmats' }, mats),
+        make,
+      ]),
     );
   }
 
@@ -686,10 +808,7 @@ export class ForestGame implements GameScreen {
         bar.fill.parentElement?.classList.toggle('low', v < 25);
       }
     }
-    const q = s.quest < FR_QUESTS.length ? GAMES_TEXT.forestQuests[s.quest]! : '';
-    const prog = s.quest < FR_QUESTS.length && FR_QUESTS[s.quest]!.need > 1 ? ` (${frQuestProgress(s, s.quest)}/${FR_QUESTS[s.quest]!.need})` : '';
-    const qt = q ? `${GAMES_TEXT.forestQuestLabel}: ${q}${prog}` : GAMES_TEXT.forestQuestsDone;
-    if (this.questLine.textContent !== qt) this.questLine.textContent = qt;
+    this.updateQuestCard();
     // «Проснуться» видна только во сне; лечь спать можно кнопкой у горящего костра.
     if (this.sleepButton.hidden === s.sleeping) this.sleepButton.hidden = !s.sleeping;
   }

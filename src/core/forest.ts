@@ -60,10 +60,12 @@ export interface FrState {
   pot: FrItem[];
   /** Что лежит в сундуке (если он построен). */
   chest: Partial<Record<FrItem, number>>;
-  /** Сколько деревьев срублено и блюд приготовлено — для заданий. */
-  count: { chopped: number; cooked: number; mined: number };
-  /** Номер текущего задания (равен числу заданий — всё выполнено). */
-  quest: number;
+  /** Счётчики для заданий: срублено, приготовлено, собрано, изготовлено… (ключи — см. FR_QUESTS). */
+  count: Record<string, number>;
+  /** Задания, награду за которые уже забрали. */
+  claimed: string[];
+  /** Задания, о выполнении которых уже сообщили. */
+  notified: string[];
   stats: Record<FrStat, number>;
   /** Время суток, мс от начала дня. */
   clock: number;
@@ -103,7 +105,8 @@ export type FrEvent =
   | { type: 'needMaterials' }
   | { type: 'haveIt' }
   | { type: 'noPlace' }
-  | { type: 'questDone'; step: number; reward: number }
+  | { type: 'questReady'; id: string }
+  | { type: 'questDone'; id: string; reward: number }
   | { type: 'sleepNo' }
   | { type: 'fellAsleep' }
   | { type: 'thrown'; item: FrItem }
@@ -285,8 +288,9 @@ export function newForest(seed: number): FrState {
     inv: {},
     pot: [],
     chest: {},
-    count: { chopped: 0, cooked: 0, mined: 0 },
-    quest: 0,
+    count: {},
+    claimed: [],
+    notified: [],
     stats: { food: 80, water: 80, warmth: 100, health: 100 },
     clock: 0,
     day: 1,
@@ -558,6 +562,7 @@ function arrive(s: FrState): FrEvent[] {
         if (!canTake(s.inv, d.kind)) return [{ type: 'full' }];
         s.drops = s.drops.filter((it) => it.id !== d.id);
         s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+        bump(s, `pick:${d.kind}`);
         s.busy = { kind: 'gather', left: FR_ACTION_MS };
         return [{ type: 'picked', item: d.kind }];
       }
@@ -566,6 +571,7 @@ function arrive(s: FrState): FrEvent[] {
       if (!canTake(s.inv, 'berries')) return [{ type: 'full' }];
       s.berries = s.berries.filter((b) => b !== goal.cell);
       s.inv.berries = (s.inv.berries ?? 0) + 2;
+      bump(s, 'pick:berries', 2);
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       return [{ type: 'picked', item: 'berries' }];
     }
@@ -579,7 +585,7 @@ function arrive(s: FrState): FrEvent[] {
       if (!canTake(s.inv, 'branch')) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.branch = (s.inv.branch ?? 0) + 2;
-      s.count.chopped += 1;
+      bump(s, 'chop');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       return [{ type: 'chopped' }];
     }
@@ -591,8 +597,12 @@ function arrive(s: FrState): FrEvent[] {
       if (!canTake(s.inv, 'stone')) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.stone = (s.inv.stone ?? 0) + 3;
-      if (s.count.mined % 2 === 0 && canTake(s.inv, 'flint')) s.inv.flint = (s.inv.flint ?? 0) + 1;
-      s.count.mined += 1;
+      if ((s.count.mine ?? 0) % 2 === 0 && canTake(s.inv, 'flint')) {
+        s.inv.flint = (s.inv.flint ?? 0) + 1;
+        bump(s, 'pick:flint');
+      }
+      bump(s, 'pick:stone', 3);
+      bump(s, 'mine');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       return [{ type: 'mined' }];
     }
@@ -602,6 +612,7 @@ function arrive(s: FrState): FrEvent[] {
       if (!canTake(s.inv, 'grass')) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.grass = (s.inv.grass ?? 0) + 1;
+      bump(s, 'pick:grass');
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       return [{ type: 'cut' }];
     }
@@ -636,6 +647,7 @@ function tendFire(s: FrState): FrEvent[] {
   take(s, 'branch', 3);
   take(s, 'flint', 1);
   s.fire = FR_FIRE_START_MS;
+  bump(s, 'fire');
   return [{ type: 'fireLit' }];
 }
 
@@ -688,7 +700,7 @@ export function frPotCook(s: FrState): FrEvent[] {
   if (!out) return [{ type: 'nothingToCook' }];
   s.pot = [];
   s.inv[out] = (s.inv[out] ?? 0) + 1;
-  s.count.cooked += 1;
+  bump(s, 'cook');
   return withQuest(s, [{ type: 'cooked', item: out }]);
 }
 
@@ -841,9 +853,16 @@ export function restoreForest(raw: unknown): FrState | null {
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
-  if (!s.count) s.count = { chopped: 0, cooked: 0, mined: 0 };
-  if (typeof s.count.mined !== 'number') s.count.mined = 0;
-  if (typeof s.quest !== 'number') s.quest = 0;
+  // Старые сохранения (1.32–1.33) считали по-другому — переносим, что можно.
+  const old = (s.count && typeof s.count === 'object' ? s.count : {}) as Record<string, number>;
+  s.count = { ...old };
+  for (const [to, from] of [['chop', 'chopped'], ['cook', 'cooked'], ['mine', 'mined']] as const) {
+    const v = old[from];
+    if (typeof v === 'number' && v > 0 && s.count[to] === undefined) s.count[to] = v;
+    delete s.count[from];
+  }
+  if (!Array.isArray(s.claimed)) s.claimed = [];
+  if (!Array.isArray(s.notified)) s.notified = [];
   if (!Array.isArray(s.path) || s.path.some((p) => !Array.isArray(p))) s.path = [];
   if (typeof s.x !== 'number' || typeof s.y !== 'number' || !s.stats || typeof s.clock !== 'number') return null;
   return s;
@@ -894,6 +913,7 @@ export function frCraft(s: FrState, id: FrCraftId): FrEvent[] {
   for (const [item, n] of r.cost) take(s, item, n);
   if (id !== 'chest') s.inv[id] = 1;
   else s.tiles[spot!] = 'chest';
+  bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
 
@@ -915,53 +935,71 @@ export function frChestTake(s: FrState, item: FrItem): boolean {
   return true;
 }
 
-/** Цепочка заданий: выполненные по порядку дают лакомства. */
-export const FR_QUESTS: ReadonlyArray<{ id: string; need: number; reward: number }> = [
-  { id: 'gather', need: 1, reward: 1 }, // собрать 3 ветки и кремень
-  { id: 'fire', need: 1, reward: 1 }, // разжечь костёр
-  { id: 'knife', need: 1, reward: 1 }, // сделать нож
-  { id: 'axe', need: 1, reward: 2 }, // сделать топор
-  { id: 'chop', need: 2, reward: 2 }, // срубить 2 дерева
-  { id: 'pickaxe', need: 1, reward: 2 }, // сделать кирку
-  { id: 'mine', need: 1, reward: 2 }, // разбить большой камень
-  { id: 'cook', need: 1, reward: 1 }, // приготовить блюдо
-  { id: 'chest', need: 1, reward: 2 }, // построить сундук
-  { id: 'night', need: 1, reward: 3 }, // пережить ночь
-];
-
-/** Сколько уже сделано по заданию step (0..need). */
-export function frQuestProgress(s: FrState, step: number, events: readonly FrEvent[] = []): number {
-  switch (FR_QUESTS[step]?.id) {
-    case 'gather':
-      return (s.inv.branch ?? 0) >= 3 && (s.inv.flint ?? 0) >= 1 ? 1 : 0;
-    case 'fire':
-      return s.fire > 0 ? 1 : 0;
-    case 'knife':
-      return (s.inv.knife ?? 0) > 0 ? 1 : 0;
-    case 'axe':
-      return (s.inv.axe ?? 0) > 0 ? 1 : 0;
-    case 'chop':
-      return Math.min(2, s.count.chopped);
-    case 'pickaxe':
-      return (s.inv.pickaxe ?? 0) > 0 ? 1 : 0;
-    case 'mine':
-      return Math.min(1, s.count.mined);
-    case 'cook':
-      return s.count.cooked > 0 ? 1 : 0;
-    case 'chest':
-      return frChestBuilt(s) ? 1 : 0;
-    default:
-      return events.some((e) => e.type === 'morning') ? 1 : 0;
-  }
+function bump(s: FrState, key: string, n = 1): void {
+  s.count[key] = (s.count[key] ?? 0) + n;
 }
 
+export interface FrQuestPart {
+  /** Ключ счётчика: pick:branch, craft:axe, chop, mine, cook, fire, night. */
+  key: string;
+  need: number;
+}
+
+export interface FrQuest {
+  id: string;
+  /** default — долгие цели, regular — обычные задания. */
+  kind: 'default' | 'regular';
+  parts: readonly FrQuestPart[];
+  /** Награда — лакомства; забирается кнопкой «Получить». */
+  reward: number;
+}
+
+export const FR_QUESTS: readonly FrQuest[] = [
+  { id: 'start', kind: 'regular', reward: 1, parts: [{ key: 'pick:branch', need: 3 }, { key: 'pick:flint', need: 1 }] },
+  { id: 'fire', kind: 'regular', reward: 1, parts: [{ key: 'fire', need: 1 }] },
+  { id: 'knife', kind: 'regular', reward: 1, parts: [{ key: 'craft:knife', need: 1 }, { key: 'pick:grass', need: 2 }] },
+  { id: 'axe', kind: 'regular', reward: 2, parts: [{ key: 'craft:axe', need: 1 }] },
+  { id: 'chop', kind: 'regular', reward: 2, parts: [{ key: 'chop', need: 2 }] },
+  { id: 'pickaxe', kind: 'regular', reward: 2, parts: [{ key: 'craft:pickaxe', need: 1 }] },
+  { id: 'mine', kind: 'regular', reward: 2, parts: [{ key: 'mine', need: 1 }] },
+  { id: 'cook', kind: 'regular', reward: 1, parts: [{ key: 'cook', need: 1 }] },
+  { id: 'chest', kind: 'regular', reward: 2, parts: [{ key: 'craft:chest', need: 1 }] },
+  { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
+  { id: 'rocks5', kind: 'default', reward: 3, parts: [{ key: 'mine', need: 5 }] },
+  { id: 'nights5', kind: 'default', reward: 5, parts: [{ key: 'night', need: 5 }] },
+];
+
+/** Сколько сделано по пункту задания (без ограничения сверху). */
+export function frCounter(s: FrState, key: string): number {
+  return key === 'night' ? s.day - 1 : s.count[key] ?? 0;
+}
+
+export function frQuestDone(s: FrState, q: FrQuest): boolean {
+  return q.parts.every((p) => frCounter(s, p.key) >= p.need);
+}
+
+export type FrQuestState = 'progress' | 'ready' | 'claimed';
+
+export function frQuestState(s: FrState, q: FrQuest): FrQuestState {
+  if (s.claimed.includes(q.id)) return 'claimed';
+  return frQuestDone(s, q) ? 'ready' : 'progress';
+}
+
+/** Забрать награду за выполненное задание. */
+export function frClaim(s: FrState, id: string): FrEvent[] {
+  const q = FR_QUESTS.find((x) => x.id === id);
+  if (!q || frQuestState(s, q) !== 'ready') return [];
+  s.claimed.push(id);
+  s.treats += q.reward;
+  return [{ type: 'questDone', id, reward: q.reward }];
+}
+
+/** Сообщает о заданиях, которые только что стали выполненными. */
 function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
-  while (s.quest < FR_QUESTS.length) {
-    const q = FR_QUESTS[s.quest]!;
-    if (frQuestProgress(s, s.quest, events) < q.need) break;
-    s.treats += q.reward;
-    events.push({ type: 'questDone', step: s.quest, reward: q.reward });
-    s.quest += 1;
+  for (const q of FR_QUESTS) {
+    if (s.notified.includes(q.id) || !frQuestDone(s, q)) continue;
+    s.notified.push(q.id);
+    events.push({ type: 'questReady', id: q.id });
   }
   return events;
 }
