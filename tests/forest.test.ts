@@ -402,7 +402,7 @@ describe('«Дикий лес»: трава и большие камни', () =>
     expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'needPickaxe' });
     s.inv = { pickaxe: 1 };
     expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'mined' });
-    expect(s.inv.stone! >= 2 && s.inv.stone! <= 4).toBe(true);
+    expect(s.inv.stone! >= 1 && s.inv.stone! <= 2).toBe(true);
     expect(s.tiles[ri]).toBe('grass');
   });
 
