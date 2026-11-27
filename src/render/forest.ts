@@ -19,6 +19,15 @@ import {
   frCraft,
   frChestPut,
   frChestSpots,
+  frCapacity,
+  frWeave,
+  frCanWeave,
+  frWear,
+  frUnwear,
+  FR_BUILDINGS,
+  FR_LOOM,
+  FR_GEAR_SLOTS,
+  type FrCraftId,
   frChestTake,
   frClaim,
   frCounter,
@@ -66,7 +75,7 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -242,12 +251,12 @@ export class ForestGame implements GameScreen {
   }
 
   /** Выбор места для сундука: зелёные клетки у костра, нажатие ставит «призрак» с ✔ и ✕. */
-  private placing: { cell: number | null } | null = null;
+  private placing: { id: FrCraftId; cell: number | null } | null = null;
 
-  private startPlacing(): void {
+  private startPlacing(id: FrCraftId): void {
     this.bag.setAttribute('hidden', '');
     this.closeMenu();
-    this.placing = { cell: null };
+    this.placing = { id, cell: null };
     this.say(GAMES_TEXT.forestPlaceHint);
     this.messageLeft = 60_000;
   }
@@ -265,15 +274,16 @@ export class ForestGame implements GameScreen {
       this.stopPlacing();
       return;
     }
-    this.placing = { cell: i };
+    this.placing = { id: this.placing?.id ?? 'chest', cell: i };
     const ok = el('button', { type: 'button', class: 'fr-act', 'aria-label': GAMES_TEXT.forestPlaceOk }, [
       el('span', { class: 'fr-act-icon', text: '✔' }),
       el('span', { class: 'fr-act-name', text: GAMES_TEXT.forestPlaceOk }),
     ]);
     ok.addEventListener('click', () => {
       const cell = this.placing?.cell;
+      const id = this.placing?.id ?? 'chest';
       this.stopPlacing();
-      if (cell !== null && cell !== undefined) this.handle(frCraft(this.state, 'chest', cell));
+      if (cell !== null && cell !== undefined) this.handle(frCraft(this.state, id, cell));
     });
     const no = el('button', { type: 'button', class: 'fr-act fr-act-close', 'aria-label': GAMES_TEXT.forestClose }, [
       el('span', { class: 'fr-act-icon', text: '✕' }),
@@ -377,6 +387,16 @@ export class ForestGame implements GameScreen {
           break;
         case 'torchOut':
           this.say(M.torchOut, 'miss');
+          break;
+        case 'openLoom':
+          this.renderLoom();
+          this.bag.removeAttribute('hidden');
+          break;
+        case 'worn':
+          this.say(M.worn, 'win');
+          break;
+        case 'noRoom':
+          this.say(M.noRoom, 'blocked');
           break;
         case 'chopped':
           this.say(M.chopped, 'place');
@@ -555,14 +575,14 @@ export class ForestGame implements GameScreen {
       });
       return b;
     });
-    const recipes = FR_CRAFT.filter((r) => (r.id === 'chest') === (this.craftTab === 'build'));
+    const recipes = FR_CRAFT.filter((r) => FR_BUILDINGS.includes(r.id) === (this.craftTab === 'build'));
     const tiles = recipes.map((r) => {
       const can = frCanCraft(s, r.id);
       const mats = r.cost.map(([it, n]) =>
         el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: String(n) })]),
       );
       const tile = el('button', { type: 'button', class: can ? 'fr-ctile can' : 'fr-ctile', 'aria-label': GAMES_TEXT.forestItems[r.id] ?? r.id }, [
-        r.id === 'chest' ? el('span', { class: 'fr-chest-ico', text: '📦' }) : this.iconCanvas(r.id as FrItem, 72),
+        FR_BUILDINGS.includes(r.id) ? el('span', { class: 'fr-chest-ico', text: r.id === 'loom' ? '🧶' : '📦' }) : this.iconCanvas(r.id as FrItem, 72),
       ]);
       tile.addEventListener('click', () => this.renderCraftDetail(r.id));
       return el('div', { class: 'fr-citem' }, [
@@ -584,7 +604,7 @@ export class ForestGame implements GameScreen {
   private renderCraftDetail(id: (typeof FR_CRAFT)[number]['id']): void {
     const s = this.state;
     const r = FR_CRAFT.find((x) => x.id === id)!;
-    const owned = id === 'chest' ? (s.tiles.includes('chest') ? 1 : 0) : s.inv[id as FrItem] ?? 0;
+    const owned = FR_BUILDINGS.includes(id) ? (s.tiles.includes(id as 'chest' | 'loom') ? 1 : 0) : s.inv[id as FrItem] ?? 0;
     const mats = r.cost.map(([it, n]) =>
       el('div', { class: 'fr-dmat' }, [
         el('span', { class: 'fr-slot' }, [this.iconCanvas(it)]),
@@ -594,8 +614,8 @@ export class ForestGame implements GameScreen {
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
     if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch')) make.setAttribute('disabled', '');
     make.addEventListener('click', () => {
-      if (id === 'chest') {
-        this.startPlacing();
+      if (FR_BUILDINGS.includes(id)) {
+        this.startPlacing(id);
         return;
       }
       this.handle(frCraft(s, id));
@@ -606,7 +626,7 @@ export class ForestGame implements GameScreen {
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-card' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
-        el('div', { class: 'fr-detail-icon' }, [id === 'chest' ? el('span', { class: 'fr-chest-ico', text: '📦' }) : this.iconCanvas(id as FrItem, 96)]),
+        el('div', { class: 'fr-detail-icon' }, [FR_BUILDINGS.includes(id) ? el('span', { class: 'fr-chest-ico', text: id === 'loom' ? '🧶' : '📦' }) : this.iconCanvas(id as FrItem, 96)]),
         el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
@@ -665,6 +685,52 @@ export class ForestGame implements GameScreen {
     );
   }
 
+  /** Верхние слоты рюкзака: надетые кошельки (+4 ячейки каждый). */
+  private gearRow(): HTMLElement {
+    const s = this.state;
+    const slots: HTMLElement[] = [];
+    for (let k = 0; k < FR_GEAR_SLOTS; k++) {
+      const item = s.worn[k];
+      if (!item) {
+        slots.push(el('span', { class: 'fr-slot empty fr-gear-slot', 'aria-label': GAMES_TEXT.forestGear }, [el('span', { class: 'fr-gear-hint', text: '👝' })]));
+        continue;
+      }
+      const slot = el('button', { type: 'button', class: 'fr-slot fr-gear-slot', 'aria-label': GAMES_TEXT.forestItems[item] ?? item }, [this.iconCanvas(item)]);
+      slot.addEventListener('click', () => {
+        this.handle(frUnwear(s, k));
+        this.renderBag();
+      });
+      slots.push(slot);
+    }
+    return el('div', { class: 'fr-gear' }, [el('span', { class: 'fr-gear-title', text: GAMES_TEXT.forestGear }), ...slots]);
+  }
+
+  /** Ткацкий станок: ткань из травы и кошелёк из ткани. */
+  private renderLoom(): void {
+    const s = this.state;
+    const rows = FR_LOOM.map((r) => {
+      const mats = r.cost.map(([it, n]) =>
+        el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: `${Math.min(s.inv[it] ?? 0, n)}/${n}` })]),
+      );
+      const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
+      if (!frCanWeave(s, r.id)) make.setAttribute('disabled', '');
+      make.addEventListener('click', () => {
+        this.handle(frWeave(s, r.id));
+        this.renderLoom();
+      });
+      return el('div', { class: 'fr-recipe' }, [
+        el('span', { class: 'fr-slot' }, [this.iconCanvas(r.id)]),
+        el('div', { class: 'fr-recipe-info' }, [el('b', { text: GAMES_TEXT.forestItems[r.id] ?? r.id }), el('div', { class: 'fr-mats' }, mats), el('small', { text: GAMES_TEXT.forestDesc[r.id] ?? '' })]),
+        make,
+      ]);
+    });
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-craft' }, [el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestPlaces.loom ?? '' }), close]), ...rows]),
+    );
+  }
+
   private renderChest(): void {
     const s = this.state;
     const stacks: Array<{ item: FrItem; n: number }> = [];
@@ -695,7 +761,7 @@ export class ForestGame implements GameScreen {
       el('div', { class: 'fr-bag fr-cook' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestChestTitle }), close]),
         el('div', { class: 'fr-grid' }, cells),
-        el('h3', { class: 'fr-sub', text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), FR_SLOTS) }),
+        el('h3', { class: 'fr-sub', text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), frCapacity(s)) }),
         el('div', { class: 'fr-grid' }, this.bagCells((item) => this.moveItems(item, s.inv[item] ?? 0, true))),
       ]),
     );
@@ -800,7 +866,8 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.toggleBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), FR_SLOTS) }), close]),
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), frCapacity(s)) }), close]),
+        this.gearRow(),
         el('div', { class: 'fr-grid' }, cells),
       ]),
     );
@@ -825,6 +892,15 @@ export class ForestGame implements GameScreen {
         this.renderItem(item);
       });
       buttons.push(light);
+    }
+    if (item === 'purse') {
+      const wear = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWear });
+      if (s.worn.length >= FR_GEAR_SLOTS) wear.setAttribute('disabled', '');
+      wear.addEventListener('click', () => {
+        this.handle(frWear(s, item));
+        this.renderBag();
+      });
+      buttons.push(wear);
     }
     if (fx) {
       const drink = !fx.food && !!fx.water;
@@ -999,7 +1075,8 @@ export class ForestGame implements GameScreen {
         ctx.fillRect(px + 1, py + 1, Math.ceil(tile) - 2, Math.ceil(tile) - 2);
       }
       if (this.placing.cell !== null) {
-        drawChest(ctx, sx((this.placing.cell % FR_W) + 0.5), sy(Math.floor(this.placing.cell / FR_W) + 0.5), tile);
+        const draw = this.placing.id === 'loom' ? drawLoom : drawChest;
+        draw(ctx, sx((this.placing.cell % FR_W) + 0.5), sy(Math.floor(this.placing.cell / FR_W) + 0.5), tile);
       }
     }
 
@@ -1028,6 +1105,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => drawTall(ctx, cx, cy, tile, i, t) });
         else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
+        else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
         if (d) items.push({ y: y + 0.4, draw: () => drawItem(ctx, d.kind, cx, cy, tile * 0.7, t, d.id) });
@@ -1147,6 +1225,7 @@ export class ForestGame implements GameScreen {
         if (d) labels.push({ x, y, text: GAMES_TEXT.forestItems[d.kind] ?? d.kind });
         else if (kind === 'bush' && s.berries.includes(i)) labels.push({ x, y, text: GAMES_TEXT.forestPlaces.bush ?? '' });
         else if (kind === 'rock') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
+        else if (kind === 'loom') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.loom ?? '' });
         else if (kind === 'chest') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.chest ?? '' });
         else if (kind === 'pit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[s.fire > 0 ? 'fire' : 'pit'] ?? '' });
         else if (kind === 'water') {
@@ -1266,6 +1345,28 @@ function drawRock(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   ctx.lineTo(cx - tile * 0.04, cy - tile * 0.02);
   ctx.closePath();
   ctx.fill();
+}
+
+function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  outline(ctx, tile);
+  const w = tile * 0.8;
+  const h = tile * 0.7;
+  ctx.fillStyle = '#a0683b';
+  ctx.fillRect(cx - w / 2, cy - h / 2, tile * 0.1, h);
+  ctx.fillRect(cx + w / 2 - tile * 0.1, cy - h / 2, tile * 0.1, h);
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, tile * 0.1);
+  ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
+  ctx.strokeStyle = '#f0e2c0';
+  ctx.lineWidth = Math.max(1, tile * 0.04);
+  for (let k = 0; k < 6; k++) {
+    const x = cx - w / 2 + tile * 0.15 + (k * (w - tile * 0.3)) / 5;
+    ctx.beginPath();
+    ctx.moveTo(x, cy - h / 2 + tile * 0.1);
+    ctx.lineTo(x, cy + h / 2 - tile * 0.1);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#d96c6c';
+  ctx.fillRect(cx - w / 2 + tile * 0.1, cy + tile * 0.05, w - tile * 0.2, tile * 0.12);
 }
 
 function drawChest(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
@@ -1576,6 +1677,33 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       }
       break;
     }
+    case 'cloth':
+      ctx.fillStyle = '#e9d9b6';
+      ctx.fillRect(cx - size * 0.32, cy - size * 0.22, size * 0.64, size * 0.44);
+      ctx.strokeRect(cx - size * 0.32, cy - size * 0.22, size * 0.64, size * 0.44);
+      ctx.strokeStyle = '#c8b58a';
+      ctx.lineWidth = size * 0.04;
+      for (let k = 1; k < 4; k++) {
+        ctx.beginPath();
+        ctx.moveTo(cx - size * 0.32, cy - size * 0.22 + (k * size * 0.44) / 4);
+        ctx.lineTo(cx + size * 0.32, cy - size * 0.22 + (k * size * 0.44) / 4);
+        ctx.stroke();
+      }
+      break;
+    case 'purse':
+      ctx.fillStyle = '#b8794a';
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.14, cy - size * 0.25);
+      ctx.quadraticCurveTo(cx - size * 0.42, cy + size * 0.05, cx - size * 0.3, cy + size * 0.3);
+      ctx.lineTo(cx + size * 0.3, cy + size * 0.3);
+      ctx.quadraticCurveTo(cx + size * 0.42, cy + size * 0.05, cx + size * 0.14, cy - size * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e6c06a';
+      ctx.fillRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
+      ctx.strokeRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
+      break;
     case 'berries':
       ctx.fillStyle = '#e8505b';
       for (const [dx, dy] of [

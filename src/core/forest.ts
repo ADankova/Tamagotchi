@@ -29,8 +29,8 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock';
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -59,6 +59,8 @@ export interface FrState {
   /** Идущее действие (сбор, еда) и сколько ему осталось. */
   busy: { kind: 'gather' | 'eat' | 'drink'; left: number } | null;
   inv: Partial<Record<FrItem, number>>;
+  /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
+  worn: FrItem[];
   /** Сколько ещё горит факел, мс (0 — не горит). */
   torch: number;
   /** Что лежит в окошке готовки у костра (вынуто из рюкзака). */
@@ -105,8 +107,11 @@ export type FrEvent =
   | { type: 'nothingToCook' }
   | { type: 'openCook' }
   | { type: 'openChest' }
+  | { type: 'openLoom' }
+  | { type: 'worn'; item: FrItem }
+  | { type: 'noRoom' }
   | { type: 'chopped' }
-  | { type: 'crafted'; item: FrCraftId }
+  | { type: 'crafted'; item: FrCraftId | 'cloth' | 'purse' }
   | { type: 'needMaterials' }
   | { type: 'haveIt' }
   | { type: 'noPlace' }
@@ -238,9 +243,16 @@ export function frSlotsUsed(inv: FrState['inv']): number {
   return Object.values(inv).reduce((sum, n) => sum + Math.ceil((n ?? 0) / FR_STACK), 0);
 }
 
-function canTake(inv: FrState['inv'], item: FrItem): boolean {
+function canTake(inv: FrState['inv'], item: FrItem, cap = FR_SLOTS): boolean {
   const n = inv[item] ?? 0;
-  return n % FR_STACK !== 0 || frSlotsUsed(inv) < FR_SLOTS;
+  return n % FR_STACK !== 0 || frSlotsUsed(inv) < cap;
+}
+
+/** Сколько ячеек в рюкзаке: 12 и по 4 за каждый надетый кошелёк. */
+export const FR_PURSE_BONUS = 4;
+export const FR_GEAR_SLOTS = 3;
+export function frCapacity(s: FrState): number {
+  return FR_SLOTS + FR_PURSE_BONUS * s.worn.length;
 }
 
 // --- Карта ---
@@ -298,6 +310,7 @@ export function newForest(seed: number): FrState {
     inv: {},
     pot: [],
     torch: 0,
+    worn: [],
     chest: {},
     count: {},
     claimed: [],
@@ -465,6 +478,7 @@ export type FrTarget =
   | { kind: 'tree' }
   | { kind: 'pit' }
   | { kind: 'chest' }
+  | { kind: 'loom' }
   | { kind: 'rock' }
   | { kind: 'tall'; x: number; y: number };
 
@@ -494,6 +508,7 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
     case 'pit':
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
     case 'chest':
+    case 'loom':
       return ['open'];
     case 'rock':
       return ['mine'];
@@ -521,7 +536,7 @@ function doAction(s: FrState, x: number, y: number, action: FrAction | null, poi
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest' || tile === 'tall') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'tall') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush' || tile === 'rock') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -570,7 +585,7 @@ function arrive(s: FrState): FrEvent[] {
         const d = s.drops.find((it) => it.id === goal.id);
         if (!d) return [];
         if (d.kind === 'grass' && !(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
-        if (!canTake(s.inv, d.kind)) return [{ type: 'full' }];
+        if (!canTake(s.inv, d.kind, frCapacity(s))) return [{ type: 'full' }];
         s.drops = s.drops.filter((it) => it.id !== d.id);
         s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
         bump(s, `pick:${d.kind}`);
@@ -579,7 +594,7 @@ function arrive(s: FrState): FrEvent[] {
       }
       if (s.tiles[goal.cell] !== 'bush') return [];
       if (!s.berries.includes(goal.cell)) return [{ type: 'empty' }];
-      if (!canTake(s.inv, 'berries')) return [{ type: 'full' }];
+      if (!canTake(s.inv, 'berries', frCapacity(s))) return [{ type: 'full' }];
       s.berries = s.berries.filter((b) => b !== goal.cell);
       s.inv.berries = (s.inv.berries ?? 0) + 2;
       bump(s, 'pick:berries', 2);
@@ -600,13 +615,13 @@ function arrive(s: FrState): FrEvent[] {
     case 'chop': {
       if (!(s.inv.axe ?? 0)) return [{ type: 'needAxe' }];
       if (s.tiles[goal.cell] !== 'tree') return [];
-      if (!canTake(s.inv, 'branch')) return [{ type: 'full' }];
+      if (!canTake(s.inv, 'branch', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.branch = (s.inv.branch ?? 0) + 2;
       bump(s, 'chop');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       const ev: FrEvent[] = [{ type: 'chopped' }];
-      if (rand(s.seed + 5000 + s.count.chop! * 13)() < EGG_CHANCE && canTake(s.inv, 'egg')) {
+      if (rand(s.seed + 5000 + s.count.chop! * 13)() < EGG_CHANCE && canTake(s.inv, 'egg', frCapacity(s))) {
         s.inv.egg = (s.inv.egg ?? 0) + 1;
         bump(s, 'pick:egg');
         ev.push({ type: 'found', item: 'egg' });
@@ -614,14 +629,14 @@ function arrive(s: FrState): FrEvent[] {
       return ev;
     }
     case 'open':
-      return [{ type: 'openChest' }];
+      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : 'openChest' }];
     case 'mine': {
       if (!(s.inv.pickaxe ?? 0)) return [{ type: 'needPickaxe' }];
       if (s.tiles[goal.cell] !== 'rock') return [];
-      if (!canTake(s.inv, 'stone')) return [{ type: 'full' }];
+      if (!canTake(s.inv, 'stone', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.stone = (s.inv.stone ?? 0) + 3;
-      if ((s.count.mine ?? 0) % 2 === 0 && canTake(s.inv, 'flint')) {
+      if ((s.count.mine ?? 0) % 2 === 0 && canTake(s.inv, 'flint', frCapacity(s))) {
         s.inv.flint = (s.inv.flint ?? 0) + 1;
         bump(s, 'pick:flint');
       }
@@ -633,13 +648,13 @@ function arrive(s: FrState): FrEvent[] {
     case 'cut': {
       if (!(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
       if (s.tiles[goal.cell] !== 'tall') return [];
-      if (!canTake(s.inv, 'grass')) return [{ type: 'full' }];
+      if (!canTake(s.inv, 'grass', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
       s.inv.grass = (s.inv.grass ?? 0) + 1;
       bump(s, 'pick:grass');
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       const ev: FrEvent[] = [{ type: 'cut' }];
-      if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE && canTake(s.inv, 'seeds')) {
+      if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE && canTake(s.inv, 'seeds', frCapacity(s))) {
         s.inv.seeds = (s.inv.seeds ?? 0) + 1;
         bump(s, 'pick:seeds');
         ev.push({ type: 'found', item: 'seeds' });
@@ -922,6 +937,7 @@ export function restoreForest(raw: unknown): FrState | null {
   // Старые сохранения хранили путь клетками — просто останавливаемся.
   if (!Array.isArray(s.pot)) s.pot = [];
   if (typeof s.torch !== 'number') s.torch = 0;
+  if (!Array.isArray(s.worn)) s.worn = [];
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
   // Старые сохранения (1.32–1.33) считали по-другому — переносим, что можно.
   const old = (s.count && typeof s.count === 'object' ? s.count : {}) as Record<string, number>;
@@ -940,7 +956,10 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom';
+
+/** Постройки: ставятся на выбранную клетку у костра. */
+export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom'];
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
@@ -949,6 +968,7 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'torch', cost: [['branch', 1], ['grass', 2]] },
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
   { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
+  { id: 'loom', cost: [['branch', 10], ['stone', 5], ['grass', 3]] },
 ];
 
 export function frCanCraft(s: FrState, id: FrCraftId): boolean {
@@ -975,19 +995,23 @@ export function frChestBuilt(s: FrState): boolean {
   return s.tiles.includes('chest');
 }
 
+export function frBuilt(s: FrState, id: FrCraftId): boolean {
+  return s.tiles.includes(id as FrTile);
+}
+
 /** Смастерить предмет из материалов рюкзака. Топор — в рюкзак, сундук — рядом с костром. */
 export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
-  if (id !== 'chest' && id !== 'torch' && (s.inv[id] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
-  if (id === 'torch' && !canTake(s.inv, 'torch')) return [{ type: 'full' }];
-  if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
+  if (!FR_BUILDINGS.includes(id) && id !== 'torch' && (s.inv[id as FrItem] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
+  if (id === 'torch' && !canTake(s.inv, 'torch', frCapacity(s))) return [{ type: 'full' }];
+  if (FR_BUILDINGS.includes(id) && frBuilt(s, id)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
-  if (id === 'chest' && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
+  if (FR_BUILDINGS.includes(id) && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
   if (id === 'torch') s.inv.torch = (s.inv.torch ?? 0) + 1;
-  else if (id !== 'chest') s.inv[id] = 1;
-  else s.tiles[cell!] = 'chest';
+  else if (!FR_BUILDINGS.includes(id)) s.inv[id as FrItem] = 1;
+  else s.tiles[cell!] = id as FrTile;
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
@@ -1006,7 +1030,7 @@ export function frChestPut(s: FrState, item: FrItem, n = 1): number {
 /** Достать n штук из сундука в рюкзак; возвращает, сколько достали. */
 export function frChestTake(s: FrState, item: FrItem, n = 1): number {
   let moved = 0;
-  while (moved < n && (s.chest[item] ?? 0) > 0 && canTake(s.inv, item)) {
+  while (moved < n && (s.chest[item] ?? 0) > 0 && canTake(s.inv, item, frCapacity(s))) {
     const left = (s.chest[item] ?? 0) - 1;
     if (left > 0) s.chest[item] = left;
     else delete s.chest[item];
@@ -1048,6 +1072,8 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'flask', kind: 'regular', reward: 0, items: { berries: 3 }, parts: [{ key: 'craft:flask', need: 1 }] },
   { id: 'torch', kind: 'regular', reward: 0, items: { mushroom: 2 }, parts: [{ key: 'craft:torch', need: 1 }] },
   { id: 'porridge', kind: 'regular', reward: 0, items: { egg: 2 }, parts: [{ key: 'made:porridge', need: 1 }] },
+  { id: 'loom', kind: 'regular', reward: 0, items: { stone: 2, branch: 3 }, parts: [{ key: 'craft:loom', need: 1 }] },
+  { id: 'purse', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'craft:purse', need: 1 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
@@ -1079,7 +1105,7 @@ export function frClaim(s: FrState, id: string): FrEvent[] {
   const probe: FrState['inv'] = { ...s.inv };
   for (const [it, n] of Object.entries(q.items ?? {}) as Array<[FrItem, number]>) {
     for (let k = 0; k < n; k++) {
-      if (!canTake(probe, it)) return [{ type: 'full' }];
+      if (!canTake(probe, it, frCapacity(s))) return [{ type: 'full' }];
       probe[it] = (probe[it] ?? 0) + 1;
     }
   }
@@ -1097,4 +1123,50 @@ function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
     events.push({ type: 'questReady', id: q.id });
   }
   return events;
+}
+
+// --- Ткацкий станок и кошелёк ---
+
+export const FR_LOOM: ReadonlyArray<{ id: 'cloth' | 'purse'; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
+  { id: 'cloth', cost: [['grass', 3]] },
+  { id: 'purse', cost: [['cloth', 3], ['grass', 5]] },
+];
+
+export function frCanWeave(s: FrState, id: 'cloth' | 'purse'): boolean {
+  const r = FR_LOOM.find((x) => x.id === id);
+  return !!r && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
+}
+
+/** Соткать ткань или сшить кошелёк на станке. */
+export function frWeave(s: FrState, id: 'cloth' | 'purse'): FrEvent[] {
+  const r = FR_LOOM.find((x) => x.id === id);
+  if (!r || s.over || !frBuilt(s, 'loom')) return [];
+  if (!frCanWeave(s, id)) return [{ type: 'needMaterials' }];
+  for (const [item, n] of r.cost) take(s, item, n);
+  if (!canTake(s.inv, id, frCapacity(s))) {
+    for (const [item, n] of r.cost) s.inv[item] = (s.inv[item] ?? 0) + n;
+    return [{ type: 'full' }];
+  }
+  s.inv[id] = (s.inv[id] ?? 0) + 1;
+  bump(s, `craft:${id}`);
+  return withQuest(s, [{ type: 'crafted', item: id }]);
+}
+
+/** Надеть кошелёк в свободный верхний слот: рюкзак растёт на 4 ячейки. */
+export function frWear(s: FrState, item: FrItem): FrEvent[] {
+  if (s.over || item !== 'purse' || !(s.inv.purse ?? 0) || s.worn.length >= FR_GEAR_SLOTS) return [];
+  take(s, 'purse', 1);
+  s.worn.push('purse');
+  return [{ type: 'worn', item }];
+}
+
+/** Снять кошелёк обратно в рюкзак; нужно, чтобы вещи поместились в уменьшенный рюкзак. */
+export function frUnwear(s: FrState, index: number): FrEvent[] {
+  const item = s.worn[index];
+  if (!item) return [];
+  const rest: FrState['inv'] = { ...s.inv, [item]: (s.inv[item] ?? 0) + 1 };
+  if (frSlotsUsed(rest) > frCapacity(s) - FR_PURSE_BONUS) return [{ type: 'noRoom' }];
+  s.worn.splice(index, 1);
+  s.inv = rest;
+  return [];
 }
