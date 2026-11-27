@@ -46,6 +46,7 @@ import {
   frWear,
   frUnwear,
   frEquip,
+  frDestroy,
   frWeaponDmg,
   frWeaponStats,
   frHeld,
@@ -692,6 +693,9 @@ export class ForestGame implements GameScreen {
           break;
         case 'thrown':
           this.say(M.thrown(item(ev.item)), 'place');
+          break;
+        case 'destroyed':
+          this.say(M.destroyed(item(ev.item), ev.n), 'blocked');
           break;
         case 'woke':
           this.say(M.woke, 'wake');
@@ -1587,6 +1591,20 @@ export class ForestGame implements GameScreen {
       this.renderItem(item);
     });
     buttons.push(toss);
+    // Удаление в два нажатия: первое просит подтвердить, второе уничтожает предмет (все штуки).
+    const destroy = el('button', { type: 'button', class: 'chunky fr-action fr-destroy', text: GAMES_TEXT.forestDestroy });
+    let sure = false;
+    destroy.addEventListener('click', () => {
+      if (!sure) {
+        sure = true;
+        destroy.textContent = GAMES_TEXT.forestDestroySure(s.inv[item] ?? 1);
+        destroy.classList.add('sure');
+        return;
+      }
+      this.handle(frDestroy(s, item));
+      this.renderBag();
+    });
+    buttons.push(destroy);
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.renderBag());
     this.bag.replaceChildren(

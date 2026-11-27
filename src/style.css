@@ -3783,3 +3783,9 @@ body:has(.fr-game) {
   margin: 0;
   padding: 0;
 }
+
+.fr-destroy.sure {
+  background: #f6c6c0;
+  border-color: #b3372b;
+  color: #7a1d14;
+}

@@ -216,6 +216,7 @@ export type FrEvent =
   | { type: 'sleepNo' }
   | { type: 'fellAsleep' }
   | { type: 'thrown'; item: FrItem }
+  | { type: 'destroyed'; item: FrItem; n: number }
   | { type: 'fireOut' }
   | { type: 'needAxe' }
   | { type: 'needKnife' }
@@ -1474,6 +1475,17 @@ export function frToolMax(s: FrState, tool: FrTool): number {
 
 export function frCanUpgrade(s: FrState, tool: FrTool): boolean {
   return !s.over && (s.inv[tool] ?? 0) > 0 && (s.inv.crystal ?? 0) > 0 && !s.up[tool];
+}
+
+/** Уничтожить предмет совсем (все штуки): он исчезает, на землю ничего не падает. */
+export function frDestroy(s: FrState, item: FrItem): FrEvent[] {
+  const n = s.inv[item] ?? 0;
+  if (s.over || !n) return [];
+  delete s.inv[item];
+  delete s.dur[item as FrTool];
+  delete s.up[item as FrTool];
+  if (s.weapon === item) s.weapon = null;
+  return [{ type: 'destroyed', item, n }];
 }
 
 /** Вставить кристалл в инструмент: прочность вырастает на целый запас. */
