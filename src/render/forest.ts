@@ -396,6 +396,9 @@ export class ForestGame implements GameScreen {
           this.renderLoom();
           this.bag.removeAttribute('hidden');
           break;
+        case 'spilled':
+          this.say(M.spilled, 'blocked');
+          break;
         case 'cookDropped':
           this.say(M.cookDropped, 'win');
           break;

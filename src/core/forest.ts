@@ -114,6 +114,7 @@ export type FrEvent =
   | { type: 'openLoom' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
+  | { type: 'spilled' }
   | { type: 'cookDropped'; item: FrItem }
   | { type: 'broke'; item: FrTool }
   | { type: 'chopped' }
@@ -650,17 +651,17 @@ function arriveInner(s: FrState): FrEvent[] {
     case 'chop': {
       if (!(s.inv.axe ?? 0)) return [{ type: 'needAxe' }];
       if (s.tiles[goal.cell] !== 'tree') return [];
-      if (!canTake(s.inv, 'branch', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
-      s.inv.branch = (s.inv.branch ?? 0) + 2;
+      let spill = give(s, 'branch', 2, goal.cell);
       bump(s, 'chop');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       const ev: FrEvent[] = [{ type: 'chopped' }];
-      if (rand(s.seed + 5000 + s.count.chop! * 13)() < EGG_CHANCE && canTake(s.inv, 'egg', frCapacity(s))) {
-        s.inv.egg = (s.inv.egg ?? 0) + 1;
+      if (rand(s.seed + 5000 + s.count.chop! * 13)() < EGG_CHANCE) {
+        spill += give(s, 'egg', 1, goal.cell);
         bump(s, 'pick:egg');
         ev.push({ type: 'found', item: 'egg' });
       }
+      if (spill) ev.push({ type: 'spilled' });
       return ev;
     }
     case 'open':
@@ -668,32 +669,31 @@ function arriveInner(s: FrState): FrEvent[] {
     case 'mine': {
       if (!(s.inv.pickaxe ?? 0)) return [{ type: 'needPickaxe' }];
       if (s.tiles[goal.cell] !== 'rock') return [];
-      if (!canTake(s.inv, 'stone', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
-      s.inv.stone = (s.inv.stone ?? 0) + 3;
-      if ((s.count.mine ?? 0) % 2 === 0 && canTake(s.inv, 'flint', frCapacity(s))) {
-        s.inv.flint = (s.inv.flint ?? 0) + 1;
+      let spill = give(s, 'stone', 3, goal.cell);
+      if ((s.count.mine ?? 0) % 2 === 0) {
+        spill += give(s, 'flint', 1, goal.cell);
         bump(s, 'pick:flint');
       }
       bump(s, 'pick:stone', 3);
       bump(s, 'mine');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
-      return [{ type: 'mined' }];
+      return spill ? [{ type: 'mined' }, { type: 'spilled' }] : [{ type: 'mined' }];
     }
     case 'cut': {
       if (!(s.inv.knife ?? 0)) return [{ type: 'needKnife' }];
       if (s.tiles[goal.cell] !== 'tall') return [];
-      if (!canTake(s.inv, 'grass', frCapacity(s))) return [{ type: 'full' }];
       s.tiles[goal.cell] = 'grass';
-      s.inv.grass = (s.inv.grass ?? 0) + 1;
+      let spill = give(s, 'grass', 1, goal.cell);
       bump(s, 'pick:grass');
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       const ev: FrEvent[] = [{ type: 'cut' }];
-      if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE && canTake(s.inv, 'seeds', frCapacity(s))) {
-        s.inv.seeds = (s.inv.seeds ?? 0) + 1;
+      if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE) {
+        spill += give(s, 'seeds', 1, goal.cell);
         bump(s, 'pick:seeds');
         ev.push({ type: 'found', item: 'seeds' });
       }
+      if (spill) ev.push({ type: 'spilled' });
       return ev;
     }
     case 'light':
@@ -784,7 +784,24 @@ export function frPotReturn(s: FrState): void {
 /** Кладёт предмет на свободную клетку рядом с костром (по кольцам от центра). */
 function dropNearFire(s: FrState, kind: FrItem): boolean {
   const c = frCenter();
-  for (let r = 1; r <= 4; r++) {
+  return dropNear(s, kind, c.x, c.y, 1);
+}
+
+/** Кладёт добычу в рюкзак, а что не влезло — на землю рядом с клеткой. Возвращает, сколько упало на землю. */
+function give(s: FrState, item: FrItem, n: number, cell: number): number {
+  let spilled = 0;
+  for (let k = 0; k < n; k++) {
+    if (canTake(s.inv, item, frCapacity(s))) s.inv[item] = (s.inv[item] ?? 0) + 1;
+    else if (dropNear(s, item, cell % FR_W, Math.floor(cell / FR_W))) spilled++;
+    else s.inv[item] = (s.inv[item] ?? 0) + 1;
+  }
+  return spilled;
+}
+
+/** Кладёт предмет на свободную клетку рядом с (cx, cy), кольцами от `from`. */
+function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0): boolean {
+  const c = { x: cx, y: cy };
+  for (let r = from; r <= 4; r++) {
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;

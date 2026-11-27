@@ -307,6 +307,7 @@ export const en: Dict = {
       worn: 'Purse worn: backpack +4 slots',
       broke: 'Broken: {item}',
       cookDropped: 'Backpack is full — the dish is lying by the fire',
+      spilled: 'Backpack is full — the loot fell nearby',
       noRoom: 'Free up some backpack room first',
       needKnife: "You can't cut grass without a knife",
       needAxe: 'You cannot chop a tree without an axe',
