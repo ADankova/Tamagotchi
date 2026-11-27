@@ -1897,7 +1897,7 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
 /** Переложить n штук из рюкзака в сундук; возвращает, сколько переложилось. */
 export function frChestPut(s: FrState, item: FrItem, n = 1): number {
   let moved = 0;
-  while (moved < n && (s.inv[item] ?? 0) > 0 && canTake(s.chest, item)) {
+  while (moved < n && (s.inv[item] ?? 0) > 0 && canTake(s.chest, item, frBagSize(s))) {
     take(s, item, 1);
     s.chest[item] = (s.chest[item] ?? 0) + 1;
     moved++;

@@ -1318,3 +1318,14 @@ describe('записка смотрителя', () => {
     expect(ch4.parts.map((p) => p.key)).toContain('visit:cave');
   });
 });
+
+describe('сундук вмещает столько же ячеек, сколько рюкзак', () => {
+  it('при полной пачке ягод можно класть другие предметы и ещё ягоды в новую ячейку', () => {
+    const s = newForest(7);
+    s.worn = ['purse'];
+    s.chest = { berries: 20, stone: 20, branch: 20, grass: 20, mushroom: 20, flint: 20, cloth: 20, reed: 20, ore: 20, salt: 20, fang: 20, ingot: 20 };
+    s.inv = { berries: 5, seeds: 2 };
+    expect(frChestPut(s, 'berries', 5)).toBe(5);
+    expect(frChestPut(s, 'seeds', 2)).toBe(2);
+  });
+});
