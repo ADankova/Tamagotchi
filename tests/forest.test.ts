@@ -593,7 +593,7 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     // станок: шалаш и лежанка
     const s3 = newForest(7);
     s3.tiles[frChestSpots(s3)[0]!] = 'loom';
-    s3.inv = { cloth: 30, branch: 15, stone: 7, grass: 15 };
+    s3.inv = { cloth: 15, branch: 5, stone: 3, grass: 10 };
     expect(m.frCanWeave(s3, 'bed')).toBe(false);
     expect(m.frWeave(s3, 'shelter')).toContainEqual({ type: 'crafted', item: 'shelter' });
     expect(s3.shelter).toBe(30);
