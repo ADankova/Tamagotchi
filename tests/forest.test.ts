@@ -320,7 +320,7 @@ describe('«Дикий лес»: этап 2', () => {
     s.inv = { axe: 1 };
     expect([...frDo(s, x, y, 'chop'), ...run(s, 5000)]).toContainEqual({ type: 'chopped' });
     expect(s.tiles[i]).toBe('grass');
-    expect(s.inv.branch).toBe(2);
+    expect(s.inv.branch! >= 2 && s.inv.branch! <= 4).toBe(true);
   });
 
   it('сундук строится у костра и хранит вещи', () => {
@@ -392,7 +392,7 @@ describe('«Дикий лес»: трава и большие камни', () =>
     s.inv = { knife: 1 };
     expect([...frDo(s, tx, ty, 'cut'), ...run(s, 3000)]).toContainEqual({ type: 'cut' });
     expect(s.tiles[ti]).toBe('grass');
-    expect(s.inv.grass).toBe(1);
+    expect(s.inv.grass! >= 1 && s.inv.grass! <= 3).toBe(true);
 
     const ri = s.tiles.findIndex((k) => k === 'rock');
     const rx = ri % 30;
@@ -402,7 +402,7 @@ describe('«Дикий лес»: трава и большие камни', () =>
     expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'needPickaxe' });
     s.inv = { pickaxe: 1 };
     expect([...frDo(s, rx, ry, 'mine'), ...run(s, 3000)]).toContainEqual({ type: 'mined' });
-    expect(s.inv.stone).toBe(3);
+    expect(s.inv.stone! >= 2 && s.inv.stone! <= 4).toBe(true);
     expect(s.tiles[ri]).toBe('grass');
   });
 
@@ -877,5 +877,18 @@ describe('recipe list', () => {
     expect(s.inv.mushroom ?? 0).toBe(0);
     expect(frRecipeFill(s, r)).toBe(true);
     expect(s.pot).toEqual(['mushroom']);
+  });
+});
+
+import { frYield } from '../src/core/forest';
+describe('yields', () => {
+  it('frYield stays in range and favours the lowest', () => {
+    const s = newForest(3);
+    const c = [0, 0, 0];
+    for (let i = 0; i < 400; i++) {
+      s.count['pick:grass'] = i;
+      c[frYield(s, 'pick:grass', 1) - 1]!++;
+    }
+    expect(c[0]! > c[1]! && c[1]! > c[2]! && c[2]! > 0).toBe(true);
   });
 });

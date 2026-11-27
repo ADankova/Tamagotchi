@@ -21,9 +21,9 @@ const SPEED = 3;
 /** Сколько длится сбор или еда, мс. */
 export const FR_ACTION_MS = 700;
 /** Огонь: сколько горит после разжигания, сколько добавляет ветка, предел. */
-export const FR_FIRE_START_MS = 120_000;
-export const FR_FIRE_BRANCH_MS = 40_000;
-export const FR_FIRE_MAX_MS = 240_000;
+export const FR_FIRE_START_MS = 240_000;
+export const FR_FIRE_BRANCH_MS = 80_000;
+export const FR_FIRE_MAX_MS = 480_000;
 /** Радиус света костра, клеток. */
 export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
@@ -237,6 +237,12 @@ export function frTreeCover(s: FrState): boolean {
 }
 
 /** Идёт ли дождь там, где стоит питомец: в пещере дождя нет. */
+/** Сколько ресурсов выпадет: от lo до lo+2, меньшее чаще (50% / 30% / 20%). */
+export function frYield(s: FrState, key: string, lo: number): number {
+  const r = rand(s.seed + 77_000 + (s.count[key] ?? 0) * 17 + (s.count.mine ?? 0) * 5 + (s.count.chop ?? 0) * 3)();
+  return r < 0.5 ? lo : r < 0.8 ? lo + 1 : lo + 2;
+}
+
 export function frRainHere(s: FrState): boolean {
   return s.weather.rain && s.loc !== 'cave';
 }
@@ -966,8 +972,9 @@ function arriveInner(s: FrState): FrEvent[] {
       if (!s.berries.includes(goal.cell)) return [{ type: 'empty' }];
       if (!canTake(s.inv, 'berries', frCapacity(s))) return [{ type: 'full' }];
       s.berries = s.berries.filter((b) => b !== goal.cell);
-      s.inv.berries = (s.inv.berries ?? 0) + 2;
-      bump(s, 'pick:berries', 2);
+      const nbr = frYield(s, 'pick:berries', 1);
+      s.inv.berries = (s.inv.berries ?? 0) + nbr;
+      bump(s, 'pick:berries', nbr);
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       return [{ type: 'picked', item: 'berries' }];
     }
@@ -1003,7 +1010,8 @@ function arriveInner(s: FrState): FrEvent[] {
       if (!hasTool(s, 'axe')) return [{ type: 'needAxe' }];
       if (s.tiles[goal.cell] !== 'tree') return [];
       s.tiles[goal.cell] = 'grass';
-      let spill = give(s, 'branch', 2, goal.cell);
+      const nb = frYield(s, 'chop', 2);
+      let spill = give(s, 'branch', nb, goal.cell);
       bump(s, 'chop');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       const ev: FrEvent[] = [{ type: 'chopped' }];
@@ -1035,12 +1043,13 @@ function arriveInner(s: FrState): FrEvent[] {
       }
       if (s.tiles[goal.cell] !== 'rock') return [];
       s.tiles[goal.cell] = 'grass';
-      let spill = give(s, 'stone', 3, goal.cell);
+      const ns = frYield(s, 'pick:stone', 2);
+      let spill = give(s, 'stone', ns, goal.cell);
       if ((s.count.mine ?? 0) % 2 === 0) {
         spill += give(s, 'flint', 1, goal.cell);
         bump(s, 'pick:flint');
       }
-      bump(s, 'pick:stone', 3);
+      bump(s, 'pick:stone', ns);
       bump(s, 'mine');
       s.busy = { kind: 'gather', left: FR_ACTION_MS * 2 };
       return spill ? [{ type: 'mined' }, { type: 'spilled' }] : [{ type: 'mined' }];
@@ -1056,8 +1065,9 @@ function arriveInner(s: FrState): FrEvent[] {
       }
       if (s.tiles[goal.cell] !== 'tall') return [];
       s.tiles[goal.cell] = 'grass';
-      let spill = give(s, 'grass', 1, goal.cell);
-      bump(s, 'pick:grass');
+      const ng = frYield(s, 'pick:grass', 1);
+      let spill = give(s, 'grass', ng, goal.cell);
+      bump(s, 'pick:grass', ng);
       s.busy = { kind: 'gather', left: FR_ACTION_MS };
       const ev: FrEvent[] = [{ type: 'cut' }];
       if (rand(s.seed + 9000 + (s.count['pick:grass'] ?? 0) * 7)() < SEED_CHANCE) {
@@ -1383,7 +1393,7 @@ function tick(s: FrState, dt: number): FrEvent[] {
     s.count.rainCycle = n;
     const r = rand(s.seed + 31_000 + n * 101)();
     if (s.weather.rain) {
-      s.weather = { rain: false, left: 100_000 + r * 120_000 };
+      s.weather = { rain: false, left: 200_000 + r * 240_000 };
       events.push({ type: 'rainEnd' });
     } else {
       s.weather = { rain: true, left: 40_000 + r * 40_000 };
