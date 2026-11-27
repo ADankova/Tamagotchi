@@ -12,6 +12,8 @@ import {
   frEquip,
   frWeaponStats,
   FR_WEAPONS,
+  FR_PET_DMG,
+  FR_MOBS,
   frBedCell,
   FR_EVENING_AT,
   frCanSleep,
@@ -155,8 +157,9 @@ describe('«Дикий лес»: сбор и костёр', () => {
   it('оружие в руках: нож быстрый и слабый, топор и кирка медленные и сильные, копьё сильнее всех', () => {
     const s = newForest(7);
     s.inv = { knife: 1, axe: 1, pickaxe: 1, spear: 1 };
-    // Без выбора — лучшее из имеющегося, как раньше.
-    expect(frWeaponStats(s).item).toBe('spear');
+    // Без выбора — кулаки.
+    expect(frWeaponStats(s).item).toBe(null);
+    expect(frWeaponStats(s).dmg).toBe(FR_PET_DMG);
     frEquip(s, 'knife');
     const knife = frWeaponStats(s);
     frEquip(s, 'axe');
@@ -179,8 +182,17 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(s.weapon).toBe(null);
     s.weapon = 'knife';
     delete s.inv.knife;
-    expect(frWeaponStats(s).item).toBe('spear');
+    expect(frWeaponStats(s).item).toBe(null);
     expect(Object.keys(FR_WEAPONS)).not.toContain('rod');
+  });
+
+  it('здоровье зверей считается в ударах кулаком: мышь 2, кролик 3, волк 5, летучая мышь 3, белый волк 10', () => {
+    const hits = (hp: number): number => Math.ceil(hp / FR_PET_DMG);
+    expect(hits(FR_MOBS.mouse.hp)).toBe(2);
+    expect(hits(FR_MOBS.rabbit.hp)).toBe(3);
+    expect(hits(FR_MOBS.wolf.hp)).toBe(5);
+    expect(hits(FR_MOBS.bat.hp)).toBe(3);
+    expect(hits(FR_MOBS.alpha.hp)).toBe(10);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {
