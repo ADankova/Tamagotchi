@@ -3678,3 +3678,16 @@ body:has(.fr-game) {
   display: flex;
   justify-content: center;
 }
+
+.fr-actions {
+  flex-wrap: wrap;
+}
+.fr-actions .fr-action {
+  flex: 1 1 40%;
+  min-width: 0;
+}
+.fr-weapon-slot {
+  margin-left: auto;
+  border-style: solid;
+  border-color: #b5651d;
+}

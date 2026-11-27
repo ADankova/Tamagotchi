@@ -46,6 +46,8 @@ import {
   frCanWeave,
   frWear,
   frUnwear,
+  frEquip,
+  FR_WEAPONS,
   FR_BUILDINGS,
   FR_LOOM,
   type FrLoomId,
@@ -1128,6 +1130,18 @@ export class ForestGame implements GameScreen {
       });
       slots.push(slot);
     }
+    // Оружие в руках: нажатие убирает его (тогда бьёт лучшее из имеющегося).
+    const held = s.weapon && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
+    if (held) {
+      const w = el('button', { type: 'button', class: 'fr-slot fr-gear-slot fr-weapon-slot', 'aria-label': GAMES_TEXT.forestUnequip }, [this.iconCanvas(held)]);
+      w.addEventListener('click', () => {
+        frEquip(s, held);
+        this.renderBag();
+      });
+      slots.push(w);
+    } else {
+      slots.push(el('span', { class: 'fr-slot empty fr-gear-slot fr-weapon-slot', 'aria-label': GAMES_TEXT.forestWeapon }, [el('span', { class: 'fr-gear-hint', text: '⚔️' })]));
+    }
     return el('div', { class: 'fr-gear' }, [el('span', { class: 'fr-gear-title', text: GAMES_TEXT.forestGear }), ...slots]);
   }
 
@@ -1590,6 +1604,15 @@ export class ForestGame implements GameScreen {
       });
       buttons.push(up);
     }
+    if (FR_WEAPONS[item as FrTool]) {
+      const on = s.weapon === item;
+      const equip = el('button', { type: 'button', class: 'chunky fr-action', text: on ? GAMES_TEXT.forestUnequip : GAMES_TEXT.forestEquip });
+      equip.addEventListener('click', () => {
+        frEquip(s, item as FrTool);
+        this.renderItem(item);
+      });
+      buttons.push(equip);
+    }
     if (item === 'purse') {
       const wear = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWear });
       if (s.worn.length >= FR_GEAR_SLOTS) wear.setAttribute('disabled', '');
@@ -1621,7 +1644,7 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: TOOLS.includes(item) || (s.inv[item] ?? 0) <= 1 ? (GAMES_TEXT.forestItems[item] ?? item) : `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
-          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : []),
+          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('span', { text: GAMES_TEXT.forestWeaponStats(FR_WEAPONS[item as FrTool]!.dmg, FR_WEAPONS[item as FrTool]!.ms) })] : []),
         ]),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
         el('div', { class: 'fr-actions' }, buttons),

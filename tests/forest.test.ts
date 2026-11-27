@@ -9,6 +9,9 @@ import {
   FR_STACK,
   FR_W,
   frActions,
+  frEquip,
+  frWeaponStats,
+  FR_WEAPONS,
   frBedCell,
   FR_EVENING_AT,
   frCanSleep,
@@ -147,6 +150,37 @@ describe('«Дикий лес»: сбор и костёр', () => {
     frTick(s, 50);
     expect(frSlotsUsed(s.inv)).toBeLessThanOrEqual(FR_SLOTS);
     expect(s.drops.length).toBeGreaterThan(drops);
+  });
+
+  it('оружие в руках: нож быстрый и слабый, топор и кирка медленные и сильные, копьё сильнее всех', () => {
+    const s = newForest(7);
+    s.inv = { knife: 1, axe: 1, pickaxe: 1, spear: 1 };
+    // Без выбора — лучшее из имеющегося, как раньше.
+    expect(frWeaponStats(s).item).toBe('spear');
+    frEquip(s, 'knife');
+    const knife = frWeaponStats(s);
+    frEquip(s, 'axe');
+    const axe = frWeaponStats(s);
+    frEquip(s, 'pickaxe');
+    const pick = frWeaponStats(s);
+    frEquip(s, 'spear');
+    const spear = frWeaponStats(s);
+    expect(knife.ms).toBeLessThan(spear.ms);
+    expect(axe.ms).toBeGreaterThan(spear.ms);
+    expect(pick.ms).toBeGreaterThan(spear.ms);
+    expect(knife.dmg).toBeLessThan(axe.dmg);
+    expect(axe.dmg).toBeLessThan(spear.dmg);
+    expect(pick.dmg).toBeLessThan(spear.dmg);
+    // Повторное нажатие убирает оружие; предмета нет в рюкзаке — не берётся.
+    frEquip(s, 'spear');
+    expect(s.weapon).toBe(null);
+    delete s.inv.axe;
+    frEquip(s, 'axe');
+    expect(s.weapon).toBe(null);
+    s.weapon = 'knife';
+    delete s.inv.knife;
+    expect(frWeaponStats(s).item).toBe('spear');
+    expect(Object.keys(FR_WEAPONS)).not.toContain('rod');
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {

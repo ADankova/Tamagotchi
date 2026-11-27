@@ -98,6 +98,8 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
   worn: FrItem[];
+  /** Оружие в руках: из рюкзака берётся нож, топор, кирка или копьё; null — лучшее из того, что есть. */
+  weapon: FrTool | null;
   /** Где сейчас питомец и где в этой локации костровище. */
   loc: FrPlace;
   pit: { x: number; y: number };
@@ -481,6 +483,7 @@ export function newForest(seed: number): FrState {
     torchMax: FR_TORCH_MS,
     up: {},
     worn: [],
+    weapon: null,
     loc: 'home',
     pit: { x: c.x, y: c.y },
     places: {},
@@ -1668,6 +1671,7 @@ export function restoreForest(raw: unknown): FrState | null {
   ensureRuins(s);
   if (typeof s.shelter !== 'number') s.shelter = 0;
   if (typeof s.bed !== 'boolean') s.bed = false;
+  if (typeof s.weapon !== 'string') s.weapon = null;
   if (!Array.isArray(s.worn)) s.worn = [];
   if (s.loc !== 'home' && s.loc !== 'lake' && s.loc !== 'cave') s.loc = 'home';
   if (!s.pit || typeof s.pit.x !== 'number') s.pit = { x: Math.floor(FR_W / 2), y: Math.floor(FR_H / 2) };
@@ -2122,6 +2126,32 @@ export const FR_AXE_DMG = 8;
 export const FR_IRON_DMG = 12;
 export const FR_SPEAR_DMG = 16;
 
+/** Оружие в руках: урон за удар и пауза между ударами (мс). Нож бьёт слабо, но часто; топор и кирка сильно, но медленно; копьё — сильнее всех. */
+export const FR_WEAPONS: Partial<Record<FrTool, { dmg: number; ms: number }>> = {
+  knife: { dmg: 4, ms: 450 },
+  ironknife: { dmg: 6, ms: 450 },
+  axe: { dmg: 12, ms: 1100 },
+  ironaxe: { dmg: 17, ms: 1100 },
+  pickaxe: { dmg: 11, ms: 1200 },
+  ironpick: { dmg: 16, ms: 1200 },
+  spear: { dmg: FR_SPEAR_DMG, ms: PET_HIT_MS },
+};
+
+/** Чем питомец бьёт сейчас: выбранное оружие, а если не выбрано (или его нет в рюкзаке) — лучшее из имеющегося, иначе кулаки. */
+export function frWeaponStats(s: FrState): { item: FrTool | null; dmg: number; ms: number } {
+  const pick = s.weapon && FR_WEAPONS[s.weapon] && (s.inv[s.weapon] ?? 0) > 0 ? s.weapon : null;
+  const auto: FrTool | null = (s.inv.spear ?? 0) > 0 ? 'spear' : (s.inv.ironaxe ?? 0) > 0 ? 'ironaxe' : (s.inv.axe ?? 0) > 0 ? 'axe' : null;
+  const item = pick ?? auto;
+  const w = item ? FR_WEAPONS[item] : undefined;
+  return { item, dmg: w?.dmg ?? FR_PET_DMG, ms: w?.ms ?? PET_HIT_MS };
+}
+
+/** Взять оружие в руки (или убрать, если оно уже в руках). */
+export function frEquip(s: FrState, item: FrTool): void {
+  if (!FR_WEAPONS[item] || !(s.inv[item] ?? 0)) return;
+  s.weapon = s.weapon === item ? null : item;
+}
+
 /** Монстры к костру не подходят: рядом с горящим костром — весь круг света. */
 function mobBlocked(s: FrState, x: number, y: number): boolean {
   const c = frCenter(s);
@@ -2255,13 +2285,13 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
         s.path = [];
         s.facing = m.x >= s.x ? 1 : -1;
         if (s.atkCd <= 0) {
-          const dmg = (s.inv.spear ?? 0) > 0 ? FR_SPEAR_DMG : (s.inv.ironaxe ?? 0) > 0 ? FR_IRON_DMG : (s.inv.axe ?? 0) > 0 ? FR_AXE_DMG : FR_PET_DMG;
+          const { dmg, ms } = frWeaponStats(s);
           m.hp -= dmg;
           m.provoked = true;
           m.angry = true;
-          s.atkCd = PET_HIT_MS;
+          s.atkCd = ms;
           ev.push({ type: 'petHit', kind: m.kind, dmg });
-          if ((s.inv.spear ?? 0) > 0) {
+          if (frWeaponStats(s).item === 'spear') {
             const left = frDurability(s, 'spear') - 1;
             if (left > 0) s.dur.spear = left;
             else {
