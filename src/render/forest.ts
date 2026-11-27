@@ -816,7 +816,7 @@ export class ForestGame implements GameScreen {
         if (!this.bag.hasAttribute('hidden') && !this.bag.querySelector('.fr-quests')) return;
         this.renderQuests();
       });
-      return el('div', { class: st === 'claimed' ? 'fr-qrow story claimed' : 'fr-qrow story' }, [
+      return el('div', { class: st === 'claimed' ? 'fr-qrow story claimed' : st === 'ready' || st === 'progress' ? 'fr-qrow story active' : 'fr-qrow story' }, [
         el('div', { class: 'fr-qlines' }, [
           el('b', { text: text?.title ?? q.id }),
           ...(st === 'claimed' ? [] : [el('div', { class: 'fr-qintro', text: text?.text ?? '' }), ...this.questLines(q)]),
@@ -884,6 +884,11 @@ export class ForestGame implements GameScreen {
     this.bag.scrollTop = keepBag;
     const panel = this.bag.querySelector<HTMLElement>('.fr-bag');
     if (panel) panel.scrollTop = keepPanel;
+    // Сюжет: прокручиваем список до текущей главы (после показа окна, когда есть размеры).
+    if (this.questTab === 'story') {
+      const row = this.bag.querySelector<HTMLElement>('.fr-qrow.active');
+      if (row) requestAnimationFrame(() => row.scrollIntoView({ block: 'start' }));
+    }
   }
 
   private craftTab: string = 'fire';
