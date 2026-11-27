@@ -955,7 +955,7 @@ export class ForestGame implements GameScreen {
       ]),
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
-    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'trap')) make.setAttribute('disabled', '');
+    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'flask' && id !== 'trap')) make.setAttribute('disabled', '');
     const homeOnly = (id === 'chest' || id === 'loom' || id === 'foundry' || id === 'dryer' || id === 'lighthouse') && s.loc !== 'home';
     const campOnly = id === 'campfire' && s.loc === 'home';
     if (homeOnly || campOnly) make.setAttribute('disabled', '');
@@ -964,7 +964,7 @@ export class ForestGame implements GameScreen {
         ? GAMES_TEXT.forestHomeOnly
         : campOnly
           ? GAMES_TEXT.forestCampOnly
-          : owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'trap'
+          : owned > 0 && id !== 'torch' && id !== 'lantern' && id !== 'flask' && id !== 'trap'
         ? GAMES_TEXT.forestAlreadyBuilt
         : !frCanCraft(s, id)
           ? GAMES_TEXT.forestNeedMats
