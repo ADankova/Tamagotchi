@@ -3791,5 +3791,5 @@ body:has(.fr-game) {
 }
 
 /* Характеристики оружия: таблица без линий */
-.fr-stats { display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.9rem; justify-content: start; font-size: 0.9rem; }
-.fr-stats b { font-weight: 800; }
+.fr-wstats { display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.9rem; justify-content: start; font-size: 0.9rem; }
+.fr-wstats b { font-weight: 800; }
