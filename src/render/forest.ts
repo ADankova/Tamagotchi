@@ -19,6 +19,9 @@ import {
   frChestPut,
   frChestSpots,
   frCapacity,
+  frBedCell,
+  frLoomDone,
+  FR_SHELTER_RAINS,
   frDurability,
   FR_TOOL_USES,
   type FrTool,
@@ -405,6 +408,21 @@ export class ForestGame implements GameScreen {
           this.say(M.broke.replace('{item}', (GAMES_TEXT.forestItems[ev.item] ?? ev.item).toLowerCase()), 'blocked');
           this.renderBag();
           break;
+        case 'rainStart':
+          this.say(this.state.shelter > 0 ? M.rainShelter : M.rainStart, 'blocked');
+          break;
+        case 'rainEnd':
+          this.say(M.rainEnd, 'win');
+          break;
+        case 'fireDoused':
+          this.say(M.fireDoused, 'blocked');
+          break;
+        case 'shelterBroke':
+          this.say(M.shelterBroke, 'blocked');
+          break;
+        case 'tooWet':
+          this.say(M.tooWet, 'blocked');
+          break;
         case 'worn':
           this.say(M.worn, 'win');
           break;
@@ -734,12 +752,14 @@ export class ForestGame implements GameScreen {
       );
       const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
       if (!frCanWeave(s, r.id)) make.setAttribute('disabled', '');
+      const done = frLoomDone(s, r.id);
+      if (done) make.textContent = r.id === 'shelter' ? `${s.shelter}/${FR_SHELTER_RAINS}` : GAMES_TEXT.forestHave;
       make.addEventListener('click', () => {
         this.handle(frWeave(s, r.id));
         this.renderLoom();
       });
       return el('div', { class: 'fr-recipe' }, [
-        el('span', { class: 'fr-slot' }, [this.iconCanvas(r.id)]),
+        el('span', { class: 'fr-slot' }, [r.id === 'shelter' || r.id === 'bed' ? el('span', { class: 'fr-chest-ico', text: r.id === 'shelter' ? '⛺' : '🛏️' }) : this.iconCanvas(r.id)]),
         el('div', { class: 'fr-recipe-info' }, [el('b', { text: GAMES_TEXT.forestItems[r.id] ?? r.id }), el('div', { class: 'fr-mats' }, mats), el('small', { text: GAMES_TEXT.forestDesc[r.id] ?? '' })]),
         make,
       ]);
@@ -1160,6 +1180,7 @@ export class ForestGame implements GameScreen {
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
 
+    this.drawWeather(ctx, sx, sy, tile, t);
     this.drawDarkness(ctx, sx, sy, tile, t);
     this.drawLabels(ctx, sx, sy, tile, drops);
   }
@@ -1187,6 +1208,56 @@ export class ForestGame implements GameScreen {
       const bob = Math.sin(t / 400) * tile * 0.08;
       ctx.strokeText('z', cx + tile * 0.4, feet - tile * 1.3 + bob);
       ctx.fillText('z', cx + tile * 0.4, feet - tile * 1.3 + bob);
+    }
+  }
+
+  /** Шалаш и лежанка вокруг костра, затем дождь. */
+  private drawWeather(ctx: CanvasRenderingContext2D, sx: (x: number) => number, sy: (y: number) => number, tile: number, t: number): void {
+    const s = this.state;
+    const c = frCenter();
+    if (s.shelter > 0) {
+      const x0 = sx(c.x - 1);
+      const y0 = sy(c.y - 1);
+      const w = tile * 3;
+      if (s.bed) {
+        const b = frBedCell();
+        const bx = sx(b.x);
+        const by = sy(b.y);
+        ctx.fillStyle = '#c9544d';
+        ctx.fillRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
+        ctx.fillStyle = '#f4e3c1';
+        ctx.fillRect(bx + tile * 0.14, by + tile * 0.34, tile * 0.26, tile * 0.22);
+        ctx.strokeStyle = '#3b2a1e';
+        ctx.lineWidth = Math.max(1, tile * 0.05);
+        ctx.strokeRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
+      }
+      // Навес из ткани над 3x3 клетками и четыре столба по углам.
+      const wear = s.shelter / FR_SHELTER_RAINS;
+      ctx.fillStyle = wear > 0.3 ? 'rgba(236,222,186,0.42)' : 'rgba(190,170,130,0.42)';
+      ctx.fillRect(x0, y0, w, w);
+      ctx.strokeStyle = '#7a4d2b';
+      ctx.lineWidth = Math.max(2, tile * 0.1);
+      ctx.strokeRect(x0, y0, w, w);
+      ctx.fillStyle = '#7a4d2b';
+      for (const [px, py] of [[0, 0], [3, 0], [0, 3], [3, 3]] as const) ctx.fillRect(x0 + px * tile - tile * 0.07, y0 + py * tile - tile * 0.07, tile * 0.14, tile * 0.14);
+    }
+    if (s.weather.rain) {
+      const W = this.canvas.width;
+      const H = this.canvas.height;
+      ctx.fillStyle = 'rgba(40,60,90,0.18)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(200,225,255,0.65)';
+      ctx.lineWidth = Math.max(1, tile * 0.04);
+      ctx.beginPath();
+      const n = 70;
+      for (let k = 0; k < n; k++) {
+        const px = ((k * 97.13) % 1) * W + ((k * 53) % W);
+        const x = px % W;
+        const y = (((k * 211) % H) + t * 0.9) % H;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - tile * 0.12, y + tile * 0.4);
+      }
+      ctx.stroke();
     }
   }
 
