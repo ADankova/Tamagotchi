@@ -1946,8 +1946,9 @@ export class ForestGame implements GameScreen {
           ctx.fillRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
         }
       }
-      // Шалаш над 3x3 клетками; когда питомец внутри, он становится полупрозрачным.
-      const inside = s.x >= c.x - 1 && s.x < c.x + 2 && s.y >= c.y - 1 && s.y < c.y + 2;
+      // Шалаш над 3x3 клетками; когда питомец внутри или рядом (в клетке от него), он становится полупрозрачным.
+      // Прозрачным шалаш становится уже за клетку до него.
+      const inside = s.x >= c.x - 2 && s.x < c.x + 3 && s.y >= c.y - 2 && s.y < c.y + 3;
       this.hutAlpha += ((inside ? 0.28 : 1) - this.hutAlpha) * 0.15;
       const hw = tile * 3.5;
       const hh = hw * (46 / 40);
