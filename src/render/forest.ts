@@ -61,7 +61,7 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -70,6 +70,8 @@ const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   feed: '🪵',
   cook: '🍳',
   open: '📦',
+  mine: '⛏️',
+  cut: '✂️',
   sleep: '💤',
 };
 
@@ -295,6 +297,15 @@ export class ForestGame implements GameScreen {
           break;
         case 'needKnife':
           this.say(M.needKnife, 'blocked');
+          break;
+        case 'needPickaxe':
+          this.say(M.needPickaxe, 'blocked');
+          break;
+        case 'mined':
+          this.say(M.mined, 'place');
+          break;
+        case 'cut':
+          this.say(M.cut, 'place');
           break;
         case 'chopped':
           this.say(M.chopped, 'place');
@@ -765,6 +776,8 @@ export class ForestGame implements GameScreen {
           });
         }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
+        else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => drawTall(ctx, cx, cy, tile, i, t) });
+        else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
@@ -883,6 +896,7 @@ export class ForestGame implements GameScreen {
         const d = drops.get(i);
         if (d) labels.push({ x, y, text: GAMES_TEXT.forestItems[d.kind] ?? d.kind });
         else if (kind === 'bush' && s.berries.includes(i)) labels.push({ x, y, text: GAMES_TEXT.forestPlaces.bush ?? '' });
+        else if (kind === 'rock') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
         else if (kind === 'chest') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.chest ?? '' });
         else if (kind === 'pit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[s.fire > 0 ? 'fire' : 'pit'] ?? '' });
         else if (kind === 'water') {
@@ -964,6 +978,46 @@ function drawBush(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   }
 }
 
+function drawTall(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, i: number, t: number): void {
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 6; k++) {
+    const h = (i * 31 + k * 17) % 100;
+    const bx = cx + ((((h * 7) % 100) / 100) - 0.5) * tile * 0.8;
+    const by = cy + ((((h * 13) % 100) / 100) - 0.2) * tile * 0.5;
+    const len = tile * (0.28 + (h % 20) / 100);
+    const sway = Math.sin(t / 700 + i + k) * tile * 0.03 + (((h % 7) - 3) / 3) * tile * 0.06;
+    ctx.strokeStyle = k % 2 ? '#3f8f45' : '#2f7a3a';
+    ctx.lineWidth = Math.max(2, tile * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.quadraticCurveTo(bx + sway * 0.4, by - len * 0.6, bx + sway, by - len);
+    ctx.stroke();
+  }
+}
+
+function drawRock(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  outline(ctx, tile);
+  ctx.fillStyle = '#8b9199';
+  ctx.beginPath();
+  ctx.moveTo(cx - tile * 0.42, cy + tile * 0.22);
+  ctx.lineTo(cx - tile * 0.3, cy - tile * 0.12);
+  ctx.lineTo(cx - tile * 0.05, cy - tile * 0.34);
+  ctx.lineTo(cx + tile * 0.26, cy - tile * 0.2);
+  ctx.lineTo(cx + tile * 0.42, cy + tile * 0.08);
+  ctx.lineTo(cx + tile * 0.34, cy + tile * 0.24);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#b4bac1';
+  ctx.beginPath();
+  ctx.moveTo(cx - tile * 0.22, cy - tile * 0.08);
+  ctx.lineTo(cx - tile * 0.04, cy - tile * 0.26);
+  ctx.lineTo(cx + tile * 0.14, cy - tile * 0.16);
+  ctx.lineTo(cx - tile * 0.04, cy - tile * 0.02);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawChest(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
   outline(ctx, tile);
   const w = tile * 0.7;
@@ -1029,6 +1083,26 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
   const bob = Math.sin(t / 500 + cx) * size * 0.03;
   cy += bob;
   switch (kind) {
+    case 'pickaxe':
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = size * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.3, cy + size * 0.4);
+      ctx.lineTo(cx + size * 0.12, cy - size * 0.2);
+      ctx.stroke();
+      ctx.strokeStyle = '#a0683b';
+      ctx.lineWidth = size * 0.1;
+      ctx.stroke();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = size * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.28, cy - size * 0.28);
+      ctx.quadraticCurveTo(cx + size * 0.1, cy - size * 0.5, cx + size * 0.42, cy - size * 0.1);
+      ctx.stroke();
+      ctx.strokeStyle = '#b9c0c8';
+      ctx.lineWidth = size * 0.1;
+      ctx.stroke();
+      break;
     case 'knife':
       ctx.strokeStyle = INK;
       ctx.lineWidth = size * 0.2;
