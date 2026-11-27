@@ -661,4 +661,21 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(m.frRecipe(['fullflask', 'meat'])).toBe('broth');
     expect(m.frRecipe(['meat', 'fullflask', 'seeds'])).toBe('meatporridge');
   });
+
+  it('в высокой траве мышь питомца не видит, на открытом месте убегает с 3 клеток', () => {
+    const mk = (tall: boolean) => {
+      const s = newForest(7);
+      s.tiles = s.tiles.map((k) => (k === 'tree' || k === 'rock' || k === 'bush' || k === 'water' || k === 'tall' ? 'grass' : k));
+      if (tall) s.tiles[frIndex(Math.floor(s.x), Math.floor(s.y))] = 'tall';
+      s.fire = 0;
+      s.mobs = [{ id: 950, kind: 'mouse', x: s.x + 2.5, y: s.y, hp: 6, provoked: false, angry: false, cd: 0, wx: s.x + 2.5, wy: s.y }];
+      return s;
+    };
+    const open = mk(false);
+    run(open, 600);
+    expect(open.mobs[0]!.x - open.x).toBeGreaterThan(2.9);
+    const grass = mk(true);
+    run(grass, 600);
+    expect(grass.mobs[0]!.x - grass.x).toBeLessThan(2.7);
+  });
 });
