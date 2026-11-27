@@ -1214,6 +1214,19 @@ function give(s: FrState, item: FrItem, n: number, cell: number): number {
   return spilled;
 }
 
+/** Предметы лежат только на обычной земле: не на костре, станке, сундуке и т. п. */
+function dropTileOk(s: FrState, x: number, y: number): boolean {
+  return inside(x, y) && s.tiles[frIndex(x, y)] === 'grass';
+}
+
+/** Переложить предметы, оказавшиеся на занятых постройками клетках. */
+export function frFixDrops(s: FrState): void {
+  const bad = s.drops.filter((d) => !dropTileOk(s, d.x, d.y) && s.tiles[frIndex(d.x, d.y)] !== 'tall');
+  if (!bad.length) return;
+  s.drops = s.drops.filter((d) => !bad.includes(d));
+  for (const d of bad) if (!dropNear(s, d.kind, d.x, d.y)) s.inv[d.kind] = (s.inv[d.kind] ?? 0) + 1;
+}
+
 /** Кладёт предмет на свободную клетку рядом с (cx, cy), кольцами от `from`. */
 function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0): boolean {
   const c = { x: cx, y: cy };
@@ -1223,7 +1236,7 @@ function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0): b
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         const x = c.x + dx;
         const y = c.y + dy;
-        if (!inside(x, y) || !frWalkable(s, x, y) || s.drops.some((d) => d.x === x && d.y === y)) continue;
+        if (!dropTileOk(s, x, y) || s.drops.some((d) => d.x === x && d.y === y)) continue;
         s.drops.push({ id: s.nextId++, kind, x, y });
         return true;
       }
@@ -1299,13 +1312,14 @@ export function frTorch(s: FrState): FrEvent[] {
 
 export function frThrow(s: FrState, item: FrItem): FrEvent[] {
   if (s.over || !(s.inv[item] ?? 0)) return [];
-  take(s, item, 1);
   const here = petCell(s);
   const spots = [here, ...neighbours(here)].filter(
-    (c) => frWalkable(s, c % FR_W, Math.floor(c / FR_W)) && !s.drops.some((d) => frIndex(d.x, d.y) === c),
+    (c) => dropTileOk(s, c % FR_W, Math.floor(c / FR_W)) && !s.drops.some((d) => frIndex(d.x, d.y) === c),
   );
   const spot = spots[0];
-  if (spot !== undefined) s.drops.push({ id: s.nextId++, kind: item, x: spot % FR_W, y: Math.floor(spot / FR_W) });
+  if (spot === undefined) return [];
+  take(s, item, 1);
+  s.drops.push({ id: s.nextId++, kind: item, x: spot % FR_W, y: Math.floor(spot / FR_W) });
   return [{ type: 'thrown', item }];
 }
 
@@ -1488,6 +1502,7 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!Array.isArray(s.pot)) s.pot = [];
   if (typeof s.torch !== 'number') s.torch = 0;
   if (!s.weather || typeof s.weather.left !== 'number') s.weather = { rain: false, left: FR_DRY_FIRST_MS };
+  frFixDrops(s);
   if (typeof s.shelter !== 'number') s.shelter = 0;
   if (typeof s.bed !== 'boolean') s.bed = false;
   if (!Array.isArray(s.worn)) s.worn = [];
@@ -1636,6 +1651,7 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
     s.pit = { x: cell! % FR_W, y: Math.floor(cell! / FR_W) };
     s.fire = FR_FIRE_START_MS * fireScale(s);
   } else s.tiles[cell!] = id as FrTile;
+  if (FR_BUILDINGS.includes(id)) frFixDrops(s);
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
