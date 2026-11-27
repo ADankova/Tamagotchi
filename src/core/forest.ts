@@ -1140,6 +1140,25 @@ export function frRecipe(pot: readonly FrItem[]): FrItem | null {
   return r ? r.to : null;
 }
 
+type FrRecipe = (typeof FR_RECIPES)[number];
+
+/** Хватает ли для рецепта ингредиентов (в рюкзаке и в окошке готовки вместе). */
+export function frRecipeAvailable(s: FrState, r: FrRecipe): boolean {
+  const have: Partial<Record<FrItem, number>> = { ...s.inv };
+  for (const p of s.pot) have[p] = (have[p] ?? 0) + 1;
+  const need: Partial<Record<FrItem, number>> = {};
+  for (const it of r.from) need[it] = (need[it] ?? 0) + 1;
+  return (Object.entries(need) as Array<[FrItem, number]>).every(([it, n]) => (have[it] ?? 0) >= n);
+}
+
+/** Выбрать рецепт: всё из окошка возвращается в рюкзак, нужные ингредиенты переходят в окошко. */
+export function frRecipeFill(s: FrState, r: FrRecipe): boolean {
+  if (!frRecipeAvailable(s, r)) return false;
+  frPotReturn(s);
+  for (const it of r.from) frPotAdd(s, it);
+  return true;
+}
+
 /** Переложить одну штуку из рюкзака в окошко готовки. */
 export function frPotAdd(s: FrState, item: FrItem): boolean {
   if (s.pot.length >= FR_POT_SLOTS || !(s.inv[item] ?? 0) || !frCookable(item)) return false;

@@ -58,6 +58,9 @@ import {
   frEat,
   frTorch,
   frPotAdd,
+  frRecipeAvailable,
+  frRecipeFill,
+  FR_RECIPES,
   frPotCook,
   frPotRemove,
   frPotReturn,
@@ -969,7 +972,8 @@ export class ForestGame implements GameScreen {
       });
       slots.push(slot);
     }
-    const result = el('span', { class: out ? 'fr-slot fr-result' : 'fr-slot empty fr-result' });
+    const result = out ? el('span', { class: 'fr-slot fr-result' }) : el('button', { type: 'button', class: 'fr-slot empty fr-result', 'aria-label': GAMES_TEXT.forestRecipes });
+    if (!out) result.addEventListener('click', () => this.renderRecipes());
     if (out) {
       const icon = el('canvas', { class: 'fr-slot-icon', width: '64', height: '64' }) as HTMLCanvasElement;
       const ictx = icon.getContext('2d');
@@ -996,6 +1000,31 @@ export class ForestGame implements GameScreen {
           this.renderCook();
         }, frCookable)),
       ]),
+    );
+  }
+
+  /** Список рецептов: доступные нажимаются и сами кладут ингредиенты в окошко, остальные затемнены. */
+  private renderRecipes(): void {
+    const s = this.state;
+    const rows = FR_RECIPES.map((r) => ({ r, ok: frRecipeAvailable(s, r) })).sort((a, b) => Number(b.ok) - Number(a.ok));
+    const list = rows.map(({ r, ok }) => {
+      const counts = new Map<FrItem, number>();
+      for (const it of r.from) counts.set(it, (counts.get(it) ?? 0) + 1);
+      const mats = [...counts].map(([it, n]) => el('span', { class: 'fr-mat' }, [this.iconCanvas(it, 24), el('b', { text: n > 1 ? `×${n}` : '' })]));
+      const row = el('button', { type: 'button', class: ok ? 'fr-recipe fr-recipe-pick' : 'fr-recipe fr-recipe-pick dim' }, [
+        el('span', { class: 'fr-slot' }, [this.iconCanvas(r.to)]),
+        el('div', { class: 'fr-recipe-info' }, [el('b', { text: GAMES_TEXT.forestItems[r.to] ?? r.to }), el('div', { class: 'fr-mats' }, mats)]),
+      ]);
+      if (!ok) row.setAttribute('disabled', '');
+      row.addEventListener('click', () => {
+        if (frRecipeFill(s, r)) this.renderCook();
+      });
+      return row;
+    });
+    const back = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    back.addEventListener('click', () => this.renderCook());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-craft' }, [el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestRecipes }), back]), ...list]),
     );
   }
 

@@ -861,3 +861,21 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(q.items).toEqual({ ingot: 3 });
   });
 });
+
+import { frRecipeAvailable, frRecipeFill, FR_RECIPES as RCP } from '../src/core/forest';
+describe('recipe list', () => {
+  it('fills pot from recipe and detects shortage', () => {
+    const s = newForest(1);
+    for (const k of Object.keys(s.inv)) (s.inv as any)[k] = 0;
+    const r = RCP.find((x) => x.to === 'cooked')!;
+    expect(frRecipeAvailable(s, r)).toBe(false);
+    expect(frRecipeFill(s, r)).toBe(false);
+    s.inv.mushroom = 1;
+    expect(frRecipeAvailable(s, r)).toBe(true);
+    expect(frRecipeFill(s, r)).toBe(true);
+    expect(s.pot).toEqual(['mushroom']);
+    expect(s.inv.mushroom ?? 0).toBe(0);
+    expect(frRecipeFill(s, r)).toBe(true);
+    expect(s.pot).toEqual(['mushroom']);
+  });
+});
