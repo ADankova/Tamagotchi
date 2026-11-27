@@ -110,6 +110,17 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
+function torchIcon(): HTMLCanvasElement {
+  const c = el('canvas', { width: '24', height: '24' }) as HTMLCanvasElement;
+  const g = c.getContext('2d');
+  if (g && !drawIcon(g, 'item-torch', 12, 12, 22)) {
+    g.font = '18px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('🔥', 12, 12);
+  }
+  return c;
+}
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
@@ -146,7 +157,7 @@ export class ForestGame implements GameScreen {
   private readonly questLine = el('button', { type: 'button', class: 'fr-quest' });
   private questKey = '';
   private readonly torchFill = el('i', {});
-  private readonly torchBox = el('div', { class: 'fr-torch', hidden: '' }, [el('span', { class: 'fr-torch-ico', text: '🔥' }), el('span', { class: 'fr-torch-bar' }, [this.torchFill])]);
+  private readonly torchBox = el('div', { class: 'fr-torch', hidden: '' }, [el('span', { class: 'fr-torch-ico' }, [torchIcon()]), el('span', { class: 'fr-torch-bar' }, [this.torchFill])]);
   private readonly rainIcon = el('div', { class: 'fr-rain', hidden: '', text: '🌧️' });
   private readonly note = el('p', { class: 'm3-note fr-note', text: GAMES_TEXT.forestHint });
   private readonly dayChip = el('span', { class: 'q-chip fr-day' });
@@ -677,7 +688,14 @@ export class ForestGame implements GameScreen {
   private iconCanvas(item: FrItem, size = 64): HTMLCanvasElement {
     const icon = el('canvas', { class: 'fr-slot-icon', width: String(size), height: String(size) }) as HTMLCanvasElement;
     const ictx = icon.getContext('2d');
-    if (ictx) drawItem(ictx, item, size / 2, size / 2 + 2, size * 0.8, 0);
+    if (ictx && !(item in BUILD_ICON && drawIcon(ictx, item as string, size / 2, size / 2, size * 0.92))) {
+      if (ictx && item in BUILD_ICON) {
+        ictx.font = `${Math.round(size * 0.7)}px sans-serif`;
+        ictx.textAlign = 'center';
+        ictx.textBaseline = 'middle';
+        ictx.fillText(BUILD_ICON[item] ?? '📦', size / 2, size / 2);
+      } else if (ictx) drawItem(ictx, item, size / 2, size / 2 + 2, size * 0.8, 0);
+    }
     return icon;
   }
 
@@ -812,7 +830,7 @@ export class ForestGame implements GameScreen {
         el('span', { class: (s.inv[it] ?? 0) >= n ? 'fr-mat ok' : 'fr-mat bad' }, [this.iconCanvas(it, 24), el('b', { text: String(n) })]),
       );
       const tile = el('button', { type: 'button', class: can ? 'fr-ctile can' : 'fr-ctile', 'aria-label': GAMES_TEXT.forestItems[r.id] ?? r.id }, [
-        FR_BUILDINGS.includes(r.id) ? el('span', { class: 'fr-chest-ico', text: BUILD_ICON[r.id] ?? '📦' }) : this.iconCanvas(r.id as FrItem, 72),
+        this.iconCanvas(r.id as FrItem, 72),
       ]);
       tile.addEventListener('click', () => this.renderCraftDetail(r.id));
       return el('div', { class: 'fr-citem' }, [
@@ -869,7 +887,7 @@ export class ForestGame implements GameScreen {
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-card' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestCraftLevel }), back]),
-        el('div', { class: 'fr-detail-icon' }, [FR_BUILDINGS.includes(id) ? el('span', { class: 'fr-chest-ico', text: BUILD_ICON[id] ?? '📦' }) : this.iconCanvas(id as FrItem, 96)]),
+        el('div', { class: 'fr-detail-icon' }, [this.iconCanvas(id as FrItem, 96)]),
         el('h3', { class: 'fr-detail-name', text: GAMES_TEXT.forestItems[id] ?? id }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[id] ?? '' }),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestOwned(owned) }),
@@ -2384,6 +2402,7 @@ function drawFoundry(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile
 }
 
 function drawCampGhost(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  if (drawSprite(ctx, 'campcold', 0, cx, cy + tile * 0.4, { w: tile * 1.05 })) return;
   ctx.fillStyle = '#6b6560';
   ctx.beginPath();
   ctx.arc(cx, cy + tile * 0.1, tile * 0.3, 0, Math.PI * 2);
