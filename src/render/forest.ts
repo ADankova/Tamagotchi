@@ -823,28 +823,16 @@ export class ForestGame implements GameScreen {
         btn,
       ]);
     });
-    const head = el('h4', { class: 'fr-qfold', role: 'button', tabindex: '0', 'aria-expanded': String(!this.storyFolded), text: `${this.storyFolded ? '▸' : '▾'} ${GAMES_TEXT.forestStoryTitle}` });
-    const toggle = (): void => {
-      this.storyFolded = !this.storyFolded;
-      this.renderQuests();
-    };
-    head.addEventListener('click', toggle);
-    head.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggle();
-      }
-    });
-    return el('div', { class: 'fr-qsection' }, [head, ...(this.storyFolded ? [] : rows)]);
+    return el('div', { class: 'fr-qsection' }, [el('h4', { text: GAMES_TEXT.forestStoryTitle }), ...rows]);
   }
 
   /** Сюжетный раздел свёрнут (по нажатию на заголовок). */
-  private storyFolded = false;
+  private questTab: FrQuest['kind'] = 'story';
 
   private renderQuests(): void {
     const s = this.state;
     const order: Record<string, number> = { ready: 0, progress: 1, claimed: 2, locked: 3 };
-    const section = (kind: FrQuest['kind'], title: string): HTMLElement => {
+    const section = (kind: FrQuest['kind']): HTMLElement => {
       const list = FR_QUESTS.filter((q) => q.kind === kind).sort((a, b) => order[frQuestState(s, a)]! - order[frQuestState(s, b)]!);
       const rows = list.map((q) => {
         const st = frQuestState(s, q);
@@ -866,8 +854,17 @@ export class ForestGame implements GameScreen {
           btn,
         ]);
       });
-      return el('div', { class: 'fr-qsection' }, [el('h4', { text: title }), ...rows]);
+      return el('div', { class: 'fr-qsection' }, rows);
     };
+    const tabs = (['story', 'regular', 'default'] as const).map((kind) => {
+      const ready = FR_QUESTS.some((q) => q.kind === kind && frQuestState(s, q) === 'ready');
+      const tab = el('button', { type: 'button', class: `fr-tab${this.questTab === kind ? ' on' : ''}${ready ? ' dot' : ''}`, text: GAMES_TEXT.forestQTabs[kind] ?? kind });
+      tab.addEventListener('click', () => {
+        this.questTab = kind;
+        this.renderQuests();
+      });
+      return tab;
+    });
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.closeBag());
     // Список перерисовывается целиком — запоминаем прокрутку, чтобы окно не прыгало к началу.
@@ -876,10 +873,8 @@ export class ForestGame implements GameScreen {
     const keepBag = this.bag.scrollTop;
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-cook fr-quests' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestQuestsTitle }), close]),
-        this.storySection(),
-        section('regular', GAMES_TEXT.forestRegularQ),
-        section('default', GAMES_TEXT.forestDefaultQ),
+        el('div', { class: 'fr-bag-head' }, [el('div', { class: 'fr-tabs' }, tabs), close]),
+        this.questTab === 'story' ? this.storySection() : section(this.questTab),
       ]),
     );
     this.bag.scrollTop = keepBag;

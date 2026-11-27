@@ -3735,3 +3735,27 @@ body:has(.fr-game) {
   margin: 0;
   text-align: center;
 }
+
+.fr-quests .fr-bag-head .fr-tabs .fr-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 4px;
+  position: relative;
+  display: block;
+  line-height: 1.2;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  text-decoration: none;
+  text-align: center;
+}
+.fr-quests .fr-tab.dot::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0453a;
+  border: 2px solid #fff6e4;
+}
