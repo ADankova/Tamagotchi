@@ -1037,6 +1037,22 @@ describe('сюжет «Потерянный маяк»', () => {
     m.frTravel(s, 'cave');
     expect(s.mobs.some((x) => x.kind === 'alpha')).toBe(true);
   });
+  it('рецепты из ткани видны после станка, из слитков — после литейной', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.tiles = s.tiles.map((t) => (t === 'loom' || t === 'foundry' ? 'grass' : t));
+    for (const id of ['purse', 'shelter', 'bed', 'trap', 'dryer']) expect(m.frRecipeShown(s, id)).toBe(false);
+    for (const id of ['ironknife', 'ironaxe', 'ironpick']) expect(m.frRecipeShown(s, id)).toBe(false);
+    expect(m.frRecipeShown(s, 'knife')).toBe(true);
+    s.tiles[5] = 'loom';
+    for (const id of ['purse', 'shelter', 'bed', 'trap', 'dryer']) expect(m.frRecipeShown(s, id)).toBe(true);
+    expect(m.frRecipeShown(s, 'ironknife')).toBe(false);
+    s.tiles[6] = 'foundry';
+    for (const id of ['ironknife', 'ironaxe', 'ironpick']) expect(m.frRecipeShown(s, id)).toBe(true);
+    expect(m.frRecipeShown(s, 'lighthouse')).toBe(false);
+    s.claimed.push('ch7');
+    expect(m.frRecipeShown(s, 'lighthouse')).toBe(true);
+  });
   it('маяк строится дома и зажигается только ночью, один раз', async () => {
     const m = await import('../src/core/forest');
     const s = newForest(7);
