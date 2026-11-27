@@ -507,7 +507,7 @@
   ],
   "feet": 62,
   "left": 2,
-  "right": 62,
+  "right": 60,
   "rowInfo": {
    "idle_v3": {
     "feet": 62,
@@ -517,14 +517,14 @@
    },
    "catch_v3": {
     "feet": 62,
-    "left": 0,
-    "right": 62,
+    "left": 2,
+    "right": 60,
     "frames": 17
    },
    "walk_v3": {
     "feet": 62,
     "left": 2,
-    "right": 60,
+    "right": 62,
     "frames": 17
    },
    "eat_v3": {
@@ -534,27 +534,27 @@
     "frames": 17
    },
    "lie_v3": {
-    "feet": 54,
-    "left": 2,
-    "right": 64,
+    "feet": 58,
+    "left": 0,
+    "right": 62,
     "frames": 17
    },
    "roll_v3": {
-    "feet": 54,
+    "feet": 58,
     "left": 2,
     "right": 62,
     "frames": 17
    },
    "sleep_v3": {
-    "feet": 54,
+    "feet": 58,
     "left": 2,
-    "right": 60,
+    "right": 58,
     "frames": 17
    },
    "sad_v3": {
-    "feet": 54,
+    "feet": 58,
     "left": 2,
-    "right": 64,
+    "right": 62,
     "frames": 17
    }
   }
@@ -937,20 +937,20 @@
    },
    "catch_v3": {
     "feet": 62,
-    "left": 4,
-    "right": 60,
+    "left": 2,
+    "right": 62,
     "frames": 17
    },
    "walk_v3": {
-    "feet": 54,
+    "feet": 56,
     "left": 4,
     "right": 60,
     "frames": 17
    },
    "eat_v3": {
-    "feet": 54,
+    "feet": 56,
     "left": 4,
-    "right": 60,
+    "right": 62,
     "frames": 17
    },
    "lie_v3": {
@@ -966,7 +966,7 @@
     "frames": 17
    },
    "sleep_v3": {
-    "feet": 62,
+    "feet": 56,
     "left": 4,
     "right": 60,
     "frames": 17
@@ -1352,7 +1352,7 @@
    "idle_v3": {
     "feet": 64,
     "left": 2,
-    "right": 62,
+    "right": 64,
     "frames": 17
    },
    "catch_v3": {
@@ -1362,39 +1362,39 @@
     "frames": 17
    },
    "walk_v3": {
-    "feet": 62,
-    "left": 2,
+    "feet": 60,
+    "left": 4,
     "right": 60,
     "frames": 17
    },
    "eat_v3": {
-    "feet": 62,
+    "feet": 60,
     "left": 2,
     "right": 64,
     "frames": 17
    },
    "lie_v3": {
-    "feet": 56,
-    "left": 8,
-    "right": 58,
+    "feet": 54,
+    "left": 6,
+    "right": 60,
     "frames": 17
    },
    "roll_v3": {
-    "feet": 56,
+    "feet": 54,
     "left": 6,
-    "right": 60,
+    "right": 58,
     "frames": 17
    },
    "sleep_v3": {
     "feet": 54,
     "left": 4,
-    "right": 62,
+    "right": 60,
     "frames": 17
    },
    "sad_v3": {
-    "feet": 50,
-    "left": 2,
-    "right": 62,
+    "feet": 54,
+    "left": 6,
+    "right": 58,
     "frames": 17
    }
   }
