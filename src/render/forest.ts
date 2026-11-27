@@ -887,7 +887,18 @@ export class ForestGame implements GameScreen {
     // Сюжет: прокручиваем список до текущей главы (после показа окна, когда есть размеры).
     if (this.questTab === 'story') {
       const row = this.bag.querySelector<HTMLElement>('.fr-qrow.active');
-      if (row) requestAnimationFrame(() => row.scrollIntoView({ block: 'start' }));
+      if (row) {
+        requestAnimationFrame(() => {
+          // Прокручиваем так, чтобы заголовок главы оказался сразу под закреплённой шапкой.
+          const head = this.bag.querySelector<HTMLElement>('.fr-bag-head');
+          for (const box of [panel, this.bag]) {
+            if (!box || box.scrollHeight <= box.clientHeight) continue;
+            const shift = row.getBoundingClientRect().top - box.getBoundingClientRect().top - (head?.offsetHeight ?? 0) - 8;
+            box.scrollTop += shift;
+            break;
+          }
+        });
+      }
     }
   }
 
