@@ -14,6 +14,7 @@ import {
   frClaim,
   frCraft,
   frChestPut,
+  frChestSpots,
   frChestTake,
   frChestBuilt,
   frPotAdd,
@@ -321,14 +322,21 @@ describe('«Дикий лес»: этап 2', () => {
 
   it('сундук строится у костра и хранит вещи', () => {
     const s = newForest(7);
-    s.inv = { branch: 6, stone: 4, grass: 2 };
-    expect(frCraft(s, 'chest')).toContainEqual({ type: 'crafted', item: 'chest' });
+    s.inv = { branch: 6, grass: 4 };
+    expect(frCraft(s, 'chest')).toContainEqual({ type: 'noPlace' });
+    const spots = frChestSpots(s);
+    expect(spots.length).toBeGreaterThan(5);
+    expect(frCraft(s, 'chest', 0)).toContainEqual({ type: 'noPlace' });
+    expect(frCraft(s, 'chest', spots[3]!)).toContainEqual({ type: 'crafted', item: 'chest' });
+    expect(s.tiles[spots[3]!]).toBe('chest');
     expect(frChestBuilt(s)).toBe(true);
-    s.inv = { berries: 2 };
-    expect(frChestPut(s, 'berries')).toBe(true);
-    expect(s.chest).toEqual({ berries: 1 });
-    expect(frChestTake(s, 'berries')).toBe(true);
+    expect(s.inv).toEqual({});
+    s.inv = { berries: 5 };
+    expect(frChestPut(s, 'berries', 3)).toBe(3);
+    expect(s.chest).toEqual({ berries: 3 });
     expect(s.inv).toEqual({ berries: 2 });
+    expect(frChestTake(s, 'berries', 9)).toBe(3);
+    expect(s.inv).toEqual({ berries: 5 });
   });
 
   it('задания: выполнил, получил награду кнопкой, повторно нельзя', () => {
@@ -347,8 +355,9 @@ describe('«Дикий лес»: этап 2', () => {
     expect(s.count['pick:branch']).toBeGreaterThanOrEqual(3);
     expect(s.notified).toContain('start');
     expect(s.treats).toBe(0);
-    expect(frClaim(s, 'start')).toContainEqual({ type: 'questDone', id: 'start', reward: 1 });
-    expect(s.treats).toBe(1);
+    const before = s.inv.berries ?? 0;
+    expect(frClaim(s, 'start')).toContainEqual({ type: 'questDone', id: 'start', reward: 0 });
+    expect(s.inv.berries).toBe(before + 3);
     expect(frClaim(s, 'start')).toEqual([]);
     expect(frClaim(s, 'fire')).toEqual([]);
   });

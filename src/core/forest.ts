@@ -876,7 +876,7 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
   { id: 'pickaxe', cost: [['branch', 2], ['stone', 3], ['grass', 1]] },
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
-  { id: 'chest', cost: [['branch', 6], ['stone', 4], ['grass', 2]] },
+  { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
 ];
 
 export function frCanCraft(s: FrState, id: FrCraftId): boolean {
@@ -884,14 +884,19 @@ export function frCanCraft(s: FrState, id: FrCraftId): boolean {
   return !!r && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);
 }
 
-/** Клетка, где встанет сундук: рядом с костровищем. */
-function chestSpot(s: FrState): number | null {
+/** Клетки возле костровища, куда можно поставить сундук (трава и высокая трава без предметов). */
+export function frChestSpots(s: FrState): number[] {
   const c = frCenter();
-  for (const [dx, dy] of [[2, 0], [-2, 0], [0, -2], [2, 1], [-2, 1], [2, -1], [-2, -1], [1, -2], [-1, -2]] as const) {
-    const i = frIndex(c.x + dx, c.y + dy);
-    if (s.tiles[i] === 'grass' && !s.drops.some((d) => d.x === c.x + dx && d.y === c.y + dy)) return i;
+  const out: number[] = [];
+  for (let y = c.y - 5; y <= c.y + 5; y++) {
+    for (let x = c.x - 5; x <= c.x + 5; x++) {
+      if (!inside(x, y) || Math.hypot(x - c.x, y - c.y) > 5.2 || (x === c.x && y === c.y)) continue;
+      const i = frIndex(x, y);
+      const tile = s.tiles[i];
+      if ((tile === 'grass' || tile === 'tall') && !s.drops.some((d) => d.x === x && d.y === y) && frPassable(s, x, y)) out.push(i);
+    }
   }
-  return null;
+  return out;
 }
 
 export function frChestBuilt(s: FrState): boolean {
@@ -899,40 +904,42 @@ export function frChestBuilt(s: FrState): boolean {
 }
 
 /** Смастерить предмет из материалов рюкзака. Топор — в рюкзак, сундук — рядом с костром. */
-export function frCraft(s: FrState, id: FrCraftId): FrEvent[] {
+export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   const r = FR_CRAFT.find((x) => x.id === id);
   if (!r || s.over) return [];
   if (id !== 'chest' && (s.inv[id] ?? 0) > 0) return [{ type: 'haveIt' }];
   if (id === 'chest' && frChestBuilt(s)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
-  let spot: number | null = null;
-  if (id === 'chest') {
-    spot = chestSpot(s);
-    if (spot === null) return [{ type: 'noPlace' }];
-  }
+  if (id === 'chest' && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
   if (id !== 'chest') s.inv[id] = 1;
-  else s.tiles[spot!] = 'chest';
+  else s.tiles[cell!] = 'chest';
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);
 }
 
-/** Переложить одну штуку из рюкзака в сундук. */
-export function frChestPut(s: FrState, item: FrItem): boolean {
-  if (!(s.inv[item] ?? 0) || !canTake(s.chest, item)) return false;
-  take(s, item, 1);
-  s.chest[item] = (s.chest[item] ?? 0) + 1;
-  return true;
+/** Переложить n штук из рюкзака в сундук; возвращает, сколько переложилось. */
+export function frChestPut(s: FrState, item: FrItem, n = 1): number {
+  let moved = 0;
+  while (moved < n && (s.inv[item] ?? 0) > 0 && canTake(s.chest, item)) {
+    take(s, item, 1);
+    s.chest[item] = (s.chest[item] ?? 0) + 1;
+    moved++;
+  }
+  return moved;
 }
 
-/** Достать одну штуку из сундука в рюкзак. */
-export function frChestTake(s: FrState, item: FrItem): boolean {
-  if (!(s.chest[item] ?? 0) || !canTake(s.inv, item)) return false;
-  const left = (s.chest[item] ?? 0) - 1;
-  if (left > 0) s.chest[item] = left;
-  else delete s.chest[item];
-  s.inv[item] = (s.inv[item] ?? 0) + 1;
-  return true;
+/** Достать n штук из сундука в рюкзак; возвращает, сколько достали. */
+export function frChestTake(s: FrState, item: FrItem, n = 1): number {
+  let moved = 0;
+  while (moved < n && (s.chest[item] ?? 0) > 0 && canTake(s.inv, item)) {
+    const left = (s.chest[item] ?? 0) - 1;
+    if (left > 0) s.chest[item] = left;
+    else delete s.chest[item];
+    s.inv[item] = (s.inv[item] ?? 0) + 1;
+    moved++;
+  }
+  return moved;
 }
 
 function bump(s: FrState, key: string, n = 1): void {
@@ -950,20 +957,22 @@ export interface FrQuest {
   /** default — долгие цели, regular — обычные задания. */
   kind: 'default' | 'regular';
   parts: readonly FrQuestPart[];
-  /** Награда — лакомства; забирается кнопкой «Получить». */
+  /** Награда лакомствами (долгие цели). */
   reward: number;
+  /** Награда предметами (обычные задания); забирается кнопкой «Получить». */
+  items?: Partial<Record<FrItem, number>>;
 }
 
 export const FR_QUESTS: readonly FrQuest[] = [
-  { id: 'start', kind: 'regular', reward: 1, parts: [{ key: 'pick:branch', need: 3 }, { key: 'pick:flint', need: 1 }] },
-  { id: 'fire', kind: 'regular', reward: 1, parts: [{ key: 'fire', need: 1 }] },
-  { id: 'knife', kind: 'regular', reward: 1, parts: [{ key: 'craft:knife', need: 1 }, { key: 'pick:grass', need: 2 }] },
-  { id: 'axe', kind: 'regular', reward: 2, parts: [{ key: 'craft:axe', need: 1 }] },
-  { id: 'chop', kind: 'regular', reward: 2, parts: [{ key: 'chop', need: 2 }] },
-  { id: 'pickaxe', kind: 'regular', reward: 2, parts: [{ key: 'craft:pickaxe', need: 1 }] },
-  { id: 'mine', kind: 'regular', reward: 2, parts: [{ key: 'mine', need: 1 }] },
-  { id: 'cook', kind: 'regular', reward: 1, parts: [{ key: 'cook', need: 1 }] },
-  { id: 'chest', kind: 'regular', reward: 2, parts: [{ key: 'craft:chest', need: 1 }] },
+  { id: 'start', kind: 'regular', reward: 0, items: { berries: 3 }, parts: [{ key: 'pick:branch', need: 3 }, { key: 'pick:flint', need: 1 }] },
+  { id: 'fire', kind: 'regular', reward: 0, items: { stone: 2 }, parts: [{ key: 'fire', need: 1 }] },
+  { id: 'knife', kind: 'regular', reward: 0, items: { grass: 3 }, parts: [{ key: 'craft:knife', need: 1 }, { key: 'pick:grass', need: 2 }] },
+  { id: 'axe', kind: 'regular', reward: 0, items: { stone: 3 }, parts: [{ key: 'craft:axe', need: 1 }] },
+  { id: 'chop', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'chop', need: 2 }] },
+  { id: 'pickaxe', kind: 'regular', reward: 0, items: { stone: 2, grass: 2 }, parts: [{ key: 'craft:pickaxe', need: 1 }] },
+  { id: 'mine', kind: 'regular', reward: 0, items: { mushroom: 3 }, parts: [{ key: 'mine', need: 1 }] },
+  { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
+  { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
   { id: 'rocks5', kind: 'default', reward: 3, parts: [{ key: 'mine', need: 5 }] },
   { id: 'nights5', kind: 'default', reward: 5, parts: [{ key: 'night', need: 5 }] },
@@ -989,6 +998,15 @@ export function frQuestState(s: FrState, q: FrQuest): FrQuestState {
 export function frClaim(s: FrState, id: string): FrEvent[] {
   const q = FR_QUESTS.find((x) => x.id === id);
   if (!q || frQuestState(s, q) !== 'ready') return [];
+  // Награда предметами должна поместиться в рюкзак.
+  const probe: FrState['inv'] = { ...s.inv };
+  for (const [it, n] of Object.entries(q.items ?? {}) as Array<[FrItem, number]>) {
+    for (let k = 0; k < n; k++) {
+      if (!canTake(probe, it)) return [{ type: 'full' }];
+      probe[it] = (probe[it] ?? 0) + 1;
+    }
+  }
+  s.inv = probe;
   s.claimed.push(id);
   s.treats += q.reward;
   return [{ type: 'questDone', id, reward: q.reward }];
