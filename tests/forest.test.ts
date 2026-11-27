@@ -11,6 +11,7 @@ import {
   frActions,
   frCanSleep,
   frDo,
+  frClaim,
   frCraft,
   frChestPut,
   frChestTake,
@@ -330,13 +331,26 @@ describe('«Дикий лес»: этап 2', () => {
     expect(s.inv).toEqual({ berries: 2 });
   });
 
-  it('задания идут по цепочке и награждают лакомствами', () => {
+  it('задания: выполнил, получил награду кнопкой, повторно нельзя', () => {
     const s = newForest(7);
     s.inv = { branch: 3, flint: 1 };
-    const ev = run(s, 100);
-    expect(ev).toContainEqual({ type: 'questDone', step: 0, reward: 1 });
-    expect(s.quest).toBe(1);
+    s.drops = [
+      { id: 1, kind: 'branch', x: 14, y: 17 },
+      { id: 2, kind: 'branch', x: 15, y: 17 },
+      { id: 3, kind: 'branch', x: 16, y: 17 },
+      { id: 4, kind: 'flint', x: 14, y: 18 },
+    ];
+    s.x = 15.5;
+    s.y = 17.5;
+    for (const d of [...s.drops]) frDo(s, d.x, d.y, 'pick'), run(s, 2000);
+    run(s, 100);
+    expect(s.count['pick:branch']).toBeGreaterThanOrEqual(3);
+    expect(s.notified).toContain('start');
+    expect(s.treats).toBe(0);
+    expect(frClaim(s, 'start')).toContainEqual({ type: 'questDone', id: 'start', reward: 1 });
     expect(s.treats).toBe(1);
+    expect(frClaim(s, 'start')).toEqual([]);
+    expect(frClaim(s, 'fire')).toEqual([]);
   });
 });
 
