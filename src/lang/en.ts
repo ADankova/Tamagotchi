@@ -219,6 +219,10 @@ export const en: Dict = {
     forestIntroGo: 'Start',
     forestChapter: (n: number) => `Chapter ${n}.`,
     forestTaskLabel: 'Task',
+    forestStoryDone: {
+      ch2: 'Something is in the chest! It caught on your rod and floated up. Open it.',
+      ch3: 'Inside the chest was a note describing where to find the resources for the lighthouse.',
+    } as Record<string, string>,
     forestTaskDone: 'Task complete!',
     forestStoryGo: 'Go',
     forestStoryTake: 'Take',
@@ -234,8 +238,8 @@ export const en: Dict = {
     forestStory: {
       ch1: { title: 'The ruined tower', text: 'There used to be a lighthouse here. Maybe we should build one like it: it might help us find the way home.' },
       ch2: { title: 'Clues', text: 'We need to look for clues. Someone must have lived in this lighthouse. Maybe there is something in the lake?..' },
-      ch3: { title: "The keeper's note", text: 'The chest held a note: "I hid the lens of the lighthouse in the cave. Bats guard it. Do not go there without light."' },
-      ch4: { title: 'The lens', text: 'The bats flew deeper in. The lighthouse needs a lens, made from rare stones. In the cave they sometimes hide in rocks and ore.' },
+      ch3: { title: "The keeper's note", text: 'The chest held a note describing where to find everything for the lighthouse: "I hid the lens in the cave. Bats guard it. Do not go there without light."' },
+      ch4: { title: 'The lens', text: 'The lighthouse needs a lens, made from rare stones. In the cave they sometimes hide in rocks and ore. You will have to drive off the bats, and do not go without light.' },
       ch5: { title: 'Wolves', text: 'The note has another line: "Beware the wolves around the lighthouse." Building is unsafe while they are near.' },
       ch6: { title: 'Fangs', text: 'The wolves left fangs. The keeper wrote that they make excellent weapons.' },
       ch7: { title: 'The white wolf', text: 'Deep in the cave a huge white wolf howls, the pack leader. The forest will not be safe while it is there.' },
