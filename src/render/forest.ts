@@ -5,7 +5,10 @@ import {
   FR_H,
   FR_SLOTS,
   FR_W,
-  frCanSleep,
+  frActions,
+  frDo,
+  frTargetAt,
+  frThrow,
   frCenter,
   frDarkness,
   frEat,
@@ -13,10 +16,10 @@ import {
   frIsNight,
   frSleep,
   frSlotsUsed,
-  frTap,
   frTick,
   newForest,
   restoreForest,
+  type FrAction,
   type FrEvent,
   type FrItem,
   type FrStat,
@@ -42,7 +45,16 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked'];
+const ACT_ICONS: Readonly<Record<FrAction, string>> = {
+  pick: '✋',
+  chop: '🪓',
+  drink: '💧',
+  light: '🔥',
+  feed: '🪵',
+  cook: '🍳',
+  sleep: '💤',
+};
 
 interface Callbacks {
   header: (title: string) => HTMLElement;
@@ -61,7 +73,9 @@ export class ForestGame implements GameScreen {
   private readonly note = el('p', { class: 'm3-note fr-note', text: GAMES_TEXT.forestHint });
   private readonly dayChip = el('span', { class: 'q-chip fr-day' });
   private readonly treatText = el('span', {});
-  private readonly sleepButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestSleep });
+  private readonly sleepButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWake });
+  private readonly menu = el('div', { class: 'fr-menu', hidden: '' });
+  private menuAt: { x: number; y: number } | null = null;
   private readonly bars = new Map<FrStat, { fill: HTMLElement; value: number }>();
   private last = 0;
   private sinceSave = 0;
@@ -79,6 +93,7 @@ export class ForestGame implements GameScreen {
     const bagButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestBag });
     bagButton.addEventListener('click', () => this.toggleBag());
     this.sleepButton.addEventListener('click', () => this.toggleSleep());
+    this.sleepButton.hidden = !this.state.sleeping;
     this.root = el('div', { class: 'q-game fr-game' }, [
       cb.header(GAMES_TEXT.forestTitle),
       el('div', { class: 'q-top' }, [
@@ -87,7 +102,7 @@ export class ForestGame implements GameScreen {
         this.restartButton(),
       ]),
       this.statBars(),
-      el('div', { class: 'm3-wrap fr-wrap' }, [this.canvas, this.bag, this.overPanel]),
+      el('div', { class: 'm3-wrap fr-wrap' }, [this.canvas, this.menu, this.bag, this.overPanel]),
       this.note,
       el('div', { class: 'fr-actions' }, [bagButton, this.sleepButton]),
     ]);
@@ -127,6 +142,7 @@ export class ForestGame implements GameScreen {
       if (this.messageLeft <= 0) this.note.classList.remove('on');
     }
     this.resize();
+    this.placeMenu();
     this.draw(now);
     this.updateHud();
     window.requestAnimationFrame((t) => this.frame(t));
@@ -141,9 +157,56 @@ export class ForestGame implements GameScreen {
     if (this.state.over) return;
     const rect = this.canvas.getBoundingClientRect();
     const view = this.view();
-    const x = Math.floor(view.camX + ((e.clientX - rect.left) / rect.width) * VIEW_W);
-    const y = Math.floor(view.camY + ((e.clientY - rect.top) / rect.height) * view.rows);
-    this.handle(frTap(this.state, x, y));
+    const fx = view.camX + ((e.clientX - rect.left) / rect.width) * VIEW_W;
+    const fy = view.camY + ((e.clientY - rect.top) / rect.height) * view.rows;
+    const x = Math.floor(fx);
+    const y = Math.floor(fy);
+    const hadMenu = this.menuAt !== null;
+    this.closeMenu();
+    const target = frTargetAt(this.state, x, y);
+    if (!target) return;
+    const actions = frActions(this.state, target);
+    if (!actions.length) {
+      // Нажатие на пустую землю при открытом меню только закрывает его.
+      if (!hadMenu) this.handle(frDo(this.state, x, y, null, [fx, fy]));
+      return;
+    }
+    this.openMenu(x, y, actions);
+  }
+
+  /** Круглые кнопки над предметом: «Собрать», «Срубить», «Зажечь»… и крестик. */
+  private openMenu(x: number, y: number, actions: FrAction[]): void {
+    const buttons = actions.map((a) => {
+      const b = el('button', { type: 'button', class: 'fr-act', 'aria-label': GAMES_TEXT.forestActs[a] ?? a }, [
+        el('span', { class: 'fr-act-icon', text: ACT_ICONS[a] }),
+        el('span', { class: 'fr-act-name', text: GAMES_TEXT.forestActs[a] ?? a }),
+      ]);
+      b.addEventListener('click', () => {
+        this.closeMenu();
+        this.handle(frDo(this.state, x, y, a));
+      });
+      return b;
+    });
+    const close = el('button', { type: 'button', class: 'fr-act fr-act-close', 'aria-label': GAMES_TEXT.forestClose }, [
+      el('span', { class: 'fr-act-icon', text: '✕' }),
+    ]);
+    close.addEventListener('click', () => this.closeMenu());
+    this.menu.replaceChildren(...buttons, close);
+    this.menuAt = { x, y };
+    this.menu.removeAttribute('hidden');
+    this.placeMenu();
+  }
+
+  private closeMenu(): void {
+    this.menuAt = null;
+    this.menu.setAttribute('hidden', '');
+  }
+
+  private placeMenu(): void {
+    if (!this.menuAt) return;
+    const { camX, camY, rows } = this.view();
+    this.menu.style.left = `${((this.menuAt.x + 0.5 - camX) / VIEW_W) * 100}%`;
+    this.menu.style.top = `${((this.menuAt.y - camY) / rows) * 100}%`;
   }
 
   private handle(events: FrEvent[]): void {
@@ -194,6 +257,21 @@ export class ForestGame implements GameScreen {
           this.say(M.morning(ev.day, ev.reward), 'snack');
           storeSaved(this.state);
           break;
+        case 'cooked':
+          this.say(M.cooked, 'win');
+          break;
+        case 'nothingToCook':
+          this.say(M.nothingToCook, 'blocked');
+          break;
+        case 'sleepNo':
+          this.say(M.sleepNo, 'blocked');
+          break;
+        case 'fellAsleep':
+          this.say(M.fellAsleep, 'sleep');
+          break;
+        case 'thrown':
+          this.say(M.thrown(item(ev.item)), 'place');
+          break;
         case 'woke':
           this.say(M.woke, 'wake');
           break;
@@ -224,10 +302,7 @@ export class ForestGame implements GameScreen {
     if (s.sleeping) {
       frSleep(s, false);
       this.host.playSound('wake');
-    } else if (frCanSleep(s)) {
-      frSleep(s, true);
-      this.host.playSound('sleep');
-    } else this.say(GAMES_TEXT.forestMsg.sleepNo, 'blocked');
+    }
     this.updateHud();
   }
 
@@ -238,34 +313,81 @@ export class ForestGame implements GameScreen {
     } else this.bag.setAttribute('hidden', '');
   }
 
+  /** Рюкзак — сетка 4×3 ячеек; нажатие на ячейку открывает карточку предмета. */
   private renderBag(): void {
     const s = this.state;
-    const rows = ITEM_ORDER.filter((i) => (s.inv[i] ?? 0) > 0).map((i) => {
-      const parts: HTMLElement[] = [
-        el('canvas', { class: 'fr-item-icon', width: '32', height: '32' }),
-        el('span', { class: 'fr-item-name', text: GAMES_TEXT.forestItems[i] ?? i }),
-        el('span', { class: 'fr-item-count', text: `×${s.inv[i]}` }),
-      ];
-      const icon = parts[0] as HTMLCanvasElement;
-      const ictx = icon.getContext('2d');
-      if (ictx) drawItem(ictx, i, 16, 18, 26, 0);
-      if (FR_FOOD[i]) {
-        const eat = el('button', { type: 'button', class: 'm3-help-button fr-eat', text: GAMES_TEXT.forestEat });
-        eat.addEventListener('click', () => {
-          this.handle(frEat(s, i));
-          this.renderBag();
-        });
-        parts.push(eat);
+    const stacks: Array<{ item: FrItem; n: number }> = [];
+    for (const item of ITEM_ORDER) {
+      let n = s.inv[item] ?? 0;
+      while (n > 0) {
+        stacks.push({ item, n: Math.min(10, n) });
+        n -= 10;
       }
-      return el('div', { class: 'fr-item' }, parts);
-    });
-    const close = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestClose });
+    }
+    const cells: HTMLElement[] = [];
+    for (let k = 0; k < FR_SLOTS; k++) {
+      const st = stacks[k];
+      if (!st) {
+        cells.push(el('span', { class: 'fr-slot empty' }));
+        continue;
+      }
+      const icon = el('canvas', { class: 'fr-slot-icon', width: '64', height: '64' }) as HTMLCanvasElement;
+      const ictx = icon.getContext('2d');
+      if (ictx) drawItem(ictx, st.item, 32, 34, 52, 0);
+      const slot = el('button', { type: 'button', class: 'fr-slot', 'aria-label': GAMES_TEXT.forestItems[st.item] ?? st.item }, [
+        icon,
+        ...(st.n > 1 ? [el('span', { class: 'fr-slot-count', text: String(st.n) })] : []),
+      ]);
+      slot.addEventListener('click', () => this.renderItem(st.item));
+      cells.push(slot);
+    }
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.toggleBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag' }, [
-        el('h3', { text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), FR_SLOTS) }),
-        ...(rows.length ? rows : [el('p', { class: 'm3-note', text: GAMES_TEXT.forestBagEmpty })]),
-        close,
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestBagTitle(frSlotsUsed(s.inv), FR_SLOTS) }), close]),
+        el('div', { class: 'fr-grid' }, cells),
+      ]),
+    );
+  }
+
+  /** Карточка предмета: картинка, что даёт, описание, «Съесть» и «Выбросить». */
+  private renderItem(item: FrItem): void {
+    const s = this.state;
+    if (!(s.inv[item] ?? 0)) {
+      this.renderBag();
+      return;
+    }
+    const icon = el('canvas', { class: 'fr-card-icon', width: '96', height: '96' }) as HTMLCanvasElement;
+    const ictx = icon.getContext('2d');
+    if (ictx) drawItem(ictx, item, 48, 50, 78, 0);
+    const food = FR_FOOD[item];
+    const buttons: HTMLElement[] = [];
+    if (food) {
+      const eat = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestEat });
+      eat.addEventListener('click', () => {
+        this.handle(frEat(s, item));
+        this.renderItem(item);
+      });
+      buttons.push(eat);
+    }
+    const toss = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestThrow });
+    toss.addEventListener('click', () => {
+      this.handle(frThrow(s, item));
+      this.renderItem(item);
+    });
+    buttons.push(toss);
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.renderBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
+        el('div', { class: 'fr-card-top' }, [
+          icon,
+          el('div', { class: 'fr-card-lines' }, food ? [el('span', { text: GAMES_TEXT.forestFoodLine(food) })] : []),
+        ]),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
+        el('div', { class: 'fr-actions' }, buttons),
       ]),
     );
   }
@@ -289,6 +411,7 @@ export class ForestGame implements GameScreen {
     storeSaved(this.state);
     this.overPanel.setAttribute('hidden', '');
     this.bag.setAttribute('hidden', '');
+    this.closeMenu();
     this.say(GAMES_TEXT.forestHint);
   }
 
@@ -338,9 +461,8 @@ export class ForestGame implements GameScreen {
         bar.fill.parentElement?.classList.toggle('low', v < 25);
       }
     }
-    const label = s.sleeping ? GAMES_TEXT.forestWake : GAMES_TEXT.forestSleep;
-    if (this.sleepButton.textContent !== label) this.sleepButton.textContent = label;
-    this.sleepButton.classList.toggle('ready', !s.sleeping && frCanSleep(s));
+    // «Проснуться» видна только во сне; лечь спать можно кнопкой у горящего костра.
+    if (this.sleepButton.hidden === s.sleeping) this.sleepButton.hidden = !s.sleeping;
   }
 
   // --- Рисование ---
@@ -412,7 +534,18 @@ export class ForestGame implements GameScreen {
         const cx = sx(x + 0.5);
         const cy = sy(y + 0.5);
         const kind = s.tiles[i];
-        if (kind === 'tree') items.push({ y: y + 0.9, draw: () => drawTree(ctx, cx, sy(y + 1), tile) });
+        if (kind === 'tree') {
+          // Если питомец зашёл за дерево, оно становится полупрозрачным, чтобы его было видно.
+          const behind = Math.abs(s.x - (x + 0.5)) < 0.75 && s.y > y - 1.2 && s.y < y + 0.9;
+          items.push({
+            y: y + 0.9,
+            draw: () => {
+              ctx.globalAlpha = behind ? 0.45 : 1;
+              drawTree(ctx, cx, sy(y + 1), tile);
+              ctx.globalAlpha = 1;
+            },
+          });
+        }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
         const d = drops.get(i);
@@ -715,6 +848,25 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.fillStyle = '#fff';
       ctx.fillRect(cx - size * 0.15, cy - size * 0.17, size * 0.07, size * 0.07);
       ctx.fillRect(cx + size * 0.06, cy - size * 0.22, size * 0.07, size * 0.07);
+      break;
+    case 'cooked':
+      ctx.fillStyle = '#f0d9b0';
+      ctx.fillRect(cx - size * 0.08, cy - size * 0.05, size * 0.16, size * 0.3);
+      ctx.strokeRect(cx - size * 0.08, cy - size * 0.05, size * 0.16, size * 0.3);
+      ctx.fillStyle = '#9a5a2c';
+      ctx.beginPath();
+      ctx.arc(cx, cy - size * 0.02, size * 0.3, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = size * 0.05;
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.1, cy - size * 0.38);
+      ctx.quadraticCurveTo(cx - size * 0.18, cy - size * 0.48, cx - size * 0.08, cy - size * 0.56);
+      ctx.moveTo(cx + size * 0.1, cy - size * 0.38);
+      ctx.quadraticCurveTo(cx + size * 0.02, cy - size * 0.48, cx + size * 0.12, cy - size * 0.56);
+      ctx.stroke();
       break;
     case 'berries':
       ctx.fillStyle = '#e8505b';
