@@ -913,3 +913,27 @@ describe('сушилка', () => {
     expect(m.FR_EFFECTS.jerky?.food).toBeGreaterThan(m.FR_EFFECTS.steak!.food! - 10);
   });
 });
+
+describe('предметы не на постройках', () => {
+  it('предмет на занятой постройкой клетке переезжает на землю', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    const spot = m.frChestSpots(s)[0]!;
+    s.tiles[spot] = 'chest';
+    const before = s.drops.length + 1;
+    s.drops.push({ id: 9999, kind: 'branch', x: spot % 30, y: Math.floor(spot / 30) });
+    m.frFixDrops(s);
+    for (const d of s.drops) expect(s.tiles[d.y * 30 + d.x]).toBe('grass');
+    expect(s.drops.length).toBe(before);
+  });
+  it('бросок предмета на костре кладёт его рядом, а не на кострище', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { branch: 1 };
+    const c = m.frCenter(s);
+    s.x = c.x + 0.5;
+    s.y = c.y + 0.5;
+    m.frThrow(s, 'branch');
+    for (const d of s.drops) expect(s.tiles[d.y * 30 + d.x]).toBe('grass');
+  });
+});
