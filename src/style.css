@@ -2945,9 +2945,20 @@ button.m-jar:active {
   width: 100%;
   aspect-ratio: 3 / 4;
   background: #76bd65;
-  touch-action: manipulation;
+  touch-action: none;
   cursor: pointer;
   image-rendering: pixelated;
+}
+/* Страница игры не листается и не «пружинит» при протягивании пальцем. */
+html:has(.fr-game),
+body:has(.fr-game) {
+  overscroll-behavior: none;
+}
+@media (min-height: 760px) {
+  html:has(.fr-game),
+  body:has(.fr-game) {
+    overflow: hidden;
+  }
 }
 .fr-stats {
   display: grid;
