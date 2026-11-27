@@ -47,6 +47,7 @@ import {
   frWear,
   frUnwear,
   frEquip,
+  frWeaponDmg,
   FR_WEAPONS,
   FR_BUILDINGS,
   FR_LOOM,
@@ -1644,7 +1645,7 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: TOOLS.includes(item) || (s.inv[item] ?? 0) <= 1 ? (GAMES_TEXT.forestItems[item] ?? item) : `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           el('div', { class: 'fr-card-iconbox' }, [icon, ...(TOOLS.includes(item) ? [this.durBar(item as FrTool)] : [])]),
-          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('span', { text: GAMES_TEXT.forestWeaponStats(FR_WEAPONS[item as FrTool]!.dmg, FR_WEAPONS[item as FrTool]!.ms) })] : []),
+          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : FR_WEAPONS[item as FrTool] ? [el('span', { text: GAMES_TEXT.forestWeaponStats(frWeaponDmg(s, item as FrTool), FR_WEAPONS[item as FrTool]!.ms) })] : []),
         ]),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
         el('div', { class: 'fr-actions' }, buttons),

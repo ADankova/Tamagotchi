@@ -12,6 +12,7 @@ import {
   frDurability,
   frAttack,
   frEquip,
+  frWeaponDmg,
   frWeaponStats,
   FR_WEAPONS,
   FR_PET_DMG,
@@ -217,6 +218,19 @@ describe('«Дикий лес»: сбор и костёр', () => {
     frAttack(t, 971);
     for (let k = 0; k < 40; k++) frTick(t, 100);
     expect(frDurability(t, 'axe')).toBe(before);
+  });
+
+  it('редкий камень усиливает оружие: урон на 30% больше', () => {
+    const s = newForest(7);
+    s.inv = { spear: 1, axe: 1, crystal: 2 };
+    expect(frWeaponDmg(s, 'spear')).toBe(16);
+    s.up.spear = true;
+    expect(frWeaponDmg(s, 'spear')).toBe(21);
+    expect(frWeaponDmg(s, 'axe')).toBe(12);
+    s.up.axe = true;
+    expect(frWeaponDmg(s, 'axe')).toBe(16);
+    frEquip(s, 'spear');
+    expect(frWeaponStats(s).dmg).toBe(21);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {
