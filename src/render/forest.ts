@@ -1641,7 +1641,7 @@ export class ForestGame implements GameScreen {
         }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i), cellHash(x, y, 7)) });
         else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => { if (!drawSprite(ctx, 'grass', cellHash(x, y, 4) % natureCount('grass'), cx, cy + tile * 0.42, { w: tile * 0.9 }, Math.sin(t / 650 + x * 1.7 + y) * tile * 0.07)) drawTall(ctx, cx, cy, tile, i, t); } });
-        else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, false) });
+        else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => { if (!drawSprite(ctx, 'cavewall', cellHash(x, y, 5) % natureCount('cavewall'), cx, cy + tile / 2, { w: tile + 1 })) drawWall(ctx, cx, cy, tile, false); } });
         else if (kind === 'ore') items.push({ y: y + 0.6, draw: () => { if (!drawSprite(ctx, 'ore', cellHash(x, y, 3) % natureCount('ore'), cx, cy + tile * 0.46, { w: tile * 1.02 })) drawWall(ctx, cx, cy, tile, true); } });
         // Табличка перехода крупная и рисуется поверх деревьев, чтобы её было видно у края карты.
         else if (kind === 'exit') items.push({ y: y + 3, draw: () => drawExit(ctx, cx, cy - tile * 0.2, tile * 1.5, s.loc, frExitAt(s, i)?.to ?? 'home', t) });
@@ -2438,6 +2438,16 @@ function drawChest(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: 
 }
 
 function drawPit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, lit: boolean, t: number): void {
+  if (drawSprite(ctx, lit ? 'campfire' : 'campcold', 0, cx, cy + tile * 0.4, { w: tile * 1.05 })) {
+    if (lit) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, tile * 1.1);
+      g.addColorStop(0, `rgba(255,190,80,${0.22 + Math.sin(t / 110) * 0.05})`);
+      g.addColorStop(1, 'rgba(255,190,80,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - tile * 1.1, cy - tile * 1.1, tile * 2.2, tile * 2.2);
+    }
+    return;
+  }
   outline(ctx, tile);
   ctx.fillStyle = '#6b5d52';
   ctx.beginPath();
