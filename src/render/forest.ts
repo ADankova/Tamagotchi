@@ -1558,7 +1558,7 @@ export class ForestGame implements GameScreen {
   ): void {
     const s = this.state;
     const dark = frDarkness(s);
-    const c = frCenter();
+    const c = frCenter(s);
     const fx = sx(c.x + 0.5);
     const fy = sy(c.y + 0.5);
     if (s.fire > 0) {
