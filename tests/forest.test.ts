@@ -8,7 +8,11 @@ import {
   FR_SLOTS,
   FR_STACK,
   FR_W,
+  frActions,
   frCanSleep,
+  frDo,
+  frTargetAt,
+  frThrow,
   frCenter,
   frEat,
   frIndex,
@@ -123,6 +127,42 @@ describe('«Дикий лес»: сбор и костёр', () => {
     const events = goTo(s, water % FR_W, Math.floor(water / FR_W));
     expect(events).toContainEqual({ type: 'drank' });
     expect(s.stats.water).toBeGreaterThan(30);
+  });
+});
+
+describe('«Дикий лес»: кнопки у предметов', () => {
+  it('у костровища — «зажечь», у горящего костра — «подкинуть», «приготовить», «спать»', () => {
+    const s = newForest(7);
+    const c = frCenter();
+    const pit = frTargetAt(s, c.x, c.y)!;
+    expect(frActions(s, pit)).toEqual(['light']);
+    s.fire = 1000;
+    expect(frActions(s, pit)).toEqual(['feed', 'cook', 'sleep']);
+    expect(frActions(s, frTargetAt(s, 0, 0)!)).toEqual(['chop']);
+  });
+
+  it('приготовить гриб у костра, а спать — только вечером', () => {
+    const s = newForest(7);
+    const c = frCenter();
+    s.fire = 100_000;
+    s.inv = { mushroom: 1 };
+    const cook = [...frDo(s, c.x, c.y, 'cook'), ...run(s, 10_000)];
+    expect(cook).toContainEqual({ type: 'cooked', item: 'cooked' });
+    expect(s.inv).toEqual({ cooked: 1 });
+    expect([...frDo(s, c.x, c.y, 'cook'), ...run(s, 1000)]).toContainEqual({ type: 'nothingToCook' });
+    expect([...frDo(s, c.x, c.y, 'sleep'), ...run(s, 500)]).toContainEqual({ type: 'sleepNo' });
+    s.clock = FR_NIGHT_AT;
+    expect(frDo(s, c.x, c.y, 'sleep')).toContainEqual({ type: 'fellAsleep' });
+    expect(s.sleeping).toBe(true);
+  });
+
+  it('выброшенная вещь ложится на землю рядом', () => {
+    const s = newForest(7);
+    s.inv = { stone: 2 };
+    const before = s.drops.length;
+    expect(frThrow(s, 'stone')).toEqual([{ type: 'thrown', item: 'stone' }]);
+    expect(s.inv.stone).toBe(1);
+    expect(s.drops.length).toBe(before + 1);
   });
 });
 

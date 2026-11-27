@@ -3053,3 +3053,122 @@ button.m-jar:active {
   font-size: 0.85rem;
   height: 30px;
 }
+.fr-menu {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+.fr-menu[hidden] {
+  display: none;
+}
+.fr-act {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.fr-act-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fff6e4;
+  border: 3px solid #3b2a1e;
+  box-shadow: 0 3px 0 #3b2a1e;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.fr-act:active .fr-act-icon {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #3b2a1e;
+}
+.fr-act-name {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 3px #3b2a1e, 0 0 3px #3b2a1e, 0 1px 0 #3b2a1e;
+  white-space: nowrap;
+}
+.fr-act-close .fr-act-icon {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  background: #ffd5d5;
+}
+.fr-bag-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fr-x {
+  flex: none;
+}
+.fr-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.fr-slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid #3b2a1e;
+  border-radius: 10px;
+  background: #efe1c8;
+  cursor: pointer;
+}
+.fr-slot.empty {
+  background: #e4d3b6;
+  opacity: 0.6;
+  cursor: default;
+}
+.fr-slot-icon {
+  width: 80%;
+  height: 80%;
+}
+.fr-slot-count {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-weight: 900;
+  font-size: 0.85rem;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+.fr-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+.fr-card-icon {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  border: 2px solid #3b2a1e;
+  border-radius: 12px;
+  background: #efe1c8;
+}
+.fr-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 900;
+}
+.fr-card-desc {
+  text-align: left;
+  font-size: 0.9rem;
+}
