@@ -3618,3 +3618,26 @@ body:has(.fr-game) {
   padding: 4px 8px;
   min-width: 0;
 }
+
+.fr-qintro {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.85;
+  margin: 2px 0 4px;
+}
+.fr-qrow.locked {
+  opacity: 0.5;
+}
+
+.fr-qrow.story {
+  grid-template-columns: 1fr auto;
+}
+.fr-qrow.story .fr-qlines {
+  grid-column: 1 / -1;
+}
+.fr-qrow.story .fr-qreward {
+  justify-content: flex-start;
+}
+.fr-qrow.story .fr-qbtn {
+  justify-self: end;
+}
