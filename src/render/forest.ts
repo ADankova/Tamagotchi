@@ -92,6 +92,7 @@ import type { SoundName } from '../audio/tunes';
 import { GAMES_TEXT } from '../strings';
 import { el } from './dom';
 import type { GameScreen, MiniGameHost } from './minigames';
+import { cellHash, drawSprite, groundTile, natureCount } from './nature';
 import { drawPet } from './petArt';
 import { animFrame, type AnimRow } from './scene';
 
@@ -1590,9 +1591,31 @@ export class ForestGame implements GameScreen {
           ctx.moveTo(px + tile * 0.2 + wave, py + tile * 0.4);
           ctx.lineTo(px + tile * 0.5 + wave, py + tile * 0.4);
           ctx.stroke();
+          // Берег: песчаная полоска и белая пена там, где вода граничит с сушей.
+          const land = (nx: number, ny: number): boolean => nx >= 0 && ny >= 0 && nx < FR_W && ny < FR_H && s.tiles[frIndex(nx, ny)] !== 'water';
+          const sand = Math.max(2, Math.round(tile * 0.2));
+          const foam = Math.max(1, Math.round(tile * 0.06));
+          const edges: Array<[boolean, number, number, number, number]> = [
+            [land(x, y - 1), px, py, size, sand],
+            [land(x, y + 1), px, py + size - sand, size, sand],
+            [land(x - 1, y), px, py, sand, size],
+            [land(x + 1, y), px + size - sand, py, sand, size],
+          ];
+          for (const [on, ex, ey, ew, eh] of edges) {
+            if (!on) continue;
+            ctx.fillStyle = '#ecd9a0';
+            ctx.fillRect(ex, ey, ew, eh);
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            if (ew === size) ctx.fillRect(ex, ey === py ? ey + eh : ey - foam, ew, foam);
+            else ctx.fillRect(ex === px ? ex + ew : ex - foam, ey, foam, eh);
+          }
         } else {
-          ctx.fillStyle = s.loc === 'cave' ? ((x + y) % 2 ? '#8a847a' : '#837d73') : (x + y) % 2 ? '#7cc56b' : '#76bd65';
-          ctx.fillRect(px, py, size, size);
+          const gt = groundTile(s.loc === 'cave' ? 'cave' : 'meadow', x, y);
+          if (gt) ctx.drawImage(gt, px, py, size, size);
+          else {
+            ctx.fillStyle = s.loc === 'cave' ? ((x + y) % 2 ? '#8a847a' : '#837d73') : (x + y) % 2 ? '#7cc56b' : '#76bd65';
+            ctx.fillRect(px, py, size, size);
+          }
         }
       }
     }
@@ -1626,23 +1649,23 @@ export class ForestGame implements GameScreen {
             y: y + 0.9,
             draw: () => {
               ctx.globalAlpha = behind ? 0.45 : 1;
-              drawTree(ctx, cx, sy(y + 1), tile);
+              if (!drawSprite(ctx, 'tree', cellHash(x, y, 1) % natureCount('tree'), cx, sy(y + 1) + tile * 0.05, { h: tile * 1.75 })) drawTree(ctx, cx, sy(y + 1), tile);
               ctx.globalAlpha = 1;
             },
           });
         }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
-        else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => drawTall(ctx, cx, cy, tile, i, t) });
+        else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => { if (!drawSprite(ctx, 'grass', cellHash(x, y, 4) % natureCount('grass'), cx, cy + tile * 0.42, { w: tile * 0.9 }, Math.sin(t / 650 + x * 1.7 + y) * tile * 0.07)) drawTall(ctx, cx, cy, tile, i, t); } });
         else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, false) });
-        else if (kind === 'ore') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, true) });
+        else if (kind === 'ore') items.push({ y: y + 0.6, draw: () => { if (!drawSprite(ctx, 'ore', cellHash(x, y, 3) % natureCount('ore'), cx, cy + tile * 0.46, { w: tile * 1.02 })) drawWall(ctx, cx, cy, tile, true); } });
         else if (kind === 'exit') items.push({ y: y + 0.1, draw: () => drawExit(ctx, cx, cy, tile, s.loc, frExitAt(s, i)?.to ?? 'home', t) });
         else if (kind === 'reed') items.push({ y: y + 0.55, draw: () => drawReed(ctx, cx, cy, tile, i, t) });
-        else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
+        else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => { if (!drawSprite(ctx, 'rock', cellHash(x, y, 2) % natureCount('rock'), cx, cy + tile * 0.44, { w: tile * 1.05 })) drawRock(ctx, cx, cy, tile); } });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
         else if (kind === 'lighthouse') items.push({ y: y + 0.7, draw: () => drawLighthouse(ctx, cx, cy, tile, (s.count.beacon ?? 0) > 0 && frIsNight(s)) });
         else if (kind === 'dryer') items.push({ y: y + 0.7, draw: () => drawDryer(ctx, cx, cy, tile) });
-        else if (kind === 'ruins') items.push({ y: y + 0.7, draw: () => drawRuins(ctx, cx, cy, tile) });
+        else if (kind === 'ruins' && s.tiles[i - 1] !== 'ruins' && s.tiles[i - FR_W] !== 'ruins') items.push({ y: y + 1.7, draw: () => drawRuins(ctx, cx + tile / 2, cy + tile / 2, tile * 2) });
         else if (kind === 'foundry') items.push({ y: y + 0.7, draw: () => drawFoundry(ctx, cx, cy, tile) });
         else if (kind === 'trap' || kind === 'trapfull') items.push({ y: y + 0.2, draw: () => drawTrap(ctx, cx, cy, tile, kind === 'trapfull') });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
@@ -1818,7 +1841,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'rock' && s.loc !== 'cave') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
         else if (kind === 'ore') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ore ?? '' });
         else if (kind === 'exit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[`exit_${frExitAt(s, i)?.to ?? 'home'}`] ?? '' });
-        else if (kind === 'ruins') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ruins ?? '' });
+        else if (kind === 'ruins' && s.tiles[i - 1] !== 'ruins' && s.tiles[i - FR_W] !== 'ruins') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ruins ?? '' });
         else if (kind === 'lighthouse') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.lighthouse ?? '' });
         else if (kind === 'dryer') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.dryer ?? '' });
         else if (kind === 'foundry') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.foundry ?? '' });

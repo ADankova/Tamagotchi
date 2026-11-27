@@ -668,16 +668,29 @@ function savePlace(s: FrState): void {
 
 /** На озере стоят остатки старой башни (и в старых сохранениях тоже). */
 function ensureRuins(s: FrState): void {
-  if (s.loc !== 'lake' || s.tiles.includes('ruins')) return;
-  const reach = reachable(s, 15, 27);
+  if (s.loc !== 'lake') return;
   const taken = new Set(s.drops.map((d) => frIndex(d.x, d.y)));
+  const block = (i: number): number[] => [i, i + 1, i + FR_W, i + FR_W + 1];
+  const free = (i: number): boolean => {
+    const x = i % FR_W;
+    const y = Math.floor(i / FR_W);
+    return x + 1 < FR_W && y + 1 < FR_H && block(i).every((c) => (s.tiles[c] === 'grass' || s.tiles[c] === 'ruins') && !taken.has(c));
+  };
+  const old = s.tiles.indexOf('ruins');
+  if (old >= 0) {
+    // башня занимает 2×2 клетки: достраиваем в старых сохранениях
+    if (s.tiles[old + 1] === 'ruins' && s.tiles[old + FR_W] === 'ruins') return;
+    if (free(old)) for (const c of block(old)) s.tiles[c] = 'ruins';
+    return;
+  }
+  const reach = reachable(s, 15, 27);
   const spots = [...reach].filter((i) => {
     const x = i % FR_W;
     const y = Math.floor(i / FR_W);
-    return s.tiles[i] === 'grass' && !taken.has(i) && Math.hypot(x - 15, y - 27) >= 7 && Math.hypot(x - 15, y - 27) <= 14;
+    return free(i) && Math.hypot(x - 15, y - 27) >= 7 && Math.hypot(x - 15, y - 27) <= 14;
   });
   const r = rand(s.seed + 31_500);
-  if (spots.length) s.tiles[spots[Math.floor(r() * spots.length)]!] = 'ruins';
+  if (spots.length) for (const c of block(spots[Math.floor(r() * spots.length)]!)) s.tiles[c] = 'ruins';
 }
 
 /** Перейти в другую локацию: прежняя замирает, пока питомца в ней нет. */
