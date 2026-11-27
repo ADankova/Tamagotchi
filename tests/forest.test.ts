@@ -259,6 +259,18 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(frHeld(s)).toBe(null);
   });
 
+  it('редкий камень добавляет 30 к прочности', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { spear: 1, ironaxe: 1, crystal: 2 };
+    expect(m.frToolMax(s, 'spear')).toBe(80);
+    m.frUpgrade(s, 'spear');
+    expect(m.frToolMax(s, 'spear')).toBe(110);
+    expect(m.frDurability(s, 'spear')).toBe(110);
+    m.frUpgrade(s, 'ironaxe');
+    expect(m.frToolMax(s, 'ironaxe')).toBe(90);
+  });
+
   it('рюкзак: 12 ячеек по 20 штук', () => {
     const s = newForest(7);
     s.inv = { stone: FR_STACK * FR_SLOTS };

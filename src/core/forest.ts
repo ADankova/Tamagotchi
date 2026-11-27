@@ -57,6 +57,8 @@ export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick
 export const FR_TOOL_USES = 30;
 export const FR_IRON_USES = 60;
 export const FR_SPEAR_USES = 80;
+/** Редкий камень в инструменте: прибавка к прочности (и +30% урона у оружия). */
+export const FR_UP_USES = 30;
 export const FISH_CHANCE = 0.55;
 export function frToolUses(tool: FrTool): number {
   if (tool === 'spear') return FR_SPEAR_USES;
@@ -1467,7 +1469,7 @@ export function frLantern(s: FrState): FrEvent[] {
 
 /** Максимум прочности: вставленный кристалл удваивает его. */
 export function frToolMax(s: FrState, tool: FrTool): number {
-  return frToolUses(tool) * (s.up[tool] ? 2 : 1);
+  return frToolUses(tool) + (s.up[tool] ? FR_UP_USES : 0);
 }
 
 export function frCanUpgrade(s: FrState, tool: FrTool): boolean {
@@ -1478,7 +1480,7 @@ export function frCanUpgrade(s: FrState, tool: FrTool): boolean {
 export function frUpgrade(s: FrState, tool: FrTool): FrEvent[] {
   if (!frCanUpgrade(s, tool)) return [{ type: 'needMaterials' }];
   take(s, 'crystal', 1);
-  s.dur[tool] = frDurability(s, tool) + frToolUses(tool);
+  s.dur[tool] = frDurability(s, tool) + FR_UP_USES;
   s.up[tool] = true;
   return [{ type: 'upgraded', item: tool }];
 }
