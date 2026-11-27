@@ -499,7 +499,7 @@ export class ForestGame implements GameScreen {
           this.say(M.evening, 'alert');
           break;
         case 'morning':
-          this.host.earnTreats(ev.reward);
+          if (ev.reward > 0) this.host.earnTreats(ev.reward);
           this.best = Math.max(this.best, ev.day - 1);
           storeBest(this.best);
           this.say(M.morning(ev.day, ev.reward), 'snack');
@@ -676,7 +676,7 @@ export class ForestGame implements GameScreen {
           if (this.state.claimed.includes('ch1')) this.say(M.ruins, 'blocked');
           break;
         case 'questDone':
-          this.host.earnTreats(ev.reward);
+          if (ev.reward > 0) this.host.earnTreats(ev.reward);
           this.say(M.questDone(ev.reward), 'snack');
           break;
         case 'openCook':
