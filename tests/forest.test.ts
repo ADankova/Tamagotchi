@@ -9,6 +9,8 @@ import {
   FR_STACK,
   FR_W,
   frActions,
+  frBedCell,
+  FR_EVENING_AT,
   frCanSleep,
   frDo,
   frClaim,
@@ -112,6 +114,22 @@ describe('«Дикий лес»: сбор и костёр', () => {
     expect(frTap(s, c.x, c.y)).toContainEqual({ type: 'fireFed' });
     expect(s.fire).toBeGreaterThan(before);
     expect(s.inv.branch).toBe(undefined);
+  });
+
+  it('на лежанку можно нажать, чтобы лечь спать', () => {
+    const s = newForest(7);
+    const b = frBedCell();
+    expect(frTargetAt(s, b.x, b.y)).toEqual({ kind: 'ground' });
+    s.shelter = 3;
+    s.bed = true;
+    expect(frTargetAt(s, b.x, b.y)).toEqual({ kind: 'bed' });
+    expect(frActions(s, { kind: 'bed' })).toEqual(['sleep']);
+    s.clock = FR_EVENING_AT;
+    s.fire = 1000;
+    s.x = b.x + 0.5;
+    s.y = b.y + 0.5;
+    expect(frTap(s, b.x, b.y)).toContainEqual({ type: 'fellAsleep' });
+    expect(s.sleeping).toBe(true);
   });
 
   it('рюкзак: 12 ячеек по 20 штук', () => {
