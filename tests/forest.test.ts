@@ -1014,3 +1014,39 @@ describe('редкий камень', () => {
     expect(s.inv.crystal).toBe(1);
   });
 });
+
+describe('сюжет «Потерянный маяк»', () => {
+  it('главы открываются по порядку, клыки с волков, копьё и маяк', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    const ch = m.FR_QUESTS.filter((q) => q.kind === 'story');
+    expect(ch.length).toBe(9);
+    expect(m.frQuestState(s, ch[1]!)).toBe('locked');
+    s.count['visit:lake'] = 1;
+    expect(m.frQuestState(s, ch[0]!)).toBe('ready');
+    s.count.treasure = 1;
+    expect(m.frQuestState(s, ch[1]!)).toBe('locked');
+    expect(m.frClaim(s, 'ch1')).toContainEqual({ type: 'storyDone', id: 'ch1' });
+    expect(m.frQuestState(s, ch[1]!)).toBe('ready');
+    s.inv = { fang: 2, branch: 2, stone: 1 };
+    expect(m.frCraft(s, 'spear')).toContainEqual({ type: 'crafted', item: 'spear' });
+    expect(m.frDurability(s, 'spear')).toBe(30);
+    // белый волк появляется в пещере после 6-й главы
+    for (const id of ['ch2', 'ch3', 'ch4', 'ch5', 'ch6']) s.claimed.push(id);
+    expect(m.frAlphaDue(s)).toBe(true);
+    m.frTravel(s, 'cave');
+    expect(s.mobs.some((x) => x.kind === 'alpha')).toBe(true);
+  });
+  it('маяк строится дома и зажигается только ночью, один раз', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { branch: 20, stone: 10, ingot: 4, crystal: 3, cloth: 5, fang: 3 };
+    const spot = m.frChestSpots(s)[0]!;
+    expect(m.frCraft(s, 'lighthouse', spot)).toContainEqual({ type: 'crafted', item: 'lighthouse' });
+    expect(m.frCanLightBeacon(s)).toBe(false);
+    s.clock = m.FR_DAY_MS - 1000;
+    expect(m.frIsNight(s)).toBe(true);
+    expect(m.frLightBeacon(s)).toContainEqual({ type: 'beaconLit' });
+    expect(m.frCanLightBeacon(s)).toBe(false);
+  });
+});

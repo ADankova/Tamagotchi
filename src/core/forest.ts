@@ -33,7 +33,7 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry' | 'dryer';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull' | 'exit' | 'reed' | 'ore' | 'foundry' | 'dryer' | 'lighthouse';
 export type FrPlace = 'home' | 'lake' | 'cave';
 export const FR_DRY_FIRST_MS = 150_000;
 export const FR_SHELTER_RAINS = 30;
@@ -53,11 +53,13 @@ export interface FrPlaceState {
   day: number;
 }
 
-export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife';
+export type FrTool = 'knife' | 'axe' | 'pickaxe' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife' | 'spear';
 export const FR_TOOL_USES = 20;
 export const FR_IRON_USES = 60;
+export const FR_SPEAR_USES = 30;
 export const FISH_CHANCE = 0.55;
 export function frToolUses(tool: FrTool): number {
+  if (tool === 'spear') return FR_SPEAR_USES;
   return tool === 'ironaxe' || tool === 'ironpick' || tool === 'ironknife' ? FR_IRON_USES : FR_TOOL_USES;
 }
 /** Есть ли нужный инструмент (обычный или железный). */
@@ -65,7 +67,7 @@ function hasTool(s: FrState, kind: 'axe' | 'pickaxe' | 'knife'): boolean {
   const iron = kind === 'axe' ? 'ironaxe' : kind === 'pickaxe' ? 'ironpick' : 'ironknife';
   return (s.inv[kind] ?? 0) > 0 || (s.inv[iron] ?? 0) > 0;
 }
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse' | 'meat' | 'steak' | 'meatporridge' | 'broth' | 'reed' | 'fish' | 'friedfish' | 'fishsoup' | 'rod' | 'ore' | 'ironaxe' | 'ironpick' | 'ironknife' | 'ingot' | 'fishporridge' | 'salt' | 'jerky' | 'driedfish' | 'glowcap' | 'glowsoup' | 'crystal' | 'lantern';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse' | 'meat' | 'steak' | 'meatporridge' | 'broth' | 'reed' | 'fish' | 'friedfish' | 'fishsoup' | 'rod' | 'ore' | 'ironaxe' | 'ironpick' | 'ironknife' | 'ingot' | 'fishporridge' | 'salt' | 'jerky' | 'driedfish' | 'glowcap' | 'glowsoup' | 'crystal' | 'lantern' | 'fang' | 'spear';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -170,6 +172,9 @@ export type FrEvent =
   | { type: 'openFoundry' }
   | { type: 'smelted' }
   | { type: 'openDryer' }
+  | { type: 'openLighthouse' }
+  | { type: 'beaconLit' }
+  | { type: 'storyDone'; id: string }
   | { type: 'dried' }
   | { type: 'campGone' }
   | { type: 'worn'; item: FrItem }
@@ -705,6 +710,7 @@ export function frTravel(s: FrState, to: FrPlace): FrEvent[] {
     spawnDay(s);
   }
   bump(s, `visit:${to}`);
+  ensureAlpha(s, r);
   return withQuest(s, [{ type: 'traveled', to }]);
 }
 
@@ -840,6 +846,7 @@ export type FrTarget =
   | { kind: 'exit' }
   | { kind: 'foundry' }
   | { kind: 'dryer' }
+  | { kind: 'lighthouse' }
   | { kind: 'reed' }
   | { kind: 'ore' }
   | { kind: 'trap' }
@@ -883,6 +890,7 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
     case 'loom':
     case 'foundry':
     case 'dryer':
+    case 'lighthouse':
     case 'trapfull':
       return ['open'];
     case 'trap':
@@ -914,7 +922,7 @@ function doAction(s: FrState, x: number, y: number, action: FrAction | null, poi
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'foundry' || tile === 'dryer' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'foundry' || tile === 'dryer' || tile === 'lighthouse' || tile === 'tall' || tile === 'trap' || tile === 'trapfull' || tile === 'exit' || tile === 'reed') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush' || tile === 'rock' || tile === 'ore') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -1074,7 +1082,7 @@ function arriveInner(s: FrState): FrEvent[] {
         let spill = give(s, 'meat', 1, goal.cell);
         return spill ? [{ type: 'trapEmptied' }, { type: 'spilled' }] : [{ type: 'trapEmptied' }];
       }
-      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : s.tiles[goal.cell] === 'foundry' ? 'openFoundry' : s.tiles[goal.cell] === 'dryer' ? 'openDryer' : 'openChest' }];
+      return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : s.tiles[goal.cell] === 'foundry' ? 'openFoundry' : s.tiles[goal.cell] === 'dryer' ? 'openDryer' : s.tiles[goal.cell] === 'lighthouse' ? 'openLighthouse' : 'openChest' }];
     case 'mine': {
       if (!hasTool(s, 'pickaxe')) return [{ type: 'needPickaxe' }];
       if (!frLit(s)) return [{ type: 'tooDark' }];
@@ -1555,7 +1563,7 @@ function tick(s: FrState, dt: number): FrEvent[] {
   if (s.clock >= FR_DAY_MS) {
     s.clock -= FR_DAY_MS;
     s.day += 1;
-    s.treats += FR_NIGHT_REWARD;
+    s.treats += FR_NIGHT_REWARD + ((s.count.beacon ?? 0) > 0 ? 1 : 0);
     if (s.loc === 'cave') bump(s, 'caveNight');
     restock(s, rand(s.seed + s.day * 7919));
     spawnDay(s);
@@ -1563,7 +1571,7 @@ function tick(s: FrState, dt: number): FrEvent[] {
       s.sleeping = false;
       events.push({ type: 'woke' });
     }
-    events.push({ type: 'morning', day: s.day, reward: FR_NIGHT_REWARD });
+    events.push({ type: 'morning', day: s.day, reward: FR_NIGHT_REWARD + ((s.count.beacon ?? 0) > 0 ? 1 : 0) });
   }
 
   if (s.stats.health <= 0) {
@@ -1620,10 +1628,10 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom' | 'trap' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife' | 'foundry' | 'campfire' | 'dryer' | 'lantern';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom' | 'trap' | 'rod' | 'ironaxe' | 'ironpick' | 'ironknife' | 'foundry' | 'campfire' | 'dryer' | 'lantern' | 'spear' | 'lighthouse';
 
 /** Постройки: ставятся на выбранную клетку у костра. */
-export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom', 'foundry', 'dryer', 'campfire', 'trap'];
+export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom', 'foundry', 'dryer', 'lighthouse', 'campfire', 'trap'];
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
@@ -1638,6 +1646,8 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'ironpick', cost: [['ingot', 4], ['branch', 3]] },
   { id: 'foundry', cost: [['stone', 15], ['branch', 5]] },
   { id: 'dryer', cost: [['branch', 10], ['cloth', 2], ['grass', 5]] },
+  { id: 'spear', cost: [['branch', 2], ['fang', 2], ['stone', 1]] },
+  { id: 'lighthouse', cost: [['branch', 20], ['stone', 10], ['ingot', 4], ['crystal', 3], ['cloth', 5], ['fang', 3]] },
   { id: 'campfire', cost: [['branch', 3], ['flint', 1]] },
   { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
   { id: 'loom', cost: [['branch', 10], ['stone', 5], ['grass', 3]] },
@@ -1780,7 +1790,7 @@ export interface FrQuestPart {
 export interface FrQuest {
   id: string;
   /** default — долгие цели, regular — обычные задания. */
-  kind: 'default' | 'regular';
+  kind: 'default' | 'regular' | 'story';
   parts: readonly FrQuestPart[];
   /** Награда лакомствами (долгие цели). */
   reward: number;
@@ -1824,6 +1834,15 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'trapmouse', kind: 'regular', reward: 0, items: { cloth: 2 }, parts: [{ key: 'trapped:mouse', need: 1 }] },
   { id: 'wolf', kind: 'regular', reward: 1, parts: [{ key: 'kill:wolf', need: 1 }] },
   { id: 'cavenight', kind: 'regular', reward: 2, parts: [{ key: 'caveNight', need: 1 }] },
+  { id: 'ch1', kind: 'story', reward: 0, items: { berries: 4 }, parts: [{ key: 'visit:lake', need: 1 }] },
+  { id: 'ch2', kind: 'story', reward: 0, items: { cloth: 2 }, parts: [{ key: 'treasure', need: 1 }] },
+  { id: 'ch3', kind: 'story', reward: 1, parts: [{ key: 'visit:cave', need: 1 }, { key: 'kill:bat', need: 2 }] },
+  { id: 'ch4', kind: 'story', reward: 0, items: { ingot: 2 }, parts: [{ key: 'pick:crystal', need: 3 }] },
+  { id: 'ch5', kind: 'story', reward: 1, parts: [{ key: 'kill:wolf', need: 2 }] },
+  { id: 'ch6', kind: 'story', reward: 1, parts: [{ key: 'craft:spear', need: 1 }] },
+  { id: 'ch7', kind: 'story', reward: 3, parts: [{ key: 'kill:alpha', need: 1 }] },
+  { id: 'ch8', kind: 'story', reward: 2, parts: [{ key: 'craft:lighthouse', need: 1 }] },
+  { id: 'ch9', kind: 'story', reward: 10, parts: [{ key: 'beacon', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
   { id: 'rocks5', kind: 'default', reward: 3, parts: [{ key: 'mine', need: 5 }] },
   { id: 'nights5', kind: 'default', reward: 5, parts: [{ key: 'night', need: 5 }] },
@@ -1838,10 +1857,16 @@ export function frQuestDone(s: FrState, q: FrQuest): boolean {
   return q.parts.every((p) => frCounter(s, p.key) >= p.need);
 }
 
-export type FrQuestState = 'progress' | 'ready' | 'claimed';
+export type FrQuestState = 'progress' | 'ready' | 'claimed' | 'locked';
+
+/** Сюжет «Потерянный маяк»: глава, которая идёт сейчас (первая невзятая). */
+export function frStoryActive(s: FrState): FrQuest | null {
+  return FR_QUESTS.find((q) => q.kind === 'story' && !s.claimed.includes(q.id)) ?? null;
+}
 
 export function frQuestState(s: FrState, q: FrQuest): FrQuestState {
   if (s.claimed.includes(q.id)) return 'claimed';
+  if (q.kind === 'story' && frStoryActive(s)?.id !== q.id) return 'locked';
   return frQuestDone(s, q) ? 'ready' : 'progress';
 }
 
@@ -1860,13 +1885,16 @@ export function frClaim(s: FrState, id: string): FrEvent[] {
   s.inv = probe;
   s.claimed.push(id);
   s.treats += q.reward;
-  return [{ type: 'questDone', id, reward: q.reward }];
+  const ev: FrEvent[] = [{ type: 'questDone', id, reward: q.reward }];
+  if (q.kind === 'story') ev.push({ type: 'storyDone', id });
+  ensureAlpha(s, rand(s.seed + 25_000 + s.claimed.length * 7));
+  return withQuest(s, ev);
 }
 
 /** Сообщает о заданиях, которые только что стали выполненными. */
 function withQuest(s: FrState, events: FrEvent[]): FrEvent[] {
   for (const q of FR_QUESTS) {
-    if (s.notified.includes(q.id) || !frQuestDone(s, q)) continue;
+    if (s.notified.includes(q.id) || !frQuestDone(s, q) || frQuestState(s, q) === 'locked') continue;
     s.notified.push(q.id);
     events.push({ type: 'questReady', id: q.id });
   }
@@ -1969,7 +1997,7 @@ export function frUnwear(s: FrState, index: number): FrEvent[] {
 
 // --- Монстры ---
 
-export type FrMobKind = 'mouse' | 'rabbit' | 'wolf' | 'bat';
+export type FrMobKind = 'mouse' | 'rabbit' | 'wolf' | 'bat' | 'alpha';
 
 export interface FrMob {
   id: number;
@@ -1993,6 +2021,7 @@ export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number
   rabbit: { hp: 12, dmg: 4, speed: 2.6, flee: true, meat: 1 },
   wolf: { hp: 30, dmg: 9, speed: 2.8, flee: false, meat: 2 },
   bat: { hp: 8, dmg: 3, speed: 3.2, flee: false, meat: 0 },
+  alpha: { hp: 70, dmg: 12, speed: 3, flee: false, meat: 4 },
 };
 
 /** Летучие мыши замечают питомца с факелом за столько клеток. */
@@ -2006,6 +2035,7 @@ const PET_HIT_MS = 800;
 export const FR_PET_DMG = 5;
 export const FR_AXE_DMG = 8;
 export const FR_IRON_DMG = 12;
+export const FR_SPEAR_DMG = 16;
 
 /** Монстры к костру не подходят: рядом с горящим костром — весь круг света. */
 function mobBlocked(s: FrState, x: number, y: number): boolean {
@@ -2035,6 +2065,15 @@ function addMob(s: FrState, kind: FrMobKind, r: Rand): FrMob | null {
   return m;
 }
 
+/** Белый волк живёт в пещере, пока идёт седьмая глава сюжета и он ещё не побеждён. */
+export function frAlphaDue(s: FrState): boolean {
+  return s.claimed.includes('ch6') && !s.claimed.includes('ch7') && (s.count['kill:alpha'] ?? 0) === 0;
+}
+
+function ensureAlpha(s: FrState, r: Rand): void {
+  if (s.loc === 'cave' && frAlphaDue(s) && !s.mobs.some((m) => m.kind === 'alpha')) addMob(s, 'alpha', r);
+}
+
 /** Новый день: волки уходят, остаются мыши и кролики. */
 function spawnDay(s: FrState): void {
   const r = rand(s.seed + 77_000 + s.day * 131);
@@ -2047,6 +2086,7 @@ function spawnDay(s: FrState): void {
   while (have('rabbit') < rabbits) if (!addMob(s, 'rabbit', r)) break;
   if (s.loc === 'cave') while (have('wolf') < 1) if (!addMob(s, 'wolf', r)) break;
   if (s.loc === 'cave') while (have('bat') < 2) if (!addMob(s, 'bat', r)) break;
+  ensureAlpha(s, r);
 }
 
 /** Вечером приходят волки: один, со временем два. */
@@ -2130,17 +2170,32 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
         s.path = [];
         s.facing = m.x >= s.x ? 1 : -1;
         if (s.atkCd <= 0) {
-          const dmg = (s.inv.ironaxe ?? 0) > 0 ? FR_IRON_DMG : (s.inv.axe ?? 0) > 0 ? FR_AXE_DMG : FR_PET_DMG;
+          const dmg = (s.inv.spear ?? 0) > 0 ? FR_SPEAR_DMG : (s.inv.ironaxe ?? 0) > 0 ? FR_IRON_DMG : (s.inv.axe ?? 0) > 0 ? FR_AXE_DMG : FR_PET_DMG;
           m.hp -= dmg;
           m.provoked = true;
           m.angry = true;
           s.atkCd = PET_HIT_MS;
           ev.push({ type: 'petHit', kind: m.kind, dmg });
+          if ((s.inv.spear ?? 0) > 0) {
+            const left = frDurability(s, 'spear') - 1;
+            if (left > 0) s.dur.spear = left;
+            else {
+              delete s.dur.spear;
+              delete s.up.spear;
+              delete s.inv.spear;
+              ev.push({ type: 'broke', item: 'spear' });
+            }
+          }
           if (m.hp <= 0) {
             s.mobs = s.mobs.filter((x) => x.id !== m.id);
             s.chase = null;
             bump(s, 'kill');
             bump(s, `kill:${m.kind}`);
+            const fangs = m.kind === 'alpha' ? 3 : m.kind === 'wolf' ? 1 + (rand(s.seed + 23_000 + (s.count.kill ?? 0) * 19)() < 0.5 ? 1 : 0) : 0;
+            for (let k = 0; k < fangs; k++) {
+              if (canTake(s.inv, 'fang', frCapacity(s))) s.inv.fang = (s.inv.fang ?? 0) + 1;
+              else dropNear(s, 'fang', Math.floor(m.x), Math.floor(m.y));
+            }
             const meat = FR_MOBS[m.kind].meat;
             for (let k = 0; k < meat; k++) {
               if (canTake(s.inv, 'meat', frCapacity(s))) s.inv.meat = (s.inv.meat ?? 0) + 1;
@@ -2163,7 +2218,7 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
     if (m.cd > 0) m.cd = Math.max(0, m.cd - dt);
     const d = Math.hypot(s.x - m.x, s.y - m.y);
     const safe = frInFireLight(s) || (s.fire <= 0 && frInShelter(s));
-    if (m.kind === 'wolf' && !m.angry && d <= (hidden ? WOLF_NOTICE_GRASS : WOLF_NOTICE) && !safe) m.angry = true;
+    if ((m.kind === 'wolf' || m.kind === 'alpha') && !m.angry && d <= (hidden ? WOLF_NOTICE_GRASS : WOLF_NOTICE) && !safe) m.angry = true;
     if (m.kind === 'bat' && !m.angry && d <= BAT_NOTICE && s.torch > 0 && !safe) m.angry = true;
     if (safe) m.angry = m.provoked = false;
     if (m.angry && d > 9) m.angry = false;
@@ -2193,6 +2248,19 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
   }
   for (const k of s.trapNews) ev.push({ type: 'trapped', kind: k });
   return ev;
+}
+
+// --- Маяк ---
+
+export function frCanLightBeacon(s: FrState): boolean {
+  return !s.over && frBuilt(s, 'lighthouse') && frIsNight(s) && !(s.count.beacon ?? 0);
+}
+
+/** Зажечь маяк (только ночью, один раз): с тех пор каждое утро +1 лакомство. */
+export function frLightBeacon(s: FrState): FrEvent[] {
+  if (!frCanLightBeacon(s)) return [];
+  bump(s, 'beacon');
+  return withQuest(s, [{ type: 'beaconLit' }]);
 }
 
 // --- Сушилка ---
