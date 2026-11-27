@@ -229,6 +229,7 @@ export class ForestGame implements GameScreen {
     });
     if (this.state.over) this.showOver();
     this.questLine.addEventListener('click', () => this.openQuests());
+    this.introTip();
     this.shelterTip();
     this.updateHud();
     window.requestAnimationFrame((t) => this.frame(t));
@@ -491,7 +492,7 @@ export class ForestGame implements GameScreen {
           this.say(M.beaconLit, 'win');
           break;
         case 'storyDone':
-          this.renderStory(ev.id);
+          this.renderStoryNext();
           this.bag.removeAttribute('hidden');
           break;
         case 'dried':
@@ -597,7 +598,13 @@ export class ForestGame implements GameScreen {
           this.say(M.noPlace, 'blocked');
           break;
         case 'questReady':
-          this.say(GAMES_TEXT.forestQuestReady, 'snack');
+          if (ev.id.startsWith('ch')) {
+            this.renderStoryReady(ev.id);
+            this.bag.removeAttribute('hidden');
+          } else this.say(GAMES_TEXT.forestQuestReady, 'snack');
+          break;
+        case 'openRuins':
+          if (this.state.claimed.includes('ch1')) this.say(M.ruins, 'blocked');
           break;
         case 'questDone':
           this.host.earnTreats(ev.reward);
@@ -733,7 +740,7 @@ export class ForestGame implements GameScreen {
       return el('div', { class: st === 'claimed' ? 'fr-qrow story claimed' : 'fr-qrow story' }, [
         el('div', { class: 'fr-qlines' }, [
           el('b', { text: text?.title ?? q.id }),
-          ...(st === 'claimed' ? [] : [el('div', { class: 'fr-qintro', text: text?.intro ?? '' }), ...this.questLines(q)]),
+          ...(st === 'claimed' ? [] : [el('div', { class: 'fr-qintro', text: text?.text ?? '' }), ...this.questLines(q)]),
         ]),
         el('div', { class: 'fr-qreward' }, q.items
           ? (Object.entries(q.items) as Array<[FrItem, number]>).map(([it, n]) => el('span', { class: 'fr-qitem' }, [this.iconCanvas(it, 28), el('b', { text: String(n) })]))
@@ -1017,21 +1024,83 @@ export class ForestGame implements GameScreen {
     );
   }
 
-  /** Страничка сюжета: конец главы и начало следующей. */
-  private renderStory(id: string): void {
-    const text = GAMES_TEXT.forestStory[id];
+  private chapterTitle(id: string): string {
+    return `${GAMES_TEXT.forestChapter(Number(id.slice(2)))} ${GAMES_TEXT.forestStory[id]?.title ?? ''}`;
+  }
+
+  private rewardRow(id: string): HTMLElement {
+    const q = FR_QUESTS.find((x) => x.id === id);
+    return el('div', { class: 'fr-qreward fr-story-reward' }, q?.items
+      ? (Object.entries(q.items) as Array<[FrItem, number]>).map(([it, n]) => el('span', { class: 'fr-qitem' }, [this.iconCanvas(it, 32), el('b', { text: String(n) })]))
+      : [el('img', { src: this.host.treatImage, alt: '' }), el('b', { text: String(q?.reward ?? 0) })]);
+  }
+
+  /** Начало главы: рассказ, задание и награда. */
+  private renderStoryStart(id: string): void {
+    const q = FR_QUESTS.find((x) => x.id === id);
+    if (!q) return;
+    const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryGo });
+    go.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: this.chapterTitle(id) })]),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestStory[id]?.text ?? '' }),
+        el('h4', { text: GAMES_TEXT.forestTaskLabel }),
+        ...this.questLines(q),
+        this.rewardRow(id),
+        el('div', { class: 'fr-actions' }, [go]),
+      ]),
+    );
+  }
+
+  /** Конец главы: награда и кнопка «Забрать», после неё откроется следующая глава. */
+  private renderStoryReady(id: string): void {
+    const s = this.state;
+    const take = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryTake });
+    take.addEventListener('click', () => this.handle(frClaim(s, id)));
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: this.chapterTitle(id) })]),
+        el('p', { class: 'fr-card-desc', text: id === 'ch1' ? GAMES_TEXT.forestStory.ch1?.text ?? '' : GAMES_TEXT.forestTaskDone }),
+        this.rewardRow(id),
+        el('div', { class: 'fr-actions' }, [take]),
+      ]),
+    );
+  }
+
+  /** После награды: следующая глава или финал. */
+  private renderStoryNext(): void {
     const next = frStoryActive(this.state);
-    const nextText = next ? GAMES_TEXT.forestStory[next.id] : undefined;
+    if (next) {
+      this.renderStoryStart(next.id);
+      return;
+    }
     const ok = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStoryOk });
     ok.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-card' }, [
-        el('div', { class: 'fr-bag-head' }, [el('h3', { text: text?.title ?? '' })]),
-        el('p', { class: 'fr-card-desc', text: text?.outro ?? '' }),
-        ...(nextText ? [el('h4', { text: nextText.title }), el('p', { class: 'fr-card-desc', text: nextText.intro })] : []),
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestFinalTitle })]),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestFinal }),
         el('div', { class: 'fr-actions' }, [ok]),
       ]),
     );
+  }
+
+  /** Вступление при создании новой карты. */
+  private introTip(): void {
+    const s = this.state;
+    if (s.over || !s.count.introPending) return;
+    s.count.introPending = 0;
+    const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestIntroGo });
+    go.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestTitle })]),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestIntro }),
+        el('div', { class: 'fr-actions' }, [go]),
+      ]),
+    );
+    this.bag.removeAttribute('hidden');
   }
 
   /** Сушилка: мясо или рыба + соль → вяленое. */
@@ -1370,6 +1439,7 @@ export class ForestGame implements GameScreen {
     this.bag.setAttribute('hidden', '');
     this.closeMenu();
     this.say(GAMES_TEXT.forestHint);
+    this.introTip();
     this.shelterTip();
   }
 
@@ -1572,6 +1642,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
         else if (kind === 'lighthouse') items.push({ y: y + 0.7, draw: () => drawLighthouse(ctx, cx, cy, tile, (s.count.beacon ?? 0) > 0 && frIsNight(s)) });
         else if (kind === 'dryer') items.push({ y: y + 0.7, draw: () => drawDryer(ctx, cx, cy, tile) });
+        else if (kind === 'ruins') items.push({ y: y + 0.7, draw: () => drawRuins(ctx, cx, cy, tile) });
         else if (kind === 'foundry') items.push({ y: y + 0.7, draw: () => drawFoundry(ctx, cx, cy, tile) });
         else if (kind === 'trap' || kind === 'trapfull') items.push({ y: y + 0.2, draw: () => drawTrap(ctx, cx, cy, tile, kind === 'trapfull') });
         else if (kind === 'pit') items.push({ y: y + 0.7, draw: () => drawPit(ctx, cx, cy, tile, s.fire > 0, t) });
@@ -1747,6 +1818,7 @@ export class ForestGame implements GameScreen {
         else if (kind === 'rock' && s.loc !== 'cave') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
         else if (kind === 'ore') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ore ?? '' });
         else if (kind === 'exit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[`exit_${frExitAt(s, i)?.to ?? 'home'}`] ?? '' });
+        else if (kind === 'ruins') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ruins ?? '' });
         else if (kind === 'lighthouse') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.lighthouse ?? '' });
         else if (kind === 'dryer') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.dryer ?? '' });
         else if (kind === 'foundry') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.foundry ?? '' });
@@ -2035,6 +2107,27 @@ function drawExit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   ctx.textBaseline = 'middle';
   ctx.fillText(to === 'home' ? '⌂' : to === 'lake' ? '≈' : '▲', cx, cy - tile * 0.25 + Math.sin(t / 400) * tile * 0.02);
   void loc;
+}
+
+function drawRuins(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1.5, tile * 0.05);
+  ctx.fillStyle = '#bdb5a6';
+  ctx.beginPath();
+  ctx.moveTo(cx - tile * 0.36, cy + tile * 0.4);
+  ctx.lineTo(cx - tile * 0.3, cy - tile * 0.2);
+  ctx.lineTo(cx - tile * 0.12, cy - tile * 0.05);
+  ctx.lineTo(cx + tile * 0.02, cy - tile * 0.45);
+  ctx.lineTo(cx + tile * 0.2, cy - tile * 0.1);
+  ctx.lineTo(cx + tile * 0.36, cy + tile * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#8f887a';
+  ctx.fillRect(cx - tile * 0.28, cy + tile * 0.12, tile * 0.18, tile * 0.1);
+  ctx.fillRect(cx + tile * 0.02, cy + tile * 0.02, tile * 0.2, tile * 0.1);
+  ctx.fillStyle = '#4b9a47';
+  ctx.fillRect(cx - tile * 0.34, cy + tile * 0.32, tile * 0.7, tile * 0.08);
 }
 
 function drawLighthouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, lit = false): void {
