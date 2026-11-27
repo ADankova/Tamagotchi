@@ -542,4 +542,20 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(Math.hypot(d.x - frCenter().x, d.y - frCenter().y)).toBeLessThan(3);
     expect(s.inv.compote ?? 0).toBe(0);
   });
+
+  it('при полном рюкзаке добыча падает на землю рядом', () => {
+    const s = newForest(7);
+    const ti = s.tiles.findIndex((k, n) => k === 'tall' && n % 30 > 3 && n % 30 < 26 && Math.floor(n / 30) > 3 && Math.floor(n / 30) < 26);
+    const tx = ti % 30;
+    const ty = Math.floor(ti / 30);
+    s.x = tx + 0.5;
+    s.y = ty + 0.5;
+    s.inv = { stone: 99, branch: 99, flint: 99, mushroom: 99, berries: 99, flask: 1, torch: 1, cooked: 99, tea: 99, knife: 1 };
+    const before = s.drops.length;
+    const ev = [...frDo(s, tx, ty, 'cut'), ...run(s, 3000)];
+    expect(ev).toContainEqual({ type: 'spilled' });
+    expect(s.tiles[ti]).toBe('grass');
+    expect(s.drops.length).toBeGreaterThan(before);
+    expect(s.drops.some((d) => d.kind === 'grass')).toBe(true);
+  });
 });
