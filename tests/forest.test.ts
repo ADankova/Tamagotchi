@@ -507,4 +507,24 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     expect(m.frUnwear(s, 0)).toEqual([]);
     expect(s.inv.purse).toBe(1);
   });
+
+  it('прочность инструментов: 20 использований, потом ломаются', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.inv = { knife: 1 };
+    expect(m.frDurability(s, 'knife')).toBe(20);
+    s.dur.knife = 1;
+    const tall = s.tiles.findIndex((x) => x === 'tall');
+    expect(tall).toBeGreaterThan(-1);
+    const tx = tall % 30;
+    const ty = Math.floor(tall / 30);
+    s.x = tx + 0.5;
+    s.y = ty + 0.5;
+    const ev = [...frDo(s, tx, ty, 'cut'), ...run(s, 3000)];
+    expect(ev).toContainEqual({ type: 'broke', item: 'knife' });
+    expect(s.inv.knife ?? 0).toBe(0);
+    s.inv = { branch: 1, stone: 1 };
+    m.frCraft(s, 'knife');
+    expect(m.frDurability(s, 'knife')).toBe(20);
+  });
 });

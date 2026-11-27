@@ -30,6 +30,8 @@ export const FR_FIRE_RADIUS = 3.5;
 export const FR_NIGHT_REWARD = 2;
 
 export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom';
+export type FrTool = 'knife' | 'axe' | 'pickaxe';
+export const FR_TOOL_USES = 20;
 export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
@@ -61,6 +63,8 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
   worn: FrItem[];
+  /** Оставшаяся прочность инструментов (нет записи — полная). */
+  dur: Partial<Record<FrTool, number>>;
   /** Сколько ещё горит факел, мс (0 — не горит). */
   torch: number;
   /** Что лежит в окошке готовки у костра (вынуто из рюкзака). */
@@ -110,6 +114,7 @@ export type FrEvent =
   | { type: 'openLoom' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
+  | { type: 'broke'; item: FrTool }
   | { type: 'chopped' }
   | { type: 'crafted'; item: FrCraftId | 'cloth' | 'purse' }
   | { type: 'needMaterials' }
@@ -311,6 +316,7 @@ export function newForest(seed: number): FrState {
     pot: [],
     torch: 0,
     worn: [],
+    dur: {},
     chest: {},
     count: {},
     claimed: [],
@@ -574,7 +580,35 @@ export function frTap(s: FrState, x: number, y: number): FrEvent[] {
   return frDo(s, x, y, frActions(s, target)[0] ?? null);
 }
 
+/** Инструмент, который тратится на событие (или нет). */
+function toolFor(ev: FrEvent, s: FrState): FrTool | null {
+  if (ev.type === 'chopped') return 'axe';
+  if (ev.type === 'mined') return 'pickaxe';
+  if (ev.type === 'cut') return 'knife';
+  if (ev.type === 'picked' && ev.item === 'grass' && s.goal === null) return 'knife';
+  return null;
+}
+
+/** Остаток прочности инструмента. */
+export function frDurability(s: FrState, tool: FrTool): number {
+  return s.dur[tool] ?? FR_TOOL_USES;
+}
+
 function arrive(s: FrState): FrEvent[] {
+  const ev = arriveInner(s);
+  const tool = ev.map((e) => toolFor(e, s)).find((t) => t);
+  if (!tool || !(s.inv[tool] ?? 0)) return ev;
+  const left = frDurability(s, tool) - 1;
+  if (left > 0) {
+    s.dur[tool] = left;
+    return ev;
+  }
+  delete s.dur[tool];
+  delete s.inv[tool];
+  return [...ev, { type: 'broke', item: tool }];
+}
+
+function arriveInner(s: FrState): FrEvent[] {
   const goal = s.goal;
   s.goal = null;
   if (!goal) return [];
@@ -938,6 +972,7 @@ export function restoreForest(raw: unknown): FrState | null {
   if (!Array.isArray(s.pot)) s.pot = [];
   if (typeof s.torch !== 'number') s.torch = 0;
   if (!Array.isArray(s.worn)) s.worn = [];
+  if (!s.dur || typeof s.dur !== 'object') s.dur = {};
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
   // Старые сохранения (1.32–1.33) считали по-другому — переносим, что можно.
   const old = (s.count && typeof s.count === 'object' ? s.count : {}) as Record<string, number>;
@@ -1010,7 +1045,10 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   if (FR_BUILDINGS.includes(id) && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
   if (id === 'torch') s.inv.torch = (s.inv.torch ?? 0) + 1;
-  else if (!FR_BUILDINGS.includes(id)) s.inv[id as FrItem] = 1;
+  else if (!FR_BUILDINGS.includes(id)) {
+    s.inv[id as FrItem] = 1;
+    delete s.dur[id as FrTool];
+  }
   else s.tiles[cell!] = id as FrTile;
   bump(s, `craft:${id}`);
   return withQuest(s, [{ type: 'crafted', item: id }]);

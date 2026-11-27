@@ -303,6 +303,7 @@ export const en: Dict = {
       torchLit: 'The torch is lit',
       torchOut: 'The torch burned out',
       worn: 'Purse worn: backpack +4 slots',
+      broke: 'Broken: {item}',
       noRoom: 'Free up some backpack room first',
       needKnife: "You can't cut grass without a knife",
       needAxe: 'You cannot chop a tree without an axe',
