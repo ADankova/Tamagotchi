@@ -1582,33 +1582,17 @@ export class ForestGame implements GameScreen {
         const py = Math.floor(sy(y));
         const size = Math.ceil(tile) + 1;
         if (tileKind === 'water') {
-          ctx.fillStyle = '#5aaef0';
-          ctx.fillRect(px, py, size, size);
-          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-          ctx.lineWidth = Math.max(1, tile * 0.06);
-          const wave = Math.sin(t / 600 + x * 1.3 + y * 0.7) * tile * 0.1;
-          ctx.beginPath();
-          ctx.moveTo(px + tile * 0.2 + wave, py + tile * 0.4);
-          ctx.lineTo(px + tile * 0.5 + wave, py + tile * 0.4);
-          ctx.stroke();
-          // Берег: песчаная полоска и белая пена там, где вода граничит с сушей.
-          const land = (nx: number, ny: number): boolean => nx >= 0 && ny >= 0 && nx < FR_W && ny < FR_H && s.tiles[frIndex(nx, ny)] !== 'water';
-          const sand = Math.max(2, Math.round(tile * 0.2));
-          const foam = Math.max(1, Math.round(tile * 0.06));
-          const edges: Array<[boolean, number, number, number, number]> = [
-            [land(x, y - 1), px, py, size, sand],
-            [land(x, y + 1), px, py + size - sand, size, sand],
-            [land(x - 1, y), px, py, sand, size],
-            [land(x + 1, y), px + size - sand, py, sand, size],
-          ];
-          for (const [on, ex, ey, ew, eh] of edges) {
-            if (!on) continue;
-            ctx.fillStyle = '#ecd9a0';
-            ctx.fillRect(ex, ey, ew, eh);
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            if (ew === size) ctx.fillRect(ex, ey === py ? ey + eh : ey - foam, ew, foam);
-            else ctx.fillRect(ex === px ? ex + ew : ex - foam, ey, foam, eh);
-          }
+          const isLand = (nx: number, ny: number): boolean => nx >= 0 && ny >= 0 && nx < FR_W && ny < FR_H && s.tiles[frIndex(nx, ny)] !== 'water';
+          drawWater(ctx, px, py, size, t, x, y, {
+            n: isLand(x, y - 1),
+            e: isLand(x + 1, y),
+            s: isLand(x, y + 1),
+            w: isLand(x - 1, y),
+            nw: isLand(x - 1, y - 1),
+            ne: isLand(x + 1, y - 1),
+            se: isLand(x + 1, y + 1),
+            sw: isLand(x - 1, y + 1),
+          }, groundTile(s.loc === 'cave' ? 'cave' : 'meadow', x, y));
         } else {
           const gt = groundTile(s.loc === 'cave' ? 'cave' : 'meadow', x, y);
           if (gt) ctx.drawImage(gt, px, py, size, size);
@@ -1654,7 +1638,7 @@ export class ForestGame implements GameScreen {
             },
           });
         }
-        else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
+        else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i), cellHash(x, y, 7)) });
         else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => { if (!drawSprite(ctx, 'grass', cellHash(x, y, 4) % natureCount('grass'), cx, cy + tile * 0.42, { w: tile * 0.9 }, Math.sin(t / 650 + x * 1.7 + y) * tile * 0.07)) drawTall(ctx, cx, cy, tile, i, t); } });
         else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, false) });
         else if (kind === 'ore') items.push({ y: y + 0.6, draw: () => { if (!drawSprite(ctx, 'ore', cellHash(x, y, 3) % natureCount('ore'), cx, cy + tile * 0.46, { w: tile * 1.02 })) drawWall(ctx, cx, cy, tile, true); } });
@@ -1882,6 +1866,121 @@ function outline(ctx: CanvasRenderingContext2D, size: number): void {
   ctx.lineCap = 'round';
 }
 
+interface Shore {
+  n: boolean;
+  e: boolean;
+  s: boolean;
+  w: boolean;
+  nw: boolean;
+  ne: boolean;
+  se: boolean;
+  sw: boolean;
+}
+
+/** Клетка воды с берегом: песок и белая пена, внешние и внутренние углы закруглены. */
+export function drawWater(ctx: CanvasRenderingContext2D, px: number, py: number, size: number, t: number, x: number, y: number, L: Shore, ground: HTMLCanvasElement | null): void {
+  const sand = Math.max(2, size * 0.2);
+  const foam = Math.max(1.5, size * 0.07);
+  const R = size * 0.42;
+  const anyLand = L.n || L.e || L.s || L.w || L.nw || L.ne || L.se || L.sw;
+  if (!anyLand) {
+    ctx.fillStyle = '#5aaef0';
+    ctx.fillRect(px, py, size, size);
+  } else {
+    // Под водой — земля: она видна в закруглённых углах.
+    if (ground) ctx.drawImage(ground, px, py, size, size);
+    else {
+      ctx.fillStyle = '#7cc56b';
+      ctx.fillRect(px, py, size, size);
+    }
+    // Песчаная форма клетки: углы, где суша с двух сторон, скруглены.
+    const rNW = L.n && L.w ? R : 0;
+    const rNE = L.n && L.e ? R : 0;
+    const rSE = L.s && L.e ? R : 0;
+    const rSW = L.s && L.w ? R : 0;
+    const shape = (x0: number, y0: number, x1: number, y1: number, k: number): void => {
+      const r = (v: number): number => Math.max(0, v - k);
+      ctx.beginPath();
+      ctx.moveTo(x0 + r(rNW), y0);
+      ctx.lineTo(x1 - r(rNE), y0);
+      if (rNE) ctx.arc(x1 - r(rNE), y0 + r(rNE), r(rNE), -Math.PI / 2, 0);
+      ctx.lineTo(x1, y1 - r(rSE));
+      if (rSE) ctx.arc(x1 - r(rSE), y1 - r(rSE), r(rSE), 0, Math.PI / 2);
+      ctx.lineTo(x0 + r(rSW), y1);
+      if (rSW) ctx.arc(x0 + r(rSW), y1 - r(rSW), r(rSW), Math.PI / 2, Math.PI);
+      ctx.lineTo(x0, y0 + r(rNW));
+      if (rNW) ctx.arc(x0 + r(rNW), y0 + r(rNW), r(rNW), Math.PI, Math.PI * 1.5);
+      ctx.closePath();
+    };
+    ctx.fillStyle = '#ecd9a0';
+    shape(px, py, px + size, py + size, 0);
+    ctx.fill();
+    // Вода внутри песка.
+    const wx0 = px + (L.w ? sand : 0);
+    const wy0 = py + (L.n ? sand : 0);
+    const wx1 = px + size - (L.e ? sand : 0);
+    const wy1 = py + size - (L.s ? sand : 0);
+    ctx.save();
+    shape(wx0, wy0, wx1, wy1, sand);
+    ctx.fillStyle = '#5aaef0';
+    ctx.fill();
+    ctx.clip();
+    // Внутренние углы: суша заходит в угол клетки воды, у неё свой песчаный ободок.
+    const notch = (cx: number, cy: number): void => {
+      ctx.fillStyle = '#ecd9a0';
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = foam;
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.5 + foam / 2, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+    if (L.nw && !L.n && !L.w) notch(px, py);
+    if (L.ne && !L.n && !L.e) notch(px + size, py);
+    if (L.se && !L.s && !L.e) notch(px + size, py + size);
+    if (L.sw && !L.s && !L.w) notch(px, py + size);
+    ctx.restore();
+    // Пена вдоль берега.
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = foam;
+    ctx.lineCap = 'butt';
+    const line = (ax: number, ay: number, bx: number, by: number): void => {
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    };
+    const f = foam / 2;
+    const cr = (v: number): number => Math.max(0, v - sand);
+    if (L.n) line(wx0 + cr(rNW), wy0 + f, wx1 - cr(rNE), wy0 + f);
+    if (L.s) line(wx0 + cr(rSW), wy1 - f, wx1 - cr(rSE), wy1 - f);
+    if (L.w) line(wx0 + f, wy0 + cr(rNW), wx0 + f, wy1 - cr(rSW));
+    if (L.e) line(wx1 - f, wy0 + cr(rNE), wx1 - f, wy1 - cr(rSE));
+    const arc = (cx: number, cy: number, rr: number, a0: number, a1: number): void => {
+      if (rr <= 0) return;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rr - f, a0, a1);
+      ctx.stroke();
+    };
+    if (rNE) arc(wx1 - cr(rNE), wy0 + cr(rNE), cr(rNE), -Math.PI / 2, 0);
+    if (rSE) arc(wx1 - cr(rSE), wy1 - cr(rSE), cr(rSE), 0, Math.PI / 2);
+    if (rSW) arc(wx0 + cr(rSW), wy1 - cr(rSW), cr(rSW), Math.PI / 2, Math.PI);
+    if (rNW) arc(wx0 + cr(rNW), wy0 + cr(rNW), cr(rNW), Math.PI, Math.PI * 1.5);
+  }
+  // Лёгкая рябь только в открытой воде.
+  if (!(L.n || L.e || L.s || L.w)) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = Math.max(1, size * 0.06);
+    const wave = Math.sin(t / 600 + x * 1.3 + y * 0.7) * size * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(px + size * 0.2 + wave, py + size * 0.4);
+    ctx.lineTo(px + size * 0.5 + wave, py + size * 0.4);
+    ctx.stroke();
+  }
+}
+
 function drawTree(ctx: CanvasRenderingContext2D, cx: number, bottom: number, tile: number): void {
   outline(ctx, tile);
   ctx.fillStyle = '#8a5a35';
@@ -1904,7 +2003,8 @@ function drawTree(ctx: CanvasRenderingContext2D, cx: number, bottom: number, til
   }
 }
 
-function drawBush(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, berries: boolean): void {
+function drawBush(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, berries: boolean, v = 0): void {
+  if (drawSprite(ctx, berries ? 'berrybush' : 'bush', v, cx, cy + tile * 0.42, { w: tile * 0.95 })) return;
   outline(ctx, tile);
   ctx.fillStyle = '#4caf50';
   ctx.beginPath();
@@ -2312,9 +2412,13 @@ function drawPit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: nu
 
 /** Предмет на земле или в рюкзаке: центр (cx, cy), size — примерная ширина. */
 function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: number, size: number, t: number, phase = 0): void {
-  outline(ctx, size);
   const bob = Math.sin(t / 500 + phase) * size * 0.03;
   cy += bob;
+  if (kind === 'branch' || kind === 'stone' || kind === 'flint' || kind === 'mushroom') {
+    const w = kind === 'mushroom' ? 0.85 : kind === 'flint' ? 0.7 : 0.95;
+    if (drawSprite(ctx, kind, phase, cx, cy + size * 0.4, { w: size * w })) return;
+  }
+  outline(ctx, size);
   switch (kind) {
     case 'pickaxe':
       ctx.strokeStyle = INK;
