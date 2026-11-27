@@ -124,6 +124,20 @@ function torchIcon(): HTMLCanvasElement {
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
+const ACT_SPRITE: Readonly<Partial<Record<FrAction, string>>> = { pick: 'act-hand', chop: 'item-axe', drink: 'act-drop', light: 'act-flame', feed: 'branch', cook: 'item-friedegg', open: 'chest', fill: 'item-flask', mine: 'item-pickaxe', cut: 'item-knife', fish: 'item-rod', travel: 'act-door' };
+function actIcon(a: FrAction): HTMLCanvasElement {
+  const c = el('canvas', { width: '56', height: '56' }) as HTMLCanvasElement;
+  c.style.cssText = 'width:28px;height:28px;display:block;margin:auto';
+  const g = c.getContext('2d');
+  const kind = ACT_SPRITE[a];
+  if (g && !(kind && drawIcon(g, kind, 28, 28, 52))) {
+    g.font = '40px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(ACT_ICONS[a], 28, 28);
+  }
+  return c;
+}
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -329,7 +343,7 @@ export class ForestGame implements GameScreen {
   private openMenu(x: number, y: number, actions: FrAction[]): void {
     const buttons = actions.map((a) => {
       const b = el('button', { type: 'button', class: 'fr-act', 'aria-label': GAMES_TEXT.forestActs[a] ?? a }, [
-        el('span', { class: 'fr-act-icon', text: ACT_ICONS[a] }),
+        el('span', { class: 'fr-act-icon' }, [actIcon(a)]),
         el('span', { class: 'fr-act-name', text: GAMES_TEXT.forestActs[a] ?? a }),
       ]);
       b.addEventListener('click', () => {
@@ -2511,11 +2525,10 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
   const bob = Math.sin(t / 500 + phase) * size * 0.03;
   cy += bob;
   if (kind === 'branch' || kind === 'stone' || kind === 'flint' || kind === 'mushroom') {
-    const w = kind === 'mushroom' ? 0.85 : kind === 'flint' ? 0.7 : 0.95;
-    if (drawSprite(ctx, kind, phase, cx, cy + size * 0.4, { w: size * w })) return;
+    if (drawIcon(ctx, kind, cx, cy, size * (kind === 'flint' ? 0.8 : 0.95), phase)) return;
   }
   if (kind === 'crystal' || kind === 'glowcap') {
-    if (drawSprite(ctx, kind, phase, cx, cy + size * 0.42, { w: size * 0.95 })) return;
+    if (drawIcon(ctx, kind, cx, cy, size * 0.95, phase)) return;
   }
   if (kind === 'reed' || kind === 'grass') {
     if (drawIcon(ctx, kind === 'reed' ? 'reed' : 'grass', cx, cy, size * 0.95)) return;
