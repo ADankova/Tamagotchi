@@ -21,12 +21,15 @@ import {
 import { clampStat, clonePet } from './pet';
 import type { ActionType, Cooldowns, GameEvent, Pet, StatKey } from './types';
 
+/** Здоровье, при котором лекарство не нужно (если питомец не болеет). */
+const MAX_HEALTH = 100;
+
 export const ACTIONS: readonly ActionType[] = ['feed', 'snack', 'play', 'sleep', 'clean', 'medicine'];
 
 /** Во сне питомца нельзя кормить, баловать, лечить и играть с ним — только разбудить или прибраться. */
 export const SLEEP_BLOCKED: readonly ActionType[] = ['feed', 'snack', 'play', 'medicine'];
 
-export type ActionBlockReason = 'noPet' | 'egg' | 'dead' | 'sleeping' | 'sick' | 'cooldown' | 'noTreats' | 'clean';
+export type ActionBlockReason = 'noPet' | 'egg' | 'dead' | 'sleeping' | 'sick' | 'cooldown' | 'noTreats' | 'clean' | 'healthy';
 
 export type ActionResult =
   | { ok: true; pet: Pet; cooldowns: Cooldowns; events: GameEvent[] }
@@ -51,6 +54,7 @@ export function blockReason(
   if (action === 'play' && pet.isSick) return 'sick';
   if (action === 'snack' && pet.treats <= 0) return 'noTreats';
   if (action === 'clean' && pet.poops <= 0) return 'clean';
+  if (action === 'medicine' && !pet.isSick && pet.stats.health >= MAX_HEALTH) return 'healthy';
   if (cooldownLeft(cooldowns, action, now) > 0) return 'cooldown';
   return null;
 }

@@ -127,8 +127,16 @@ describe('эффекты действий (таблица 2.2)', () => {
     expect(result.ok && result.events).toEqual([{ type: 'recovered' }]);
   });
 
-  it('лекарство здоровому — счастье −10', () => {
-    expect(act(makePet(), 'medicine').stats.happiness).toBe(70);
+  it('лекарство при полном здоровье недоступно, пока питомец не болеет', () => {
+    const full = makePet({ stats: { ...START_STATS, health: 100 } });
+    expect(blockReason(full, 'medicine', {}, T0)).toBe('healthy');
+    expect(performAction(full, 'medicine', {}, T0)).toEqual({ ok: false, reason: 'healthy' });
+    expect(blockReason({ ...full, isSick: true }, 'medicine', {}, T0)).toBeNull();
+  });
+
+  it('лекарство при неполном здоровье лечит, но больному не нужному — счастье −10', () => {
+    const r = performAction(makePet({ stats: { ...START_STATS, health: 80 } }), 'medicine', {}, T0);
+    expect(r.ok && r.pet.stats.happiness).toBe(70);
   });
 });
 

@@ -301,6 +301,7 @@ export const en: Dict = {
     cooldown: 'Wait a couple of seconds.',
     noTreats: 'No treats — earn some in “Play”!',
     clean: 'Nothing to clean — all tidy.',
+    healthy: 'The pet is healthy — no medicine needed.',
   },
   EVENT_MESSAGES: {
     hatched: (name: string) => `${name} hatched!`,
