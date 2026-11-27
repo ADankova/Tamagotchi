@@ -944,6 +944,7 @@ function arrive(s: FrState): FrEvent[] {
   const ev = arriveInner(s);
   const tool = ev.map((e) => toolFor(e, s)).find((t) => t);
   if (!tool || !(s.inv[tool] ?? 0)) return ev;
+  if (tool !== 'rod') s.stats.food = Math.max(0, s.stats.food - FR_TOOL_FOOD);
   const left = frDurability(s, tool) - 1;
   if (left > 0) {
     s.dur[tool] = left;
@@ -1342,6 +1343,8 @@ export function frSleep(s: FrState, on: boolean): void {
 
 /** За игровые сутки сытость и вода падают на столько. */
 const FOOD_PER_DAY = 25;
+/** Сколько сытости съедает одна работа топором, киркой или ножом. */
+export const FR_TOOL_FOOD = 1.5;
 const WATER_PER_DAY = 35;
 const LOW = 25;
 
