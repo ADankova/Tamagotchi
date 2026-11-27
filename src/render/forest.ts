@@ -4,7 +4,7 @@ import {
   FR_EVENING_AT,
   FR_FIRE_RADIUS,
   FR_NIGHT_AT,
-  FR_FOOD,
+  FR_EFFECTS,
   FR_H,
   FR_SLOTS,
   FR_W,
@@ -27,6 +27,7 @@ import {
   FR_QUESTS,
   type FrQuest,
   frEat,
+  frTorch,
   frPotAdd,
   frPotCook,
   frPotRemove,
@@ -65,7 +66,7 @@ const LABEL_RADIUS = 2.3;
 const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'water', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -74,6 +75,7 @@ const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   feed: '🪵',
   cook: '🍳',
   open: '📦',
+  fill: '🫗',
   mine: '⛏️',
   cut: '✂️',
   sleep: '💤',
@@ -361,6 +363,21 @@ export class ForestGame implements GameScreen {
         case 'cut':
           this.say(M.cut, 'place');
           break;
+        case 'needFlask':
+          this.say(M.needFlask, 'blocked');
+          break;
+        case 'filled':
+          this.say(M.filled, 'place');
+          break;
+        case 'found':
+          this.say(M.found(item(ev.item)), 'snack');
+          break;
+        case 'torchLit':
+          this.say(M.torchLit, 'win');
+          break;
+        case 'torchOut':
+          this.say(M.torchOut, 'miss');
+          break;
         case 'chopped':
           this.say(M.chopped, 'place');
           break;
@@ -575,7 +592,7 @@ export class ForestGame implements GameScreen {
       ]),
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
-    if (!frCanCraft(s, id) || owned > 0) make.setAttribute('disabled', '');
+    if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch')) make.setAttribute('disabled', '');
     make.addEventListener('click', () => {
       if (id === 'chest') {
         this.startPlacing();
@@ -799,10 +816,19 @@ export class ForestGame implements GameScreen {
     const icon = el('canvas', { class: 'fr-card-icon', width: '96', height: '96' }) as HTMLCanvasElement;
     const ictx = icon.getContext('2d');
     if (ictx) drawItem(ictx, item, 48, 50, 78, 0);
-    const food = FR_FOOD[item];
+    const fx = FR_EFFECTS[item];
     const buttons: HTMLElement[] = [];
-    if (food) {
-      const eat = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestEat });
+    if (item === 'torch') {
+      const light = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestLight });
+      light.addEventListener('click', () => {
+        this.handle(frTorch(s));
+        this.renderItem(item);
+      });
+      buttons.push(light);
+    }
+    if (fx) {
+      const drink = !fx.food && !!fx.water;
+      const eat = el('button', { type: 'button', class: 'chunky fr-action', text: drink ? GAMES_TEXT.forestDrink : GAMES_TEXT.forestEat });
       eat.addEventListener('click', () => {
         this.handle(frEat(s, item));
         this.renderItem(item);
@@ -822,7 +848,7 @@ export class ForestGame implements GameScreen {
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: `${GAMES_TEXT.forestItems[item] ?? item} ×${s.inv[item]}` }), close]),
         el('div', { class: 'fr-card-top' }, [
           icon,
-          el('div', { class: 'fr-card-lines' }, food ? [el('span', { text: GAMES_TEXT.forestFoodLine(food) })] : []),
+          el('div', { class: 'fr-card-lines' }, fx ? Object.entries(fx).map(([k, v]) => el('span', { text: `${GAMES_TEXT.forestStatNames[k] ?? k} +${v}` })) : []),
         ]),
         el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestDesc[item] ?? '' }),
         el('div', { class: 'fr-actions' }, buttons),
@@ -1078,6 +1104,7 @@ export class ForestGame implements GameScreen {
       sh.fillRect(x - r, y - r, r * 2, r * 2);
     };
     if (s.fire > 0) hole(fx, fy, FR_FIRE_RADIUS * tile * (1 + Math.sin(t / 130) * 0.03), 1);
+    if (s.torch > 0) hole(sx(s.x), sy(s.y), tile * 3 * (1 + Math.sin(t / 110) * 0.04), 0.95);
     // Немного видно вокруг самого питомца.
     hole(sx(s.x), sy(s.y), tile * 1.4, 0.55);
     sh.globalCompositeOperation = 'source-over';
@@ -1443,6 +1470,112 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.quadraticCurveTo(cx + size * 0.02, cy - size * 0.48, cx + size * 0.12, cy - size * 0.56);
       ctx.stroke();
       break;
+    case 'torch':
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = size * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.05, cy + size * 0.4);
+      ctx.lineTo(cx + size * 0.05, cy - size * 0.1);
+      ctx.stroke();
+      ctx.strokeStyle = '#a0683b';
+      ctx.lineWidth = size * 0.1;
+      ctx.stroke();
+      ctx.fillStyle = '#ff9a3c';
+      ctx.beginPath();
+      ctx.ellipse(cx + size * 0.05, cy - size * 0.25, size * 0.17, size * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe27a';
+      ctx.beginPath();
+      ctx.ellipse(cx + size * 0.05, cy - size * 0.2, size * 0.08, size * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'flask':
+    case 'water':
+      ctx.fillStyle = kind === 'flask' ? '#b98a52' : '#5aaef0';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size * 0.08, size * 0.26, size * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#8a6a3c';
+      ctx.fillRect(cx - size * 0.07, cy - size * 0.32, size * 0.14, size * 0.14);
+      ctx.strokeRect(cx - size * 0.07, cy - size * 0.32, size * 0.14, size * 0.14);
+      if (kind === 'flask') {
+        ctx.strokeStyle = '#e9d7a8';
+        ctx.lineWidth = size * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(cx - size * 0.2, cy + size * 0.08);
+        ctx.lineTo(cx + size * 0.2, cy + size * 0.08);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(cx - size * 0.12, cy - size * 0.02, size * 0.07, size * 0.14);
+      }
+      break;
+    case 'egg':
+      ctx.fillStyle = '#f4efe2';
+      for (const dx of [-0.14, 0.14]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + dx * size, cy + size * 0.02, size * 0.15, size * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#8b7a66';
+      ctx.fillRect(cx - size * 0.18, cy - size * 0.05, size * 0.05, size * 0.05);
+      ctx.fillRect(cx + size * 0.12, cy + size * 0.05, size * 0.05, size * 0.05);
+      break;
+    case 'seeds':
+      ctx.fillStyle = '#c99a4a';
+      for (const [dx, dy] of [[-0.18, 0.08], [0.02, 0.14], [0.18, 0], [-0.04, -0.1], [0.1, -0.16]] as const) {
+        ctx.beginPath();
+        ctx.ellipse(cx + dx * size, cy + dy * size, size * 0.09, size * 0.06, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    case 'friedegg':
+      ctx.fillStyle = '#fffaf0';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size * 0.04, size * 0.36, size * 0.26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffc93c';
+      ctx.beginPath();
+      ctx.arc(cx - size * 0.04, cy, size * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'tea':
+    case 'compote':
+    case 'porridge':
+    case 'berryporridge': {
+      const liquid = { tea: '#8cc66a', compote: '#d9455a', porridge: '#f2dca0', berryporridge: '#f2dca0' }[kind];
+      ctx.fillStyle = '#d9cbb0';
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.34, cy - size * 0.05);
+      ctx.lineTo(cx + size * 0.34, cy - size * 0.05);
+      ctx.quadraticCurveTo(cx + size * 0.3, cy + size * 0.34, cx, cy + size * 0.34);
+      ctx.quadraticCurveTo(cx - size * 0.3, cy + size * 0.34, cx - size * 0.34, cy - size * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = liquid;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - size * 0.05, size * 0.3, size * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (kind === 'berryporridge') {
+        ctx.fillStyle = '#e8505b';
+        for (const dx of [-0.12, 0.02, 0.14]) {
+          ctx.beginPath();
+          ctx.arc(cx + dx * size, cy - size * 0.07, size * 0.05, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      if (kind === 'tea') {
+        ctx.fillStyle = '#d9cbb0';
+        ctx.fillRect(cx + size * 0.32, cy, size * 0.1, size * 0.14);
+        ctx.strokeRect(cx + size * 0.32, cy, size * 0.1, size * 0.14);
+      }
+      break;
+    }
     case 'berries':
       ctx.fillStyle = '#e8505b';
       for (const [dx, dy] of [
