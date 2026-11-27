@@ -171,6 +171,7 @@ export class ForestGame implements GameScreen {
     });
     if (this.state.over) this.showOver();
     this.questLine.addEventListener('click', () => this.openQuests());
+    this.shelterTip();
     this.updateHud();
     window.requestAnimationFrame((t) => this.frame(t));
   }
@@ -1024,6 +1025,15 @@ export class ForestGame implements GameScreen {
     this.overPanel.removeAttribute('hidden');
   }
 
+  /** В начале похода: предупреждение про дождь и шалаш. */
+  private shelterTip(): void {
+    const s = this.state;
+    if (s.over || s.day > 1 || s.clock > 30_000 || s.count.tip) return;
+    s.count.tip = 1;
+    this.say(GAMES_TEXT.forestShelterTip);
+    this.messageLeft = 12_000;
+  }
+
   private restart(): void {
     this.state = newForest(randomSeed());
     storeSaved(this.state);
@@ -1031,6 +1041,7 @@ export class ForestGame implements GameScreen {
     this.bag.setAttribute('hidden', '');
     this.closeMenu();
     this.say(GAMES_TEXT.forestHint);
+    this.shelterTip();
   }
 
   private restartButton(): HTMLElement {
