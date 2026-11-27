@@ -2,7 +2,11 @@ import { randomSeed } from '../core/rng';
 import {
   FR_DAY_MS,
   FR_EVENING_AT,
-  FR_FIRE_RADIUS,
+  frFireRadius,
+  frRainHere,
+  frTravel,
+  frToolUses,
+  type FrPlace,
   FR_NIGHT_AT,
   FR_EFFECTS,
   FR_H,
@@ -19,6 +23,7 @@ import {
   frChestPut,
   frPlaceSpots,
   frAttack,
+  frExitAt,
   frMobAt,
   FR_MOBS,
   type FrMob,
@@ -30,7 +35,6 @@ import {
   frLoomDone,
   FR_SHELTER_RAINS,
   frDurability,
-  FR_TOOL_USES,
   type FrTool,
   frWeave,
   frCanWeave,
@@ -88,8 +92,8 @@ const INK = '#3b2a1e';
 const STATS: readonly FrStat[] = ['food', 'water', 'warmth', 'health'];
 const STAT_COLORS: Readonly<Record<FrStat, string>> = { food: '#ffb05c', water: '#5aaef0', warmth: '#ff7a59', health: '#5fce85' };
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤' };
-const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe'];
-const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge'];
+const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick'];
+const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ironaxe', 'ironpick'];
 const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   pick: '✋',
   chop: '🪓',
@@ -102,6 +106,8 @@ const ACT_ICONS: Readonly<Record<FrAction, string>> = {
   mine: '⛏️',
   cut: '✂️',
   sleep: '💤',
+  fish: '🎣',
+  travel: '🚪',
 };
 
 interface Callbacks {
@@ -443,6 +449,28 @@ export class ForestGame implements GameScreen {
           break;
         case 'petHit':
           break;
+        case 'traveled':
+          this.closeMenu();
+          this.closeBag();
+          this.say(GAMES_TEXT.forestTraveled[ev.to] ?? '', 'win');
+          this.messageLeft = 7000;
+          break;
+        case 'travelAsk':
+          this.renderTravel(ev.to);
+          this.bag.removeAttribute('hidden');
+          break;
+        case 'needRod':
+          this.say(M.needRod, 'blocked');
+          break;
+        case 'fished':
+          this.say(M.fished, 'win');
+          break;
+        case 'noBite':
+          this.say(M.noBite, 'blocked');
+          break;
+        case 'tooDark':
+          this.say(M.tooDark, 'blocked');
+          break;
         case 'hurt':
           this.say(M.hurt.replace('{mob}', GAMES_TEXT.forestMobs[ev.kind] ?? ev.kind).replace('{n}', String(ev.dmg)), 'blocked');
           break;
@@ -683,8 +711,12 @@ export class ForestGame implements GameScreen {
     );
     const make = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestMake });
     if (!frCanCraft(s, id) || (owned > 0 && id !== 'torch' && id !== 'trap')) make.setAttribute('disabled', '');
+    const away = FR_BUILDINGS.includes(id) && id !== 'trap' && s.loc !== 'home';
+    if (away) make.setAttribute('disabled', '');
     const why =
-      owned > 0 && id !== 'torch' && id !== 'trap'
+      away
+        ? GAMES_TEXT.forestHomeOnly
+        : owned > 0 && id !== 'torch' && id !== 'trap'
         ? GAMES_TEXT.forestAlreadyBuilt
         : !frCanCraft(s, id)
           ? GAMES_TEXT.forestNeedMats
@@ -807,6 +839,25 @@ export class ForestGame implements GameScreen {
     close.addEventListener('click', () => this.closeBag());
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-craft' }, [el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestPlaces.loom ?? '' }), close]), ...rows]),
+    );
+  }
+
+  /** Подтверждение выхода из дома: про костёр, дождь и факелы. */
+  private renderTravel(to: FrPlace): void {
+    const go = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestGo });
+    go.addEventListener('click', () => {
+      this.closeBag();
+      this.handle(frTravel(this.state, to));
+    });
+    const stay = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestStay });
+    stay.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestLocs[to] ?? '' })]),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelWarn[to] ?? '' }),
+        el('p', { class: 'fr-card-desc', text: GAMES_TEXT.forestTravelCommon }),
+        el('div', { class: 'fr-actions' }, [go, stay]),
+      ]),
     );
   }
 
@@ -957,10 +1008,11 @@ export class ForestGame implements GameScreen {
   /** Полоска прочности инструмента. */
   private durBar(tool: FrTool): HTMLElement {
     const left = frDurability(this.state, tool);
-    const pct = Math.round((left / FR_TOOL_USES) * 100);
+    const uses = frToolUses(tool);
+    const pct = Math.round((left / uses) * 100);
     const color = pct > 50 ? '#4caf50' : pct > 25 ? '#f0b429' : '#e0443e';
     const fill = el('i', { style: `width:${pct}%;background:${color}` });
-    return el('span', { class: 'fr-dur', title: `${left}/${FR_TOOL_USES}` }, [fill]);
+    return el('span', { class: 'fr-dur', title: `${left}/${uses}` }, [fill]);
   }
 
   private renderItem(item: FrItem): void {
@@ -1090,7 +1142,8 @@ export class ForestGame implements GameScreen {
     const s = this.state;
     const day = GAMES_TEXT.forestDay(s.day);
     this.clockHand.setAttribute('transform', `rotate(${((s.clock / FR_DAY_MS) * 360).toFixed(1)} 24 24)`);
-    if (this.dayChip.textContent !== day) this.dayChip.textContent = day;
+    const dayText = s.loc === 'home' ? day : `${day} · ${GAMES_TEXT.forestLocs[s.loc]}`;
+    if (this.dayChip.textContent !== dayText) this.dayChip.textContent = dayText;
     const treats = GAMES_TEXT.forestTreats(s.treats);
     if (this.treatText.textContent !== treats) this.treatText.textContent = treats;
     for (const [k, bar] of this.bars) {
@@ -1113,7 +1166,7 @@ export class ForestGame implements GameScreen {
     const torchOn = s.torch > 0;
     this.torchBox.hidden = !torchOn;
     if (torchOn) this.torchFill.style.width = `${Math.max(0, Math.min(100, (s.torch / FR_TORCH_MS) * 100))}%`;
-    const raining = s.weather.rain;
+    const raining = frRainHere(s);
     const soon = frRainSoon(s);
     this.rainIcon.hidden = !raining && !soon;
     this.rainIcon.classList.toggle('blink', soon);
@@ -1188,7 +1241,7 @@ export class ForestGame implements GameScreen {
           ctx.lineTo(px + tile * 0.5 + wave, py + tile * 0.4);
           ctx.stroke();
         } else {
-          ctx.fillStyle = (x + y) % 2 ? '#7cc56b' : '#76bd65';
+          ctx.fillStyle = s.loc === 'cave' ? ((x + y) % 2 ? '#8a847a' : '#837d73') : (x + y) % 2 ? '#7cc56b' : '#76bd65';
           ctx.fillRect(px, py, size, size);
         }
       }
@@ -1230,6 +1283,10 @@ export class ForestGame implements GameScreen {
         }
         else if (kind === 'bush') items.push({ y: y + 0.8, draw: () => drawBush(ctx, cx, cy, tile, s.berries.includes(i)) });
         else if (kind === 'tall') items.push({ y: y + 0.55, draw: () => drawTall(ctx, cx, cy, tile, i, t) });
+        else if (kind === 'rock' && s.loc === 'cave') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, false) });
+        else if (kind === 'ore') items.push({ y: y - 0.5, draw: () => drawWall(ctx, cx, cy, tile, true) });
+        else if (kind === 'exit') items.push({ y: y + 0.1, draw: () => drawExit(ctx, cx, cy, tile, s.loc, frExitAt(s, i)?.to ?? 'home', t) });
+        else if (kind === 'reed') items.push({ y: y + 0.55, draw: () => drawReed(ctx, cx, cy, tile, i, t) });
         else if (kind === 'rock') items.push({ y: y + 0.7, draw: () => drawRock(ctx, cx, cy, tile) });
         else if (kind === 'chest') items.push({ y: y + 0.7, draw: () => drawChest(ctx, cx, cy, tile) });
         else if (kind === 'loom') items.push({ y: y + 0.7, draw: () => drawLoom(ctx, cx, cy, tile) });
@@ -1305,7 +1362,7 @@ export class ForestGame implements GameScreen {
       ctx.fillStyle = '#7a4d2b';
       for (const [px, py] of [[0, 0], [3, 0], [0, 3], [3, 3]] as const) ctx.fillRect(x0 + px * tile - tile * 0.07, y0 + py * tile - tile * 0.07, tile * 0.14, tile * 0.14);
     }
-    if (s.weather.rain) {
+    if (frRainHere(s)) {
       const W = this.canvas.width;
       const H = this.canvas.height;
       ctx.fillStyle = 'rgba(40,60,90,0.18)';
@@ -1339,7 +1396,7 @@ export class ForestGame implements GameScreen {
     const fy = sy(c.y + 0.5);
     if (s.fire > 0) {
       // Тёплый отсвет огня.
-      const glow = ctx.createRadialGradient(fx, fy, 0, fx, fy, FR_FIRE_RADIUS * tile);
+      const glow = ctx.createRadialGradient(fx, fy, 0, fx, fy, frFireRadius(s) * tile);
       glow.addColorStop(0, `rgba(255,170,70,${0.25 * Math.max(0.3, dark)})`);
       glow.addColorStop(1, 'rgba(255,170,70,0)');
       ctx.fillStyle = glow;
@@ -1361,7 +1418,7 @@ export class ForestGame implements GameScreen {
       sh.fillStyle = g;
       sh.fillRect(x - r, y - r, r * 2, r * 2);
     };
-    if (s.fire > 0) hole(fx, fy, FR_FIRE_RADIUS * tile * (1 + Math.sin(t / 130) * 0.03), 1);
+    if (s.fire > 0) hole(fx, fy, frFireRadius(s) * tile * (1 + Math.sin(t / 130) * 0.03), 1);
     if (s.torch > 0) hole(sx(s.x), sy(s.y), tile * 3 * (1 + Math.sin(t / 110) * 0.04), 0.95);
     // Немного видно вокруг самого питомца.
     hole(sx(s.x), sy(s.y), tile * 1.4, 0.55);
@@ -1404,7 +1461,9 @@ export class ForestGame implements GameScreen {
         const d = drops.get(i);
         if (d) labels.push({ x, y, text: GAMES_TEXT.forestItems[d.kind] ?? d.kind });
         else if (kind === 'bush' && s.berries.includes(i)) labels.push({ x, y, text: GAMES_TEXT.forestPlaces.bush ?? '' });
-        else if (kind === 'rock') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
+        else if (kind === 'rock' && s.loc !== 'cave') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.rock ?? '' });
+        else if (kind === 'ore') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.ore ?? '' });
+        else if (kind === 'exit') labels.push({ x, y, text: GAMES_TEXT.forestPlaces[`exit_${frExitAt(s, i)?.to ?? 'home'}`] ?? '' });
         else if (kind === 'trapfull') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.trapfull ?? '' });
         else if (kind === 'loom') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.loom ?? '' });
         else if (kind === 'chest') labels.push({ x, y, text: GAMES_TEXT.forestPlaces.chest ?? '' });
@@ -1611,6 +1670,52 @@ function drawMob(ctx: CanvasRenderingContext2D, m: FrMob, x: number, y: number, 
     ctx.fillStyle = '#e0443e';
     ctx.fillRect(x - w / 2, y - tile * (k === 'wolf' ? 0.75 : 0.55), (w * Math.max(0, m.hp)) / FR_MOBS[k].hp, 5);
   }
+}
+
+/** Стена пещеры; с рудой — с оранжевыми вкраплениями. */
+function drawWall(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, ore: boolean): void {
+  const x = cx - tile / 2;
+  const y = cy - tile / 2;
+  ctx.fillStyle = '#4b463f';
+  ctx.fillRect(x, y, tile + 1, tile + 1);
+  ctx.fillStyle = '#5c564d';
+  ctx.fillRect(x + tile * 0.08, y + tile * 0.08, tile * 0.84, tile * 0.3);
+  if (ore) {
+    ctx.fillStyle = '#e8a23c';
+    for (const [a, b] of [[0.25, 0.55], [0.55, 0.45], [0.7, 0.72], [0.35, 0.8]] as const) ctx.fillRect(x + a * tile, y + b * tile, tile * 0.16, tile * 0.16);
+  }
+}
+
+function drawReed(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, seed: number, t: number): void {
+  ctx.strokeStyle = '#3f7d3a';
+  ctx.lineWidth = Math.max(2, tile * 0.07);
+  for (let k = 0; k < 4; k++) {
+    const bx = cx + (k - 1.5) * tile * 0.2;
+    const sway = Math.sin(t / 700 + seed + k) * tile * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(bx, cy + tile * 0.35);
+    ctx.lineTo(bx + sway, cy - tile * (0.2 + (k % 2) * 0.12));
+    ctx.stroke();
+    ctx.fillStyle = '#8a5a2b';
+    ctx.fillRect(bx + sway - tile * 0.04, cy - tile * (0.32 + (k % 2) * 0.12), tile * 0.08, tile * 0.14);
+  }
+}
+
+/** Выход: табличка со стрелкой; дома две, в походе одна обратно. */
+function drawExit(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number, loc: FrPlace, to: FrPlace, t: number): void {
+  ctx.fillStyle = '#7a4d2b';
+  ctx.fillRect(cx - tile * 0.05, cy - tile * 0.1, tile * 0.1, tile * 0.5);
+  ctx.fillStyle = '#e9d9b6';
+  ctx.fillRect(cx - tile * 0.32, cy - tile * 0.42, tile * 0.64, tile * 0.34);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1.5, tile * 0.05);
+  ctx.strokeRect(cx - tile * 0.32, cy - tile * 0.42, tile * 0.64, tile * 0.34);
+  ctx.fillStyle = to === 'home' ? '#4a8f3d' : to === 'lake' ? '#3b86d1' : '#8a5a2b';
+  ctx.font = `bold ${Math.round(tile * 0.26)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(to === 'home' ? '⌂' : to === 'lake' ? '≈' : '▲', cx, cy - tile * 0.25 + Math.sin(t / 400) * tile * 0.02);
+  void loc;
 }
 
 function drawLoom(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: number): void {
@@ -1969,6 +2074,81 @@ function drawItem(ctx: CanvasRenderingContext2D, kind: FrItem, cx: number, cy: n
       ctx.fillStyle = '#e6c06a';
       ctx.fillRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
       ctx.strokeRect(cx - size * 0.16, cy - size * 0.3, size * 0.32, size * 0.1);
+      break;
+    case 'reed':
+      ctx.fillStyle = '#6aa84f';
+      ctx.fillRect(cx - size * 0.3, cy - size * 0.05, size * 0.6, size * 0.1);
+      ctx.strokeRect(cx - size * 0.3, cy - size * 0.05, size * 0.6, size * 0.1);
+      ctx.fillStyle = '#8a5a2b';
+      ctx.fillRect(cx + size * 0.18, cy - size * 0.2, size * 0.1, size * 0.4);
+      break;
+    case 'fish':
+    case 'friedfish':
+      ctx.fillStyle = kind === 'fish' ? '#7fb4d9' : '#c98a4b';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, size * 0.32, size * 0.17, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + size * 0.28, cy);
+      ctx.lineTo(cx + size * 0.45, cy - size * 0.14);
+      ctx.lineTo(cx + size * 0.45, cy + size * 0.14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'fishsoup':
+      ctx.fillStyle = '#c98a4b';
+      ctx.beginPath();
+      ctx.arc(cx, cy + size * 0.05, size * 0.32, 0, Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#9fd1e8';
+      ctx.fillRect(cx - size * 0.3, cy - size * 0.02, size * 0.6, size * 0.1);
+      break;
+    case 'rod':
+      ctx.strokeStyle = '#8a5a2b';
+      ctx.lineWidth = Math.max(2, size * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.3, cy + size * 0.3);
+      ctx.lineTo(cx + size * 0.3, cy - size * 0.3);
+      ctx.lineTo(cx + size * 0.3, cy + size * 0.05);
+      ctx.stroke();
+      break;
+    case 'ore':
+      ctx.fillStyle = '#9b9488';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, size * 0.3, size * 0.24, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e8a23c';
+      ctx.fillRect(cx - size * 0.1, cy - size * 0.1, size * 0.16, size * 0.16);
+      break;
+    case 'ironaxe':
+    case 'ironpick':
+      ctx.strokeStyle = '#8a5a2b';
+      ctx.lineWidth = Math.max(2, size * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.25, cy + size * 0.32);
+      ctx.lineTo(cx + size * 0.2, cy - size * 0.25);
+      ctx.stroke();
+      ctx.fillStyle = '#b8c2cc';
+      ctx.beginPath();
+      if (kind === 'ironaxe') {
+        ctx.moveTo(cx + size * 0.05, cy - size * 0.36);
+        ctx.lineTo(cx + size * 0.4, cy - size * 0.2);
+        ctx.lineTo(cx + size * 0.28, cy + size * 0.02);
+        ctx.lineTo(cx + size * 0.18, cy - size * 0.2);
+      } else {
+        ctx.moveTo(cx - size * 0.12, cy - size * 0.3);
+        ctx.quadraticCurveTo(cx + size * 0.2, cy - size * 0.5, cx + size * 0.45, cy - size * 0.2);
+        ctx.lineTo(cx + size * 0.4, cy - size * 0.1);
+        ctx.quadraticCurveTo(cx + size * 0.2, cy - size * 0.3, cx - size * 0.05, cy - size * 0.2);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
       break;
     case 'meat':
     case 'steak':
