@@ -1434,7 +1434,7 @@ export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number
   wolf: { hp: 30, dmg: 9, speed: 2.8, flee: false, meat: 2 },
 };
 
-const MOB_SCARE = 4.5;
+const MOB_SCARE = 3;
 const MOB_HIT_MS = 1200;
 const WOLF_NOTICE = 2;
 const PET_HIT_MS = 800;
@@ -1582,6 +1582,8 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
     }
   }
 
+  // В высокой траве питомца не видно: мыши и кролики не замечают его.
+  const hidden = s.tiles[frIndex(Math.floor(s.x), Math.floor(s.y))] === 'tall';
   for (const m of s.mobs) {
     const def = FR_MOBS[m.kind];
     if (m.cd > 0) m.cd = Math.max(0, m.cd - dt);
@@ -1598,7 +1600,7 @@ function tickMobs(s: FrState, dt: number): FrEvent[] {
         s.stats.health = Math.max(0, s.stats.health - def.dmg);
         ev.push({ type: 'hurt', kind: m.kind, dmg: def.dmg });
       }
-    } else if (def.flee && d <= MOB_SCARE && !safe) {
+    } else if (def.flee && d <= MOB_SCARE && !safe && !hidden) {
       moveMob(s, m, m.x - s.x, m.y - s.y, dt);
     } else {
       // Бродит без дела.
