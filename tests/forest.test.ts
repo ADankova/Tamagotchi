@@ -710,4 +710,117 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     const q = m.FR_QUESTS.find((x) => x.id === 'shelter')!;
     expect(q.reward).toBe(1);
   });
+
+  it('локации: выходы, озеро, пещера, дома нет волков, в пещере нет дождя', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    expect(s.loc).toBe('home');
+    expect(s.tiles[frIndex(15, 1)]).toBe('exit');
+    expect(s.tiles[frIndex(28, 15)]).toBe('exit');
+    // вечером дома волков нет
+    s.clock = m.FR_EVENING_AT - 10;
+    run(s, 500);
+    expect(s.mobs.some((x) => x.kind === 'wolf')).toBe(false);
+    // идём к выходу на озеро
+    const ev = [...frDo(s, 15, 1, 'travel'), ...run(s, 30_000)];
+    expect(ev).toContainEqual({ type: 'travelAsk', to: 'lake' });
+    expect(s.loc).toBe('home');
+    expect(m.frTravel(s, 'lake')).toEqual([{ type: 'traveled', to: 'lake' }]);
+    expect(s.loc).toBe('lake');
+    expect(s.tiles.includes('reed')).toBe(true);
+    expect(s.tiles.includes('water')).toBe(true);
+    expect(s.pit).toEqual({ x: 15, y: 25 });
+    // на озере вечером приходят волки
+    s.clock = m.FR_EVENING_AT - 10;
+    run(s, 500);
+    expect(s.mobs.some((x) => x.kind === 'wolf')).toBe(true);
+    // обратно домой: дом на месте
+    expect(m.frTravel(s, 'home')).toEqual([{ type: 'traveled', to: 'home' }]);
+    expect(s.pit).toEqual(frCenter());
+    expect(s.tiles[frIndex(frCenter().x, frCenter().y)]).toBe('pit');
+    // пещера: темно, дождя нет, волк живёт
+    m.frTravel(s, 'cave');
+    expect(s.loc).toBe('cave');
+    expect(s.tiles.includes('ore')).toBe(true);
+    expect(m.frDarkness(s)).toBeGreaterThan(0.8);
+    expect(s.mobs.some((x) => x.kind === 'wolf')).toBe(true);
+    s.fire = 100_000;
+    s.weather = { rain: true, left: 99_999 };
+    run(s, 2000);
+    expect(s.fire).toBeGreaterThan(0);
+    expect(m.frRainHere(s)).toBe(false);
+  });
+
+  it('малый костёр в походе, защита деревом, темнота в пещере и железная руда', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    m.frTravel(s, 'lake');
+    s.inv = { branch: 3, flint: 1 };
+    s.weather = { rain: false, left: 99_999_999 };
+    m.frDo(s, s.pit.x, s.pit.y, 'light');
+    run(s, 12_000);
+    expect(s.fire).toBeGreaterThan(0);
+    expect(s.fire).toBeLessThanOrEqual(m.FR_FIRE_START_MS / 3);
+    expect(m.frFireRadius(s)).toBe(m.FR_CAMP_RADIUS);
+    // дождь без дерева тушит, с деревом нет
+    s.weather = { rain: false, left: 100 };
+    s.fire = 100_000;
+    s.tiles[frIndex(s.pit.x + 1, s.pit.y - 1)] = 'grass';
+    s.tiles[frIndex(s.pit.x + 1, s.pit.y)] = 'grass';
+    s.tiles[frIndex(s.pit.x - 1, s.pit.y - 1)] = 'grass';
+    s.tiles[frIndex(s.pit.x, s.pit.y - 1)] = 'grass';
+    s.tiles[frIndex(s.pit.x - 1, s.pit.y)] = 'grass';
+    s.tiles[frIndex(s.pit.x - 1, s.pit.y + 1)] = 'grass';
+    s.tiles[frIndex(s.pit.x, s.pit.y + 1)] = 'grass';
+    s.tiles[frIndex(s.pit.x + 1, s.pit.y + 1)] = 'grass';
+    expect(m.frTreeCover(s)).toBe(false);
+    run(s, 500);
+    expect(s.fire).toBe(0);
+    s.tiles[frIndex(s.pit.x + 1, s.pit.y - 1)] = 'tree';
+    expect(m.frTreeCover(s)).toBe(true);
+    s.weather = { rain: false, left: 100 };
+    s.fire = 100_000;
+    run(s, 500);
+    expect(s.fire).toBeGreaterThan(0);
+    // пещера: без света не разбить руду
+    const c = newForest(7);
+    m.frTravel(c, 'cave');
+    c.inv = { pickaxe: 1 };
+    const oi = c.tiles.findIndex((k) => k === 'ore');
+    const ox = oi % 30;
+    const oy = Math.floor(oi / 30);
+    c.torch = 0;
+    c.fire = 0;
+    expect([...frDo(c, ox, oy, 'mine'), ...run(c, 20_000)]).toContainEqual({ type: 'tooDark' });
+    c.torch = 60_000;
+    c.x = c.pit.x + 0.5;
+    c.y = c.pit.y + 1.5;
+    expect([...frDo(c, ox, oy, 'mine'), ...run(c, 30_000)]).toContainEqual({ type: 'mined' });
+    expect(c.inv.ore).toBe(2);
+    // железная кирка: 60 ударов
+    c.inv = { ore: 5, branch: 2 };
+    expect(m.frCraft(c, 'ironpick')).toContainEqual({ type: 'crafted', item: 'ironpick' });
+    expect(m.frDurability(c, 'ironpick')).toBe(60);
+  });
+
+  it('рыбалка: нужна удочка, улов и рецепты', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    m.frTravel(s, 'lake');
+    s.inv = { reed: 3, branch: 1 };
+    expect(m.frCraft(s, 'rod')).toContainEqual({ type: 'crafted', item: 'rod' });
+    const wi = s.tiles.findIndex((k, i) => k === 'water' && [i + 1, i - 1, i + 30, i - 30].some((n) => s.tiles[n] === 'grass'));
+    const wx = wi % 30;
+    const wy = Math.floor(wi / 30);
+    let fished = 0;
+    for (let k = 0; k < 14; k++) {
+      s.busy = null;
+      const ev = [...frDo(s, wx, wy, 'fish'), ...run(s, 20_000)];
+      if (ev.some((e) => e.type === 'fished')) fished++;
+    }
+    expect(fished).toBeGreaterThan(2);
+    expect(s.inv.fish).toBe(fished);
+    expect(m.frRecipe(['fish'])).toBe('friedfish');
+    expect(m.frRecipe(['fullflask', 'fish'])).toBe('fishsoup');
+  });
 });
