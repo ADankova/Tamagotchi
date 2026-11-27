@@ -29,14 +29,14 @@ export const FR_FIRE_RADIUS = 3.5;
 /** Лакомств за прожитую ночь. */
 export const FR_NIGHT_REWARD = 2;
 
-export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom';
+export type FrTile = 'grass' | 'water' | 'tree' | 'bush' | 'pit' | 'chest' | 'tall' | 'rock' | 'loom' | 'trap' | 'trapfull';
 export const FR_DRY_FIRST_MS = 150_000;
 export const FR_SHELTER_RAINS = 30;
 export const FR_BED_HEAL = 3;
 
 export type FrTool = 'knife' | 'axe' | 'pickaxe';
 export const FR_TOOL_USES = 20;
-export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse';
+export type FrItem = 'branch' | 'stone' | 'flint' | 'grass' | 'mushroom' | 'berries' | 'cooked' | 'axe' | 'knife' | 'pickaxe' | 'torch' | 'flask' | 'fullflask' | 'egg' | 'seeds' | 'tea' | 'compote' | 'porridge' | 'berryporridge' | 'friedegg' | 'cloth' | 'purse' | 'meat' | 'steak' | 'meatporridge' | 'broth';
 export type FrStat = 'food' | 'water' | 'warmth' | 'health';
 
 export interface FrDrop {
@@ -67,6 +67,13 @@ export interface FrState {
   inv: Partial<Record<FrItem, number>>;
   /** Надетые кошельки в верхних слотах рюкзака (каждый +4 ячейки). */
   worn: FrItem[];
+  /** Монстры на карте. */
+  mobs: FrMob[];
+  /** Кто попался в ловушку с прошлого тика (для сообщений). */
+  trapNews: FrMobKind[];
+  /** Кого питомец сейчас бьёт (id монстра) и перезарядка удара, мс. */
+  chase: number | null;
+  atkCd: number;
   /** Погода: идёт ли дождь и сколько мс (игрового времени) до смены. */
   weather: { rain: boolean; left: number };
   /** Прочность шалаша вокруг костра: сколько дождей ещё выдержит (0 — шалаша нет). */
@@ -124,6 +131,12 @@ export type FrEvent =
   | { type: 'openLoom' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
+  | { type: 'trapped'; kind: FrMobKind }
+  | { type: 'trapEmptied' }
+  | { type: 'petHit'; kind: FrMobKind; dmg: number }
+  | { type: 'hurt'; kind: FrMobKind; dmg: number }
+  | { type: 'mobKilled'; kind: FrMobKind }
+  | { type: 'mobAppeared'; kind: FrMobKind }
   | { type: 'rainStart' }
   | { type: 'rainEnd' }
   | { type: 'fireDoused' }
@@ -346,6 +359,10 @@ export function newForest(seed: number): FrState {
     pot: [],
     torch: 0,
     worn: [],
+    mobs: [],
+    trapNews: [],
+    chase: null,
+    atkCd: 0,
     dur: {},
     weather: { rain: false, left: FR_DRY_FIRST_MS },
     shelter: 0,
@@ -387,6 +404,7 @@ export function newForest(seed: number): FrState {
     rockSpots.splice(j, 1);
   }
   restock(s, r);
+  spawnDay(s);
   return s;
 }
 
@@ -518,6 +536,8 @@ export type FrTarget =
   | { kind: 'pit' }
   | { kind: 'chest' }
   | { kind: 'loom' }
+  | { kind: 'trap' }
+  | { kind: 'trapfull' }
   | { kind: 'rock' }
   | { kind: 'tall'; x: number; y: number };
 
@@ -548,7 +568,10 @@ export function frActions(s: FrState, target: FrTarget): FrAction[] {
       return s.fire > 0 ? ['feed', 'cook', 'sleep'] : ['light'];
     case 'chest':
     case 'loom':
+    case 'trapfull':
       return ['open'];
+    case 'trap':
+      return [];
     case 'rock':
       return ['mine'];
     case 'tall':
@@ -569,13 +592,14 @@ export function frDo(s: FrState, x: number, y: number, action: FrAction | null, 
 
 function doAction(s: FrState, x: number, y: number, action: FrAction | null, point?: [number, number]): FrEvent[] {
   if (s.over || !inside(x, y)) return [];
+  s.chase = null;
   const i = frIndex(x, y);
   const tile = s.tiles[i];
   const cx = x + 0.5;
   const cy = y + 0.5;
   let dest: [number, number] | null = null;
   if (!action) dest = point ?? [cx, cy];
-  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'tall') dest = [cx, cy];
+  else if (tile === 'grass' || tile === 'chest' || tile === 'loom' || tile === 'tall' || tile === 'trap' || tile === 'trapfull') dest = [cx, cy];
   else if (tile === 'tree' || tile === 'bush' || tile === 'rock') {
     // Встать рядом, со стороны питомца.
     const d = Math.hypot(s.x - cx, s.y - cy) || 1;
@@ -696,6 +720,11 @@ function arriveInner(s: FrState): FrEvent[] {
       return ev;
     }
     case 'open':
+      if (s.tiles[goal.cell] === 'trapfull') {
+        s.tiles[goal.cell] = 'trap';
+        let spill = give(s, 'meat', 1, goal.cell);
+        return spill ? [{ type: 'trapEmptied' }, { type: 'spilled' }] : [{ type: 'trapEmptied' }];
+      }
       return [{ type: s.tiles[goal.cell] === 'loom' ? 'openLoom' : 'openChest' }];
     case 'mine': {
       if (!(s.inv.pickaxe ?? 0)) return [{ type: 'needPickaxe' }];
@@ -775,6 +804,9 @@ export const FR_POT_SLOTS = 3;
 export const FR_RECIPES: ReadonlyArray<{ from: readonly FrItem[]; to: FrItem }> = [
   { from: ['mushroom'], to: 'cooked' },
   { from: ['egg'], to: 'friedegg' },
+  { from: ['meat'], to: 'steak' },
+  { from: ['fullflask', 'meat'], to: 'broth' },
+  { from: ['fullflask', 'seeds', 'meat'], to: 'meatporridge' },
   { from: ['fullflask', 'berries'], to: 'compote' },
   { from: ['fullflask', 'grass'], to: 'tea' },
   { from: ['fullflask', 'seeds'], to: 'porridge' },
@@ -871,6 +903,10 @@ export const FR_EFFECTS: Partial<Record<FrItem, Partial<Record<FrStat, number>>>
   cooked: { food: 25 },
   egg: { food: 5 },
   friedegg: { food: 30, health: 5 },
+  meat: { food: 12 },
+  steak: { food: 45, health: 5 },
+  broth: { food: 20, water: 30, health: 10 },
+  meatporridge: { food: 60, health: 8 },
   fullflask: { water: 30 },
   tea: { water: 20, warmth: 30, health: 10 },
   compote: { food: 12, water: 25 },
@@ -1031,6 +1067,8 @@ function tick(s: FrState, dt: number): FrEvent[] {
     if (!frInShelter(s) && !frInFireLight(s)) s.stats.warmth = Math.max(0, s.stats.warmth - 1 * sec);
   }
 
+  events.push(...tickMobs(s, dt));
+
   // Костёр.
   if (s.fire > 0) {
     s.fire = Math.max(0, s.fire - gdt);
@@ -1046,12 +1084,16 @@ function tick(s: FrState, dt: number): FrEvent[] {
   // Сутки.
   const was = s.clock;
   s.clock += gdt;
-  if (was < FR_EVENING_AT && s.clock >= FR_EVENING_AT) events.push({ type: 'evening' });
+  if (was < FR_EVENING_AT && s.clock >= FR_EVENING_AT) {
+    events.push({ type: 'evening' });
+    spawnWolves(s, events);
+  }
   if (s.clock >= FR_DAY_MS) {
     s.clock -= FR_DAY_MS;
     s.day += 1;
     s.treats += FR_NIGHT_REWARD;
     restock(s, rand(s.seed + s.day * 7919));
+    spawnDay(s);
     if (s.sleeping) {
       s.sleeping = false;
       events.push({ type: 'woke' });
@@ -1081,6 +1123,11 @@ export function restoreForest(raw: unknown): FrState | null {
   if (typeof s.shelter !== 'number') s.shelter = 0;
   if (typeof s.bed !== 'boolean') s.bed = false;
   if (!Array.isArray(s.worn)) s.worn = [];
+  if (!Array.isArray(s.mobs)) s.mobs = [];
+  s.trapNews = [];
+  if (!s.mobs.length && !s.over) spawnDay(s);
+  if (typeof s.chase !== 'number') s.chase = null;
+  if (typeof s.atkCd !== 'number') s.atkCd = 0;
   if (!s.dur || typeof s.dur !== 'object') s.dur = {};
   if (!s.chest || typeof s.chest !== 'object') s.chest = {};
   // Старые сохранения (1.32–1.33) считали по-другому — переносим, что можно.
@@ -1100,10 +1147,10 @@ export function restoreForest(raw: unknown): FrState | null {
 
 // --- Крафт, сундук, задания ---
 
-export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom';
+export type FrCraftId = 'knife' | 'axe' | 'pickaxe' | 'flask' | 'torch' | 'chest' | 'loom' | 'trap';
 
 /** Постройки: ставятся на выбранную клетку у костра. */
-export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom'];
+export const FR_BUILDINGS: readonly FrCraftId[] = ['chest', 'loom', 'trap'];
 
 export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readonly [FrItem, number]> }> = [
   { id: 'knife', cost: [['branch', 1], ['stone', 1]] },
@@ -1113,6 +1160,7 @@ export const FR_CRAFT: ReadonlyArray<{ id: FrCraftId; cost: ReadonlyArray<readon
   { id: 'axe', cost: [['branch', 2], ['stone', 2], ['grass', 1]] },
   { id: 'chest', cost: [['branch', 6], ['grass', 4]] },
   { id: 'loom', cost: [['branch', 10], ['stone', 5], ['grass', 3]] },
+  { id: 'trap', cost: [['cloth', 5], ['branch', 10]] },
 ];
 
 export function frCanCraft(s: FrState, id: FrCraftId): boolean {
@@ -1135,6 +1183,25 @@ export function frChestSpots(s: FrState): number[] {
   return out;
 }
 
+/** Куда можно поставить ловушку: любая свободная трава подальше от костра. */
+export function frTrapSpots(s: FrState): number[] {
+  const c = frCenter();
+  const out: number[] = [];
+  for (let y = 0; y < FR_H; y++) {
+    for (let x = 0; x < FR_W; x++) {
+      const i = frIndex(x, y);
+      const tile = s.tiles[i];
+      if ((tile === 'grass' || tile === 'tall') && Math.hypot(x - c.x, y - c.y) > 2.5 && !s.drops.some((d) => d.x === x && d.y === y) && frPassable(s, x, y)) out.push(i);
+    }
+  }
+  return out;
+}
+
+/** Клетки для постройки выбранного здания. */
+export function frPlaceSpots(s: FrState, id: FrCraftId): number[] {
+  return id === 'trap' ? frTrapSpots(s) : frChestSpots(s);
+}
+
 export function frChestBuilt(s: FrState): boolean {
   return s.tiles.includes('chest');
 }
@@ -1149,9 +1216,9 @@ export function frCraft(s: FrState, id: FrCraftId, cell?: number): FrEvent[] {
   if (!r || s.over) return [];
   if (!FR_BUILDINGS.includes(id) && id !== 'torch' && (s.inv[id as FrItem] ?? 0) + (id === 'flask' ? s.inv.fullflask ?? 0 : 0) > 0) return [{ type: 'haveIt' }];
   if (id === 'torch' && !canTake(s.inv, 'torch', frCapacity(s))) return [{ type: 'full' }];
-  if (FR_BUILDINGS.includes(id) && frBuilt(s, id)) return [{ type: 'haveIt' }];
+  if (FR_BUILDINGS.includes(id) && id !== 'trap' && frBuilt(s, id)) return [{ type: 'haveIt' }];
   if (!frCanCraft(s, id)) return [{ type: 'needMaterials' }];
-  if (FR_BUILDINGS.includes(id) && (cell === undefined || !frChestSpots(s).includes(cell))) return [{ type: 'noPlace' }];
+  if (FR_BUILDINGS.includes(id) && (cell === undefined || !frPlaceSpots(s, id).includes(cell))) return [{ type: 'noPlace' }];
   for (const [item, n] of r.cost) take(s, item, n);
   if (id === 'torch') s.inv.torch = (s.inv.torch ?? 0) + 1;
   else if (!FR_BUILDINGS.includes(id)) {
@@ -1222,6 +1289,7 @@ export const FR_QUESTS: readonly FrQuest[] = [
   { id: 'loom', kind: 'regular', reward: 0, items: { stone: 2, branch: 3 }, parts: [{ key: 'craft:loom', need: 1 }] },
   { id: 'purse', kind: 'regular', reward: 0, items: { berries: 4 }, parts: [{ key: 'craft:purse', need: 1 }] },
   { id: 'shelter', kind: 'regular', reward: 0, items: { branch: 4, grass: 4 }, parts: [{ key: 'craft:shelter', need: 1 }] },
+  { id: 'hunt', kind: 'regular', reward: 0, items: { cooked: 1 }, parts: [{ key: 'kill', need: 2 }] },
   { id: 'cook', kind: 'regular', reward: 0, items: { cooked: 2 }, parts: [{ key: 'cook', need: 1 }] },
   { id: 'chest', kind: 'regular', reward: 0, items: { stone: 3, berries: 3 }, parts: [{ key: 'craft:chest', need: 1 }] },
   { id: 'cook5', kind: 'default', reward: 3, parts: [{ key: 'cook', need: 5 }] },
@@ -1337,4 +1405,215 @@ export function frUnwear(s: FrState, index: number): FrEvent[] {
   s.worn.splice(index, 1);
   s.inv = rest;
   return [];
+}
+
+// --- Монстры ---
+
+export type FrMobKind = 'mouse' | 'rabbit' | 'wolf';
+
+export interface FrMob {
+  id: number;
+  kind: FrMobKind;
+  x: number;
+  y: number;
+  hp: number;
+  /** Питомец уже ударил: мышь и кролик перестают убегать и дерутся. */
+  provoked: boolean;
+  /** Волк заметил питомца. */
+  angry: boolean;
+  /** Перезарядка удара, мс. */
+  cd: number;
+  /** Куда бредёт, пока никого не боится. */
+  wx: number;
+  wy: number;
+}
+
+export const FR_MOBS: Record<FrMobKind, { hp: number; dmg: number; speed: number; flee: boolean; meat: number }> = {
+  mouse: { hp: 6, dmg: 2, speed: 2.2, flee: true, meat: 0 },
+  rabbit: { hp: 12, dmg: 4, speed: 2.6, flee: true, meat: 1 },
+  wolf: { hp: 30, dmg: 9, speed: 2.8, flee: false, meat: 2 },
+};
+
+const MOB_SCARE = 4.5;
+const MOB_HIT_MS = 1200;
+const WOLF_NOTICE = 2;
+const PET_HIT_MS = 800;
+export const FR_PET_DMG = 5;
+export const FR_AXE_DMG = 8;
+
+/** Монстры к костру не подходят: рядом с горящим костром — весь круг света. */
+function mobBlocked(s: FrState, x: number, y: number): boolean {
+  const c = frCenter();
+  const r = s.fire > 0 ? FR_FIRE_RADIUS : 1.5;
+  if (Math.hypot(x - (c.x + 0.5), y - (c.y + 0.5)) <= r) return true;
+  return !frWalkable(s, Math.floor(x), Math.floor(y));
+}
+
+function spawnSpot(s: FrState, r: Rand): { x: number; y: number } | null {
+  const c = frCenter();
+  for (let k = 0; k < 60; k++) {
+    const x = 1 + Math.floor(r() * (FR_W - 2));
+    const y = 1 + Math.floor(r() * (FR_H - 2));
+    if (Math.hypot(x - c.x, y - c.y) < 8 || Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y) < 5) continue;
+    if (!frWalkable(s, x, y) || s.mobs.some((m) => Math.floor(m.x) === x && Math.floor(m.y) === y)) continue;
+    return { x: x + 0.5, y: y + 0.5 };
+  }
+  return null;
+}
+
+function addMob(s: FrState, kind: FrMobKind, r: Rand): FrMob | null {
+  const p = spawnSpot(s, r);
+  if (!p) return null;
+  const m: FrMob = { id: s.nextId++, kind, x: p.x, y: p.y, hp: FR_MOBS[kind].hp, provoked: false, angry: false, cd: 0, wx: p.x, wy: p.y };
+  s.mobs.push(m);
+  return m;
+}
+
+/** Новый день: волки уходят, остаются мыши и кролики. */
+function spawnDay(s: FrState): void {
+  const r = rand(s.seed + 77_000 + s.day * 131);
+  s.mobs = s.mobs.filter((m) => m.kind !== 'wolf' && m.provoked);
+  if (s.chase !== null && !s.mobs.some((m) => m.id === s.chase)) s.chase = null;
+  const have = (k: FrMobKind): number => s.mobs.filter((m) => m.kind === k).length;
+  while (have('mouse') < 3) if (!addMob(s, 'mouse', r)) break;
+  while (have('rabbit') < 2) if (!addMob(s, 'rabbit', r)) break;
+}
+
+/** Вечером приходят волки: один, со временем два. */
+function spawnWolves(s: FrState, events: FrEvent[]): void {
+  const r = rand(s.seed + 88_000 + s.day * 17);
+  const n = s.day >= 4 ? 2 : 1;
+  for (let k = 0; k < n; k++) {
+    if (s.mobs.filter((m) => m.kind === 'wolf').length >= n) break;
+    if (addMob(s, 'wolf', r)) events.push({ type: 'mobAppeared', kind: 'wolf' });
+  }
+}
+
+/** Ударить монстра: питомец идёт к нему и бьёт, пока тот жив. */
+export function frAttack(s: FrState, id: number): FrEvent[] {
+  const m = s.mobs.find((x) => x.id === id);
+  if (!m || s.over) return [];
+  s.chase = id;
+  s.goal = null;
+  s.busy = null;
+  if (s.sleeping) s.sleeping = false;
+  return [];
+}
+
+/** Монстр под пальцем (в пределах клетки). */
+export function frMobAt(s: FrState, x: number, y: number): FrMob | null {
+  let best: FrMob | null = null;
+  let bd = 0.9;
+  for (const m of s.mobs) {
+    const d = Math.hypot(m.x - x, m.y - y);
+    if (d < bd) {
+      bd = d;
+      best = m;
+    }
+  }
+  return best;
+}
+
+function moveMob(s: FrState, m: FrMob, dx: number, dy: number, dt: number): boolean {
+  const len = Math.hypot(dx, dy);
+  if (len < 0.001) return false;
+  const step = (FR_MOBS[m.kind].speed * dt) / 1000;
+  const angles = [0, 0.6, -0.6, 1.2, -1.2];
+  for (const a of angles) {
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    const ux = (dx * ca - dy * sa) / len;
+    const uy = (dx * sa + dy * ca) / len;
+    const nx = m.x + ux * step;
+    const ny = m.y + uy * step;
+    if (!mobBlocked(s, nx, ny)) {
+      m.x = nx;
+      m.y = ny;
+      const ti = frIndex(Math.floor(nx), Math.floor(ny));
+      if (s.tiles[ti] === 'trap' && FR_MOBS[m.kind].flee) {
+        s.tiles[ti] = 'trapfull';
+        s.mobs = s.mobs.filter((x) => x.id !== m.id);
+        if (s.chase === m.id) s.chase = null;
+        s.trapNews.push(m.kind);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function tickMobs(s: FrState, dt: number): FrEvent[] {
+  const ev: FrEvent[] = [];
+  s.trapNews = [];
+  if (s.atkCd > 0) s.atkCd = Math.max(0, s.atkCd - dt);
+
+  // Питомец бьёт того, за кем гонится.
+  if (s.chase !== null) {
+    const m = s.mobs.find((x) => x.id === s.chase);
+    if (!m) s.chase = null;
+    else {
+      const d = Math.hypot(m.x - s.x, m.y - s.y);
+      if (d <= 1.15) {
+        s.path = [];
+        s.facing = m.x >= s.x ? 1 : -1;
+        if (s.atkCd <= 0) {
+          const dmg = (s.inv.axe ?? 0) > 0 ? FR_AXE_DMG : FR_PET_DMG;
+          m.hp -= dmg;
+          m.provoked = true;
+          m.angry = true;
+          s.atkCd = PET_HIT_MS;
+          ev.push({ type: 'petHit', kind: m.kind, dmg });
+          if (m.hp <= 0) {
+            s.mobs = s.mobs.filter((x) => x.id !== m.id);
+            s.chase = null;
+            bump(s, 'kill');
+            const meat = FR_MOBS[m.kind].meat;
+            for (let k = 0; k < meat; k++) {
+              if (canTake(s.inv, 'meat', frCapacity(s))) s.inv.meat = (s.inv.meat ?? 0) + 1;
+              else dropNear(s, 'meat', Math.floor(m.x), Math.floor(m.y));
+            }
+            ev.push({ type: 'mobKilled', kind: m.kind });
+          }
+        }
+      } else if (!s.path.length || Math.hypot(s.path[s.path.length - 1]![0] - m.x, s.path[s.path.length - 1]![1] - m.y) > 1) {
+        const path = route(s, m.x, m.y);
+        if (path) s.path = path;
+      }
+    }
+  }
+
+  for (const m of s.mobs) {
+    const def = FR_MOBS[m.kind];
+    if (m.cd > 0) m.cd = Math.max(0, m.cd - dt);
+    const d = Math.hypot(s.x - m.x, s.y - m.y);
+    const safe = frInFireLight(s) || (s.fire <= 0 && frInShelter(s));
+    if (m.kind === 'wolf' && !m.angry && d <= WOLF_NOTICE && !safe) m.angry = true;
+    if (safe) m.angry = m.provoked = false;
+    if (m.angry && d > 9) m.angry = false;
+    const fights = (def.flee ? m.provoked : m.angry) && !safe;
+    if (fights) {
+      if (d > 0.95) moveMob(s, m, s.x - m.x, s.y - m.y, dt);
+      else if (m.cd <= 0 && !s.over) {
+        m.cd = MOB_HIT_MS;
+        s.stats.health = Math.max(0, s.stats.health - def.dmg);
+        ev.push({ type: 'hurt', kind: m.kind, dmg: def.dmg });
+      }
+    } else if (def.flee && d <= MOB_SCARE && !safe) {
+      moveMob(s, m, m.x - s.x, m.y - s.y, dt);
+    } else {
+      // Бродит без дела.
+      if (Math.hypot(m.wx - m.x, m.wy - m.y) < 0.3 || mobBlocked(s, m.wx, m.wy)) {
+        const r = rand(s.seed + Math.floor(m.x * 91 + m.y * 37 + m.id * 13 + s.clock / 700))();
+        m.wx = m.x + (r - 0.5) * 6;
+        m.wy = m.y + (rand(s.seed + Math.floor(r * 1e6))() - 0.5) * 6;
+      }
+      const slow = s.sleeping ? 0.3 : 0.45;
+      const saved = def.speed;
+      def.speed = saved * slow;
+      moveMob(s, m, m.wx - m.x, m.wy - m.y, dt);
+      def.speed = saved;
+    }
+  }
+  for (const k of s.trapNews) ev.push({ type: 'trapped', kind: k });
+  return ev;
 }
