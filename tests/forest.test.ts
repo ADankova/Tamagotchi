@@ -527,4 +527,19 @@ describe('«Дикий лес»: еда, вода, факел', () => {
     m.frCraft(s, 'knife');
     expect(m.frDurability(s, 'knife')).toBe(20);
   });
+
+  it('блюдо без места в рюкзаке ложится рядом с костром', () => {
+    const s = newForest(7);
+    s.fire = 1000;
+    s.pot = ['fullflask', 'berries'];
+    s.inv = { stone: 99, branch: 99, grass: 99, flint: 99, mushroom: 99, knife: 1, axe: 1, pickaxe: 1, torch: 1 };
+    const before = s.drops.length;
+    const ev = frPotCook(s);
+    expect(ev).toContainEqual({ type: 'cookDropped', item: 'compote' });
+    expect(s.drops.length).toBe(before + 1);
+    const d = s.drops[s.drops.length - 1];
+    expect(d.kind).toBe('compote');
+    expect(Math.hypot(d.x - frCenter().x, d.y - frCenter().y)).toBeLessThan(3);
+    expect(s.inv.compote ?? 0).toBe(0);
+  });
 });

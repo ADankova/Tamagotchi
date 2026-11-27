@@ -114,6 +114,7 @@ export type FrEvent =
   | { type: 'openLoom' }
   | { type: 'worn'; item: FrItem }
   | { type: 'noRoom' }
+  | { type: 'cookDropped'; item: FrItem }
   | { type: 'broke'; item: FrTool }
   | { type: 'chopped' }
   | { type: 'crafted'; item: FrCraftId | 'cloth' | 'purse' }
@@ -780,6 +781,24 @@ export function frPotReturn(s: FrState): void {
 }
 
 /** Приготовить то, что лежит в окошке, на горящем костре. */
+/** Кладёт предмет на свободную клетку рядом с костром (по кольцам от центра). */
+function dropNearFire(s: FrState, kind: FrItem): boolean {
+  const c = frCenter();
+  for (let r = 1; r <= 4; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = c.x + dx;
+        const y = c.y + dy;
+        if (!inside(x, y) || !frWalkable(s, x, y) || s.drops.some((d) => d.x === x && d.y === y)) continue;
+        s.drops.push({ id: s.nextId++, kind, x, y });
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function frPotCook(s: FrState): FrEvent[] {
   if (s.fire <= 0) return [{ type: 'needForFire' }];
   const out = frRecipe(s.pot);
@@ -787,10 +806,13 @@ export function frPotCook(s: FrState): FrEvent[] {
   // Фляга с водой после готовки возвращается пустой.
   if (s.pot.includes('fullflask')) s.inv.flask = (s.inv.flask ?? 0) + 1;
   s.pot = [];
-  s.inv[out] = (s.inv[out] ?? 0) + 1;
   bump(s, 'cook');
   bump(s, `made:${out}`);
-  return withQuest(s, [{ type: 'cooked', item: out }]);
+  const ev: FrEvent[] = [{ type: 'cooked', item: out }];
+  if (canTake(s.inv, out, frCapacity(s))) s.inv[out] = (s.inv[out] ?? 0) + 1;
+  else if (dropNearFire(s, out)) ev.push({ type: 'cookDropped', item: out });
+  else s.inv[out] = (s.inv[out] ?? 0) + 1;
+  return withQuest(s, ev);
 }
 
 /** Что даёт еда и питьё: на сколько растут шкалы. */
