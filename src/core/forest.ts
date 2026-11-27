@@ -1696,6 +1696,16 @@ export function frCraftUnlocked(s: FrState, id: FrCraftId): boolean {
   return id !== 'lighthouse' || s.claimed.includes('ch7') || s.tiles.includes('lighthouse');
 }
 
+/** Рецепт виден в крафте: с тканью — после станка, со слитками — после литейной (маяк ещё и по сюжету). */
+export function frRecipeShown(s: FrState, id: string): boolean {
+  const r = FR_CRAFT.find((x) => x.id === id) ?? FR_LOOM.find((x) => x.id === id);
+  if (!r) return false;
+  if (FR_CRAFT.some((x) => x.id === id) && !frCraftUnlocked(s, id as FrCraftId)) return false;
+  if (r.cost.some(([it]) => it === 'cloth') && !frBuilt(s, 'loom')) return false;
+  if (r.cost.some(([it]) => it === 'ingot') && !frBuilt(s, 'foundry')) return false;
+  return true;
+}
+
 export function frCanCraft(s: FrState, id: FrCraftId): boolean {
   const r = FR_CRAFT.find((x) => x.id === id);
   return !!r && frCraftUnlocked(s, id) && r.cost.every(([item, n]) => (s.inv[item] ?? 0) >= n);

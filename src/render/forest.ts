@@ -25,7 +25,6 @@ import {
   frDarkness,
   frCookable,
   frCanCraft,
-  frCraftUnlocked,
   frCraft,
   frChestPut,
   frPlaceSpots,
@@ -51,6 +50,7 @@ import {
   FR_LOOM,
   type FrLoomId,
   frBuilt,
+  frRecipeShown,
   FR_GEAR_SLOTS,
   type FrCraftId,
   frChestTake,
@@ -406,7 +406,11 @@ export class ForestGame implements GameScreen {
       const cell = this.placing?.cell;
       const id = this.placing?.id ?? 'chest';
       this.stopPlacing();
-      if (cell !== null && cell !== undefined) this.handle(frCraft(this.state, id, cell));
+      if (cell !== null && cell !== undefined) {
+        const before = new Set(this.craftRecipes().map((r) => r.id));
+        this.handle(frCraft(this.state, id, cell));
+        if (id === 'loom' || id === 'foundry') this.showNewRecipes(before);
+      }
     });
     const no = el('button', { type: 'button', class: 'fr-act fr-act-close', 'aria-label': GAMES_TEXT.forestClose }, [
       el('span', { class: 'fr-act-icon', text: '✕' }),
@@ -859,6 +863,33 @@ export class ForestGame implements GameScreen {
 
   private craftTab: string = 'fire';
 
+  /** Рецепты, которые сейчас показываются в крафте (ткань остаётся в окне станка). */
+  private craftRecipes(): ReadonlyArray<{ id: string; cost: ReadonlyArray<readonly [FrItem, number]> }> {
+    const s = this.state;
+    return [...FR_CRAFT, ...FR_LOOM.filter((r) => r.id !== 'cloth')].filter((r) => frRecipeShown(s, r.id));
+  }
+
+  /** Окошко после постройки станка или литейной: какие рецепты добавились в крафт. */
+  private showNewRecipes(before: ReadonlySet<string>): void {
+    const fresh = this.craftRecipes().filter((r) => !before.has(r.id));
+    if (!fresh.length) return;
+    const rows = fresh.map((r) =>
+      el('div', { class: 'fr-newrow' }, [el('span', { class: 'fr-slot' }, [this.iconCanvas(r.id as FrItem, 48)]), el('b', { text: GAMES_TEXT.forestItems[r.id] ?? r.id })]),
+    );
+    const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
+    close.addEventListener('click', () => this.closeBag());
+    const ok = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestGotIt });
+    ok.addEventListener('click', () => this.closeBag());
+    this.bag.replaceChildren(
+      el('div', { class: 'fr-bag fr-card' }, [
+        el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestNewRecipes }), close]),
+        ...rows,
+        ok,
+      ]),
+    );
+    this.bag.removeAttribute('hidden');
+  }
+
   /** Значок вкладки крафта: картинка по центру, иначе эмодзи. */
   private tabIcon(kind: string, fallback: string): HTMLCanvasElement {
     const c = el('canvas', { width: '64', height: '64' }) as HTMLCanvasElement;
@@ -876,7 +907,7 @@ export class ForestGame implements GameScreen {
   /** Окно крафта: вкладки слева (только значки), плитки предметов с материалами; нажатие открывает подробности. */
   private renderCraft(): void {
     const s = this.state;
-    const all: ReadonlyArray<{ id: string; cost: ReadonlyArray<readonly [FrItem, number]> }> = [...FR_CRAFT.filter((r) => frCraftUnlocked(s, r.id)), ...FR_LOOM.filter((r) => r.id !== 'cloth')];
+    const all = this.craftRecipes();
     const groups = CRAFT_TABS.map((t) => ({ ...t, recipes: all.filter((r) => t.items.includes(r.id)) })).filter((t) => t.recipes.length > 0);
     if (!groups.some((t) => t.id === this.craftTab)) this.craftTab = groups[0]?.id ?? 'fire';
     const tabs = groups.map((t) => {

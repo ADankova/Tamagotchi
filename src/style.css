@@ -3684,3 +3684,10 @@ body:has(.fr-game) {
 .fr-cbody .fr-citem {
   width: 100%;
 }
+
+.fr-newrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}

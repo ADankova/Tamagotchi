@@ -262,6 +262,8 @@ export const en: Dict = {
     forestMobs: { mouse: 'Mouse', rabbit: 'Rabbit', wolf: 'Wolf', bat: 'Bat', alpha: 'White wolf' } as Record<string, string>,
     forestHave: 'Owned',
     forestAlreadyBuilt: 'You already have one',
+    forestNewRecipes: 'New recipes in crafting',
+    forestGotIt: 'Got it',
     forestNeedLoom: 'You need a loom',
     forestNeedMats: 'Not enough materials',
     forestWear: 'Wear',
