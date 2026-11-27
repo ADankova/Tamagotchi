@@ -23,6 +23,9 @@ import {
   FR_MOBS,
   type FrMob,
   frCapacity,
+  frPartCost,
+  frRainSoon,
+  FR_TORCH_MS,
   frBedCell,
   frLoomDone,
   FR_SHELTER_RAINS,
@@ -117,6 +120,9 @@ export class ForestGame implements GameScreen {
   private readonly overPanel = el('div', { class: 'm3-help fr-panel fr-over', hidden: '' });
   private readonly questLine = el('button', { type: 'button', class: 'fr-quest' });
   private questKey = '';
+  private readonly torchFill = el('i', {});
+  private readonly torchBox = el('div', { class: 'fr-torch', hidden: '' }, [el('span', { class: 'fr-torch-ico', text: '🔥' }), el('span', { class: 'fr-torch-bar' }, [this.torchFill])]);
+  private readonly rainIcon = el('div', { class: 'fr-rain', hidden: '', text: '🌧️' });
   private readonly note = el('p', { class: 'm3-note fr-note', text: GAMES_TEXT.forestHint });
   private readonly dayChip = el('span', { class: 'q-chip fr-day' });
   private readonly clockHand: SVGElement;
@@ -161,7 +167,7 @@ export class ForestGame implements GameScreen {
       ]),
       this.statBars(),
       this.questLine,
-      el('div', { class: 'm3-wrap fr-wrap' }, [this.canvas, this.menu, this.bag, this.overPanel]),
+      el('div', { class: 'm3-wrap fr-wrap' }, [this.canvas, el('div', { class: 'fr-status' }, [this.torchBox, this.rainIcon]), this.menu, this.bag, this.overPanel]),
       this.note,
       el('div', { class: 'fr-actions' }, [bagButton, craftButton, this.sleepButton]),
     ]);
@@ -551,7 +557,11 @@ export class ForestGame implements GameScreen {
 
   private partText(p: { key: string; need: number }, value: number): string {
     const tpl = GAMES_TEXT.forestPart[p.key] ?? p.key;
-    return `${tpl.replace('{n}', String(p.need))} (${Math.min(value, p.need)}/${p.need})`;
+    const base = `${tpl.replace('{n}', String(p.need))} (${Math.min(value, p.need)}/${p.need})`;
+    const cost = value >= p.need ? null : frPartCost(p.key);
+    if (!cost) return base;
+    const names = cost.map(([it, n]) => `${GAMES_TEXT.forestItems[it] ?? it} ×${n}`).join(', ');
+    return `${base}\n${GAMES_TEXT.forestNeeds}: ${names}`;
   }
 
   /** Строки пунктов задания с прогрессом. */
@@ -1092,8 +1102,21 @@ export class ForestGame implements GameScreen {
       }
     }
     this.updateQuestCard();
+    this.updateStatusIcons();
     // «Проснуться» видна только во сне; лечь спать можно кнопкой у горящего костра.
     if (this.sleepButton.hidden === s.sleeping) this.sleepButton.hidden = !s.sleeping;
+  }
+
+  /** Значки сбоку поля: горящий факел с полоской времени и предупреждение о дожде. */
+  private updateStatusIcons(): void {
+    const s = this.state;
+    const torchOn = s.torch > 0;
+    this.torchBox.hidden = !torchOn;
+    if (torchOn) this.torchFill.style.width = `${Math.max(0, Math.min(100, (s.torch / FR_TORCH_MS) * 100))}%`;
+    const raining = s.weather.rain;
+    const soon = frRainSoon(s);
+    this.rainIcon.hidden = !raining && !soon;
+    this.rainIcon.classList.toggle('blink', soon);
   }
 
   // --- Рисование ---
