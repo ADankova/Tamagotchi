@@ -3123,6 +3123,13 @@ body:has(.fr-game) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  /* Заголовок с кнопкой закрытия остаётся на месте при прокрутке окна. */
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  margin: -14px -14px 0;
+  padding: 14px 14px 6px;
+  background: #fff6e4;
 }
 .fr-x {
   flex: none;

@@ -599,7 +599,7 @@ export class ForestGame implements GameScreen {
           this.say(M.noPlace, 'blocked');
           break;
         case 'questReady':
-          if (ev.id.startsWith('ch')) {
+          if (/^ch\d+$/.test(ev.id)) {
             this.renderStoryReady(ev.id);
             this.bag.removeAttribute('hidden');
           } else this.say(GAMES_TEXT.forestQuestReady, 'snack');
@@ -1929,12 +1929,12 @@ export function drawWater(ctx: CanvasRenderingContext2D, px: number, py: number,
     const notch = (cx: number, cy: number): void => {
       ctx.fillStyle = '#ecd9a0';
       ctx.beginPath();
-      ctx.arc(cx, cy, size * 0.5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, sand, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       ctx.lineWidth = foam;
       ctx.beginPath();
-      ctx.arc(cx, cy, size * 0.5 + foam / 2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, sand + foam / 2, 0, Math.PI * 2);
       ctx.stroke();
     };
     if (L.nw && !L.n && !L.w) notch(px, py);
