@@ -814,6 +814,10 @@ export class ForestGame implements GameScreen {
     };
     const close = el('button', { type: 'button', class: 'm3-help-button fr-x', 'aria-label': GAMES_TEXT.forestClose, text: '✕' });
     close.addEventListener('click', () => this.closeBag());
+    // Список перерисовывается целиком — запоминаем прокрутку, чтобы окно не прыгало к началу.
+    const oldPanel = this.bag.querySelector<HTMLElement>('.fr-bag');
+    const keepPanel = oldPanel?.scrollTop ?? 0;
+    const keepBag = this.bag.scrollTop;
     this.bag.replaceChildren(
       el('div', { class: 'fr-bag fr-cook fr-quests' }, [
         el('div', { class: 'fr-bag-head' }, [el('h3', { text: GAMES_TEXT.forestQuestsTitle }), close]),
@@ -822,6 +826,9 @@ export class ForestGame implements GameScreen {
         section('default', GAMES_TEXT.forestDefaultQ),
       ]),
     );
+    this.bag.scrollTop = keepBag;
+    const panel = this.bag.querySelector<HTMLElement>('.fr-bag');
+    if (panel) panel.scrollTop = keepPanel;
   }
 
   private craftTab: 'tools' | 'build' = 'tools';
