@@ -133,6 +133,71 @@ const CRAFT_TABS: ReadonlyArray<{ id: string; icon: string; emoji: string; items
 ];
 const isLoomId = (id: string): id is FrLoomId => FR_LOOM.some((r) => r.id === id);
 const BUILD_ICON: Record<string, string> = { chest: '📦', loom: '🧶', trap: '🪤', foundry: '🧱', dryer: '🥩', lighthouse: '🗼', campfire: '🔥' };
+/** Соломенный шалаш-конус в пиксельной сетке 40x46: рисуется один раз, потом масштабируется без сглаживания. */
+const hutCache = new Map<boolean, HTMLCanvasElement>();
+function hutSprite(worn: boolean): HTMLCanvasElement {
+  const cached = hutCache.get(worn);
+  if (cached) return cached;
+  const W = 40;
+  const H = 46;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  const px = (x: number, y: number, col: string): void => {
+    g.fillStyle = col;
+    g.fillRect(x, y, 1, 1);
+  };
+  const light = worn ? '#bfa66a' : '#e2c66f';
+  const mid = worn ? '#a98f55' : '#c9a54d';
+  const dark = worn ? '#86703f' : '#a5823a';
+  const shade = worn ? '#6b5731' : '#876a2c';
+  const ink = '#4a3118';
+  const apexY = 5;
+  const baseY = 43;
+  const hw = (y: number): number => 1.5 + (y - apexY) * (18 / (baseY - apexY));
+  const door = (y: number): number => (y < 24 ? -1 : 1.5 + (y - 24) * 0.27);
+  for (let y = apexY; y <= baseY; y++) {
+    const half = hw(y);
+    const d = door(y);
+    for (let x = Math.ceil(20 - half); x <= Math.floor(19 + half); x++) {
+      const dx = x + 0.5 - 20;
+      const edge = Math.abs(dx) > half - 1 || y === baseY;
+      if (d >= 0 && Math.abs(dx) <= d) {
+        px(x, y, Math.abs(dx) > d - 1 ? ink : y > baseY - 4 ? '#3b2814' : '#2b1c10');
+        continue;
+      }
+      if (edge) {
+        px(x, y, ink);
+        continue;
+      }
+      const u = dx / (y - apexY + 2);
+      const band = Math.floor(u * 6);
+      let col = band % 2 === 0 ? light : mid;
+      if (u > 0.28) col = band % 2 === 0 ? mid : dark;
+      if (u > 0.55) col = shade;
+      const bind = [17, 28, 37].some((by) => y === by + Math.floor(Math.abs(dx) / 8));
+      if (bind) col = ink;
+      if (worn && (x * 7 + y * 13) % 17 === 0 && y > 14) continue;
+      px(x, y, col);
+    }
+  }
+  // Скрещённые жерди над макушкой.
+  const stick = (x0: number, y0: number, x1: number, y1: number): void => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let k = 0; k <= n; k++) {
+      const x = Math.round(x0 + ((x1 - x0) * k) / n);
+      const y = Math.round(y0 + ((y1 - y0) * k) / n);
+      px(x, y, '#7a4d2b');
+      px(x + 1, y, ink);
+    }
+  };
+  stick(16, 0, 21, 9);
+  stick(25, 0, 19, 9);
+  hutCache.set(worn, c);
+  return c;
+}
+
 const TOOLS: FrItem[] = ['knife', 'axe', 'pickaxe', 'rod', 'ironaxe', 'ironpick', 'ironknife', 'spear'];
 const ITEM_ORDER: readonly FrItem[] = ['branch', 'flint', 'stone', 'grass', 'berries', 'mushroom', 'cooked', 'axe', 'knife', 'pickaxe', 'flask', 'torch', 'fullflask', 'egg', 'seeds', 'friedegg', 'tea', 'compote', 'porridge', 'berryporridge', 'cloth', 'purse', 'meat', 'steak', 'broth', 'meatporridge', 'reed', 'fish', 'friedfish', 'fishsoup', 'rod', 'ore', 'ingot', 'ironknife', 'ironaxe', 'ironpick', 'fishporridge', 'salt', 'jerky', 'driedfish', 'glowcap', 'glowsoup', 'crystal', 'lantern', 'fang', 'spear'];
 const ACT_SPRITE: Readonly<Partial<Record<FrAction, string>>> = { pick: 'act-hand', chop: 'item-axe', drink: 'act-drop', light: 'act-flame', feed: 'branch', cook: 'item-friedegg', open: 'chest', fill: 'item-flask', mine: 'item-pickaxe', cut: 'item-knife', fish: 'item-rod', travel: 'act-door', sleep: 'item-bed' };
@@ -189,6 +254,7 @@ export class ForestGame implements GameScreen {
   private readonly clockHand: SVGElement;
   private readonly clock: SVGSVGElement;
   private readonly treatText = el('span', {});
+  private hutAlpha = 1;
   private readonly sleepButton = el('button', { type: 'button', class: 'chunky fr-action', text: GAMES_TEXT.forestWake });
   private readonly menu = el('div', { class: 'fr-menu', hidden: '' });
   private menuAt: { x: number; y: number } | null = null;
@@ -1871,42 +1937,6 @@ export class ForestGame implements GameScreen {
       const x0 = sx(c.x - 1);
       const y0 = sy(c.y - 1);
       const w = tile * 3;
-      // Навес из ткани над 3x3 клетками: лёгкая ткань, бахрома и четыре столба.
-      const wear = s.shelter / FR_SHELTER_RAINS;
-      ctx.fillStyle = wear > 0.3 ? 'rgba(244,232,200,0.30)' : 'rgba(200,180,140,0.30)';
-      ctx.fillRect(x0, y0, w, w);
-      ctx.strokeStyle = wear > 0.3 ? 'rgba(255,248,225,0.35)' : 'rgba(200,180,140,0.3)';
-      ctx.lineWidth = Math.max(1, tile * 0.05);
-      ctx.beginPath();
-      for (let k = 1; k < 6; k++) {
-        ctx.moveTo(x0 + k * tile * 0.5, y0);
-        ctx.lineTo(x0 + k * tile * 0.5, y0 + w);
-      }
-      ctx.stroke();
-      // Бахрома по нижнему краю.
-      ctx.fillStyle = wear > 0.3 ? 'rgba(236,222,186,0.75)' : 'rgba(190,170,130,0.75)';
-      const fr = tile * 0.16;
-      for (let k = 0; k < 12; k++) {
-        ctx.beginPath();
-        ctx.arc(x0 + (k + 0.5) * (w / 12), y0 + w, fr, 0, Math.PI);
-        ctx.fill();
-      }
-      ctx.strokeStyle = '#7a4d2b';
-      ctx.lineWidth = Math.max(2, tile * 0.07);
-      ctx.lineCap = 'round';
-      for (const [px, py] of [[0, 0], [3, 0], [0, 3], [3, 3]] as const) {
-        const qx = x0 + px * tile;
-        const qy = y0 + py * tile;
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.beginPath();
-        ctx.ellipse(qx, qy + tile * 0.06, tile * 0.14, tile * 0.06, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(qx, qy - tile * 0.35);
-        ctx.lineTo(qx, qy);
-        ctx.stroke();
-      }
-      ctx.lineCap = 'butt';
       if (s.bed) {
         const b = frBedCell();
         const bx = sx(b.x);
@@ -1916,6 +1946,20 @@ export class ForestGame implements GameScreen {
           ctx.fillRect(bx + tile * 0.1, by + tile * 0.3, tile * 0.8, tile * 0.5);
         }
       }
+      // Шалаш над 3x3 клетками; когда питомец внутри, он становится полупрозрачным.
+      const inside = s.x >= c.x - 1 && s.x < c.x + 2 && s.y >= c.y - 1 && s.y < c.y + 2;
+      this.hutAlpha += ((inside ? 0.28 : 1) - this.hutAlpha) * 0.15;
+      const hw = tile * 3.5;
+      const hh = hw * (46 / 40);
+      ctx.save();
+      ctx.globalAlpha = this.hutAlpha;
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      ctx.beginPath();
+      ctx.ellipse(x0 + w / 2, y0 + w + tile * 0.05, w * 0.52, tile * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(hutSprite(s.shelter / FR_SHELTER_RAINS <= 0.3), x0 + w / 2 - hw / 2, y0 + w + tile * 0.1 - hh, hw, hh);
+      ctx.restore();
     }
     if (frRainHere(s)) {
       const W = this.canvas.width;
