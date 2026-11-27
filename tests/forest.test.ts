@@ -11,6 +11,10 @@ import {
   frActions,
   frCanSleep,
   frDo,
+  frCraft,
+  frChestPut,
+  frChestTake,
+  frChestBuilt,
   frPotAdd,
   frPotCook,
   frPotReturn,
@@ -282,5 +286,56 @@ describe('«Дикий лес»: окошко готовки', () => {
     s.pot = ['mushroom', 'mushroom'];
     expect(frPotCook(s)).toContainEqual({ type: 'nothingToCook' });
     expect(s.pot).toEqual(['mushroom', 'mushroom']);
+  });
+});
+
+describe('«Дикий лес»: этап 2', () => {
+  it('траву без ножа не собрать, нож и топор крафтятся', () => {
+    const s = newForest(7);
+    const c = frCenter();
+    s.drops = [{ id: 99, kind: 'grass', x: c.x + 3, y: c.y + 3 }];
+    const ev = [...frDo(s, c.x + 3, c.y + 3, 'pick'), ...run(s, 20_000)];
+    expect(ev).toContainEqual({ type: 'needKnife' });
+    expect(frCraft(s, 'knife')).toContainEqual({ type: 'needMaterials' });
+    s.inv = { branch: 3, stone: 3 };
+    expect(frCraft(s, 'knife')).toContainEqual({ type: 'crafted', item: 'knife' });
+    expect(frCraft(s, 'knife')).toContainEqual({ type: 'haveIt' });
+    const ev2 = [...frDo(s, c.x + 3, c.y + 3, 'pick'), ...run(s, 20_000)];
+    expect(ev2).toContainEqual({ type: 'picked', item: 'grass' });
+  });
+
+  it('деревья рубятся топором и дают ветки', () => {
+    const s = newForest(7);
+    const i = s.tiles.findIndex((k, n) => k === 'tree' && n % 30 > 3 && n % 30 < 26 && Math.floor(n / 30) > 3 && Math.floor(n / 30) < 26);
+    const x = i % 30;
+    const y = Math.floor(i / 30);
+    s.x = x + 0.5;
+    s.y = y + 0.5;
+    expect([...frDo(s, x, y, 'chop'), ...run(s, 5000)]).toContainEqual({ type: 'needAxe' });
+    s.inv = { axe: 1 };
+    expect([...frDo(s, x, y, 'chop'), ...run(s, 5000)]).toContainEqual({ type: 'chopped' });
+    expect(s.tiles[i]).toBe('grass');
+    expect(s.inv.branch).toBe(2);
+  });
+
+  it('сундук строится у костра и хранит вещи', () => {
+    const s = newForest(7);
+    s.inv = { branch: 6, stone: 4, grass: 2 };
+    expect(frCraft(s, 'chest')).toContainEqual({ type: 'crafted', item: 'chest' });
+    expect(frChestBuilt(s)).toBe(true);
+    s.inv = { berries: 2 };
+    expect(frChestPut(s, 'berries')).toBe(true);
+    expect(s.chest).toEqual({ berries: 1 });
+    expect(frChestTake(s, 'berries')).toBe(true);
+    expect(s.inv).toEqual({ berries: 2 });
+  });
+
+  it('задания идут по цепочке и награждают лакомствами', () => {
+    const s = newForest(7);
+    s.inv = { branch: 3, flint: 1 };
+    const ev = run(s, 100);
+    expect(ev).toContainEqual({ type: 'questDone', step: 0, reward: 1 });
+    expect(s.quest).toBe(1);
+    expect(s.treats).toBe(1);
   });
 });
