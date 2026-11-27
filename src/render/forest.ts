@@ -2259,17 +2259,22 @@ function drawTrap(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: n
   }
 }
 
-const mobFace = new Map<number, number>();
+const mobFace = new Map<number, { x: number; face: number }>();
 const MOB_LEFT: ReadonlySet<string> = new Set(['mouse']);
 
 /** Мышь, кролик, волк и летучая мышь — картинки, если загрузились, иначе кодом; у раненого над головой полоска здоровья. */
 function drawMob(ctx: CanvasRenderingContext2D, m: FrMob, x: number, y: number, tile: number, t: number): void {
   const bob = Math.sin(t / 120 + m.id) * tile * 0.03;
   const k = m.kind;
-  const prevX = mobFace.get(m.id * 1000) ?? m.x;
-  if (Math.abs(m.x - prevX) > 0.002) mobFace.set(m.id, m.x > prevX ? 1 : -1);
-  mobFace.set(m.id * 1000, m.x);
-  const face = mobFace.get(m.id) ?? 1;
+  // Поворот только при настоящем движении (порог), иначе мелкие подёргивания разворачивают зверя каждый кадр.
+  const fs = mobFace.get(m.id) ?? { x: m.x, face: 1 };
+  const dx = m.x - fs.x;
+  if (Math.abs(dx) > 0.2) {
+    fs.face = dx > 0 ? 1 : -1;
+    fs.x = m.x;
+  } else if (Math.sign(dx) === fs.face) fs.x = m.x;
+  mobFace.set(m.id, fs);
+  const face = fs.face;
   const hpBar = (top: number): void => {
     if (m.hp >= FR_MOBS[k].hp) return;
     const w = tile * 0.6;
