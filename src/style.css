@@ -3648,3 +3648,8 @@ body:has(.fr-game) {
 .fr-qrow.story .fr-qbtn {
   justify-self: end;
 }
+
+.fr-qfold {
+  cursor: pointer;
+  user-select: none;
+}

@@ -782,8 +782,23 @@ export class ForestGame implements GameScreen {
         btn,
       ]);
     });
-    return el('div', { class: 'fr-qsection' }, [el('h4', { text: GAMES_TEXT.forestStoryTitle }), ...rows]);
+    const head = el('h4', { class: 'fr-qfold', role: 'button', tabindex: '0', 'aria-expanded': String(!this.storyFolded), text: `${this.storyFolded ? '▸' : '▾'} ${GAMES_TEXT.forestStoryTitle}` });
+    const toggle = (): void => {
+      this.storyFolded = !this.storyFolded;
+      this.renderQuests();
+    };
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+    return el('div', { class: 'fr-qsection' }, [head, ...(this.storyFolded ? [] : rows)]);
   }
+
+  /** Сюжетный раздел свёрнут (по нажатию на заголовок). */
+  private storyFolded = false;
 
   private renderQuests(): void {
     const s = this.state;
