@@ -1347,3 +1347,14 @@ describe('главы сюжета считают только то, что сд�
     expect(m.frQuestState(s, ch4)).toBe('ready');
   });
 });
+
+describe('глава «Волки»: волки есть на озере днём', () => {
+  it('на озере при активной главе есть два волка', async () => {
+    const m = await import('../src/core/forest');
+    const s = newForest(7);
+    s.claimed.push('ch1', 'ch2', 'ch3', 'ch4');
+    m.frTravel(s, 'lake');
+    expect(m.frStoryActive(s)?.id).toBe('ch5');
+    expect(s.mobs.filter((x) => x.kind === 'wolf').length).toBe(2);
+  });
+});
