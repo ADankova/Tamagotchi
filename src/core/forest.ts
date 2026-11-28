@@ -88,6 +88,8 @@ export interface FrDrop {
   kind: FrItem;
   /** Сколько штук лежит в куче (нет — одна). */
   n?: number;
+  /** Добыча уже засчитана в задания: при подъёме второй раз не считаем. */
+  c?: boolean;
   x: number;
   y: number;
 }
@@ -1107,7 +1109,7 @@ function arriveInner(s: FrState): FrEvent[] {
         }
         if (got >= (d.n ?? 1)) s.drops = s.drops.filter((it) => it.id !== d.id);
         else d.n = (d.n ?? 1) - got;
-        bump(s, `pick:${d.kind}`);
+        if (!d.c) bump(s, `pick:${d.kind}`);
         s.busy = { kind: 'gather', left: FR_ACTION_MS };
         return [{ type: 'picked', item: d.kind }];
       }
@@ -1368,12 +1370,15 @@ function dropNearFire(s: FrState, kind: FrItem): boolean {
   return dropNear(s, kind, c.x, c.y, 1);
 }
 
+/** Добыча, которую задания уже посчитали в момент добычи (не при подъёме с земли). */
+const COUNTED_AT_SOURCE: FrItem[] = ['crystal', 'ore', 'stone', 'flint', 'salt', 'fish', 'egg', 'reed', 'grass', 'seeds'];
+
 /** Кладёт добычу в рюкзак, а что не влезло — на землю рядом с клеткой. Возвращает, сколько упало на землю. */
 function give(s: FrState, item: FrItem, n: number, cell: number): number {
   let spilled = 0;
   for (let k = 0; k < n; k++) {
     if (canTake(s.inv, item, frCapacity(s))) s.inv[item] = (s.inv[item] ?? 0) + 1;
-    else if (dropNear(s, item, cell % FR_W, Math.floor(cell / FR_W))) spilled++;
+    else if (dropNear(s, item, cell % FR_W, Math.floor(cell / FR_W), 0, 1, COUNTED_AT_SOURCE.includes(item))) spilled++;
     else s.inv[item] = (s.inv[item] ?? 0) + 1;
   }
   return spilled;
@@ -1389,11 +1394,11 @@ export function frFixDrops(s: FrState): void {
   const bad = s.drops.filter((d) => !dropTileOk(s, d.x, d.y) && s.tiles[frIndex(d.x, d.y)] !== 'tall');
   if (!bad.length) return;
   s.drops = s.drops.filter((d) => !bad.includes(d));
-  for (const d of bad) if (!dropNear(s, d.kind, d.x, d.y, 0, d.n ?? 1)) s.inv[d.kind] = (s.inv[d.kind] ?? 0) + (d.n ?? 1);
+  for (const d of bad) if (!dropNear(s, d.kind, d.x, d.y, 0, d.n ?? 1, d.c)) s.inv[d.kind] = (s.inv[d.kind] ?? 0) + (d.n ?? 1);
 }
 
 /** Кладёт предмет на свободную клетку рядом с (cx, cy), кольцами от `from`. */
-function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0, n = 1): boolean {
+function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0, n = 1, counted = false): boolean {
   const c = { x: cx, y: cy };
   for (let r = from; r <= 4; r++) {
     for (let dy = -r; dy <= r; dy++) {
@@ -1402,7 +1407,7 @@ function dropNear(s: FrState, kind: FrItem, cx: number, cy: number, from = 0, n 
         const x = c.x + dx;
         const y = c.y + dy;
         if (!dropTileOk(s, x, y) || s.drops.some((d) => d.x === x && d.y === y)) continue;
-        s.drops.push({ id: s.nextId++, kind, ...(n > 1 ? { n } : {}), x, y });
+        s.drops.push({ id: s.nextId++, kind, ...(n > 1 ? { n } : {}), ...(counted ? { c: true } : {}), x, y });
         return true;
       }
     }
@@ -1530,7 +1535,7 @@ export function frThrow(s: FrState, item: FrItem, count = 1): FrEvent[] {
   if (spot === undefined) return [];
   take(s, item, n);
   if (s.weapon === item && !s.inv[item]) s.weapon = null;
-  s.drops.push({ id: s.nextId++, kind: item, ...(n > 1 ? { n } : {}), x: spot % FR_W, y: Math.floor(spot / FR_W) });
+  s.drops.push({ id: s.nextId++, kind: item, ...(n > 1 ? { n } : {}), c: true, x: spot % FR_W, y: Math.floor(spot / FR_W) });
   return [{ type: 'thrown', item }];
 }
 
