@@ -2267,6 +2267,14 @@ export function frAlphaDue(s: FrState): boolean {
 
 function ensureAlpha(s: FrState, r: Rand): void {
   if (s.loc === 'cave' && frAlphaDue(s) && !s.mobs.some((m) => m.kind === 'alpha')) addMob(s, 'alpha', r);
+  ensureQuestWolves(s, r);
+}
+
+/** Пока идёт глава «Волки», на озере волки бродят и днём (иначе их негде найти). */
+function ensureQuestWolves(s: FrState, r: Rand): void {
+  const ch5 = FR_QUESTS.find((q) => q.id === 'ch5');
+  if (s.loc !== 'lake' || !ch5 || frStoryActive(s)?.id !== 'ch5' || frQuestDone(s, ch5)) return;
+  while (s.mobs.filter((m) => m.kind === 'wolf').length < 2) if (!addMob(s, 'wolf', r)) break;
 }
 
 /** Новый день: волки уходят, остаются мыши и кролики. */
