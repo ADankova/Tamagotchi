@@ -793,6 +793,7 @@ export class ForestGame implements GameScreen {
   /** Окно заданий: «по умолчанию» и обычные, у каждого награда и кнопка. */
   private openQuests(): void {
     this.closeMenu();
+    this.questTabShown = null;
     this.renderQuests();
     this.bag.removeAttribute('hidden');
   }
@@ -832,6 +833,8 @@ export class ForestGame implements GameScreen {
 
   /** Сюжетный раздел свёрнут (по нажатию на заголовок). */
   private questTab: FrQuest['kind'] = 'story';
+  /** Какая вкладка заданий была нарисована в прошлый раз. */
+  private questTabShown: FrQuest['kind'] | null = null;
 
   private renderQuests(): void {
     const s = this.state;
@@ -881,9 +884,12 @@ export class ForestGame implements GameScreen {
         this.questTab === 'story' ? this.storySection() : section(this.questTab),
       ]),
     );
-    this.bag.scrollTop = keepBag;
+    // Прокрутку сохраняем только внутри той же вкладки; при смене вкладки начинаем сверху.
+    const sameTab = this.questTabShown === this.questTab;
+    this.questTabShown = this.questTab;
+    this.bag.scrollTop = sameTab ? keepBag : 0;
     const panel = this.bag.querySelector<HTMLElement>('.fr-bag');
-    if (panel) panel.scrollTop = keepPanel;
+    if (panel) panel.scrollTop = sameTab ? keepPanel : 0;
     // Сюжет: прокручиваем список до текущей главы (после показа окна, когда есть размеры).
     if (this.questTab === 'story') {
       const row = this.bag.querySelector<HTMLElement>('.fr-qrow.active');
