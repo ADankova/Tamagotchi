@@ -780,7 +780,7 @@ export class ForestGame implements GameScreen {
     const s = this.state;
     const ready = FR_QUESTS.find((q) => frQuestState(s, q) === 'ready');
     const next = ready ?? FR_QUESTS.find((q) => q.kind === 'regular' && frQuestState(s, q) === 'progress') ?? FR_QUESTS.find((q) => q.kind === 'story' && frQuestState(s, q) === 'progress');
-    const key = next ? `${next.id}:${next.parts.map((p) => Math.min(frCounter(s, p.key, next), p.need)).join(',')}:${ready ? 1 : 0}` : 'done';
+    const key = next ? `${next.id}:${next.parts.map((p) => Math.min(frCounter(s, p.key, next), p.need)).join(',')}:${ready ? 1 : 0}:${next.parts.flatMap((p) => (frPartCost(p.key) ?? []).map(([it, n]) => Math.min(s.inv[it] ?? 0, n))).join(',')}` : 'done';
     if (this.questKey === key) return;
     this.questKey = key;
     this.questLine.classList.toggle('ready', !!ready);
